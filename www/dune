@@ -1,6 +1,6 @@
 (executable
  (name hg)
  (modules hg)
- (libraries hypergraphs vg.htmlc)
+ (libraries diagrams vg.htmlc)
  (modes js)
  (preprocess (pps js_of_ocaml-ppx)))

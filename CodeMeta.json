@@ -15,19 +15,15 @@
             "givenName": "Damien"
         }
     ],
-    "codeRepository": "https://github.com/damien-pous/hypergraph",
-    "dateCreated": "2024-03-12",
-    "datePublished": "2024-05-01",
-    "description": "tool & library to visualize and edit sourced labelled hypergraphs",
+    "codeRepository": "https://github.com/damien-pous/string-diagrams",
+    "dateCreated": "2025-07-10",
+    "description": "tool & library to visualize and edit string diagrams",
     "keywords": [
-        "graphs",
-        "hypergraphs",
-        "treewidth",
-        "visualisation"
+        "string diagrams",
+        "monoidal categories",
     ],
     "license": "https://spdx.org/licenses/GPL-3.0",
-    "name": "hypergraph",
+    "name": "string-diagrams",
     "programmingLanguage": "Ocaml",
     "developmentStatus": "concept",
-    "referencePublication": "https://doi.org/10.4230/LIPIcs.ICALP.2024.135"
 }

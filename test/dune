@@ -1,6 +1,6 @@
 (test
  (name sanity)
  (modules sanity)
- (libraries hypergraphs)
+ (libraries diagrams)
 ; (flags -w -27)
 )

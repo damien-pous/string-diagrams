@@ -1,70 +1,59 @@
 open Types
 
-(** graphs with inner elements decorated with 'a values *)
+type 'a port = private Outer of int | Inner of 'a node * int
+and 'a iport = private 'a port
+and 'a oport = private 'a port
+and 'a edge = private { src: 'a iport; tgt: 'a oport }
+and 'a kind = private Var of (int*int*label) | Box of 'a graph
+and 'a node = private { info: 'a; kind: 'a kind }
+and 'a graph = private {
+    sources: int;
+    targets: int;
+    nodes: 'a node mset;
+    edges: 'a edge mset }
 
-type 'a vertex = Src of int | Inn of 'a
-type 'a edge
-include ISEALGEBRA' with type 'a ru = 'a Term.u and type 'a rt = 'a Term.t
-type 'a ugraph = 'a u           (* source-decoration-free graphs *)
-type 'a graph = 'a t
+val map: ('a -> 'b) -> 'a graph -> 'b graph
 
-val ivertices: 'a graph -> 'a mset
-val sources: 'a graph -> 'a seq
-val edges: 'a graph -> 'a edge mset
+val ksrc: 'a kind -> int
+val ktgt: 'a kind -> int
 
-val neighbours: 'a edge -> 'a vertex seq
-val einfo: 'a edge -> 'a
-val sinfo: 'a graph -> int -> 'a
-val vinfo: 'a graph -> 'a vertex -> 'a
+val nsrc: 'a node -> int
+val ntgt: 'a node -> int
 
-val is_full: 'a graph -> bool
-val is_prime: 'a graph -> bool
-val is_fullprime: 'a graph -> bool
-val is_atomic: 'a graph -> bool
 val is_empty: 'a graph -> bool
-val is_hard: 'a graph -> bool
 
-val adjacent: 'a graph -> 'a vertex -> 'a vertex -> bool
+val out_edge: 'a graph -> 'a iport -> 'a edge option
+val out_free: 'a graph -> 'a iport -> bool
+val next: 'a graph -> 'a iport -> 'a oport option
+val nexts: 'a graph -> 'a iport -> 'a node set * 'a oport set
 
-val width_less_than: int -> 'a graph -> bool
+val inp_edge: 'a graph -> 'a oport -> 'a edge option
+val inp_free: 'a graph -> 'a oport -> bool
+val prev: 'a graph -> 'a oport -> 'a iport option
+val prevs: 'a graph -> 'a oport -> 'a node set * 'a iport set
 
-val components: 'a graph -> 'a graph mset
-val reduce: 'a graph -> iseq * 'a graph 
-val reduced_components: 'a graph -> (iseq * 'a graph) mset
+val reaches: 'a graph -> 'a iport -> 'a oport -> bool
 
-val is_forget_point: 'a graph -> int -> 'a -> bool
-val find_forget_point: 'a graph -> int -> 'a option
-val forget_points: 'a graph -> int -> 'a mset
+val empty: int -> int -> 'a graph
+val idmap: int -> 'a graph
+val tensor: 'a graph -> 'a graph -> 'a graph
+val seq: 'a graph -> 'a graph -> 'a graph
+val var: 'a -> int -> int -> label -> 'a graph
+val box: 'a -> 'a graph -> 'a graph
 
-val is_anchor: 'a graph -> 'a -> bool
-val find_anchor: 'a graph -> 'a option
-val anchors: 'a graph -> 'a mset
+val rem_edge: 'a graph -> 'a edge -> 'a graph
+val rem_node: 'a graph -> 'a node -> 'a graph
 
-val is_separator: 'a graph -> int -> int -> 'a list -> bool
+val add_edge: 'a graph -> 'a iport -> 'a oport -> 'a graph * 'a edge
+val add_node: 'a graph -> 'a -> 'a kind -> 'a graph * 'a node
 
-val iter_edges: ('a -> 'a vertex seq -> unit) -> 'a graph -> unit
-val iter_edges': ('a edge -> unit) -> 'a graph -> unit
-val iter_edges'': ('a edge -> 'a -> 'a vertex seq -> unit) -> 'a graph -> unit
-val iter_ivertices: ('a -> unit) -> 'a graph -> unit
-val iter_vertices: ('a vertex -> unit) -> 'a graph -> unit
-val iter_sources: (int -> 'a -> unit) -> 'a graph -> unit
-val iter_infos: ('a -> unit) -> 'a graph -> unit
+val subst: 'a graph -> 'a node -> 'a graph -> 'a graph
+val unbox: 'a graph -> 'a node -> 'a graph
 
-val promote: 'a -> 'a graph -> 'a graph
+val iter_inner_iports: ('a iport -> unit) -> 'a graph -> unit
+val iter_inner_oports: ('a oport -> unit) -> 'a graph -> unit
 
-val rem_edge: 'a edge -> 'a graph -> 'a graph
-val rem_ivertex: 'a -> 'a graph -> 'a graph
-val rem_source: int -> 'a graph -> 'a graph
-val rem_vertex: 'a vertex -> 'a graph -> 'a graph
-val filter_edges: ('a edge -> bool) -> 'a graph -> 'a graph
-
-val add_edge: 'a -> 'a vertex seq -> 'a graph -> 'a edge * 'a graph
-val add_ivertex: 'a -> 'a graph -> 'a graph
-
-val subst_edge: 'a graph -> 'a edge -> 'a graph -> 'a graph * 'a edge mset
-
-
-
+(*
 (* isomorphim check, using the given function to compare edge infos *)
 val iso: ('a -> 'a -> bool) -> 'a graph -> 'a graph -> bool
 
@@ -73,57 +62,5 @@ val draw: ?iprops:bool -> #positionned graph -> image
 
 val bbox: #positionned graph -> box
 
-val find: ('a -> bool) -> 'a graph -> [`V of 'a vertex | `E of 'a edge | `N]
-
-val get_info: 'a graph -> kind*int -> 'a
-
-
-
-
-module U: sig
-  (* variants of the above functions on source-decoration-free graphs *)
-  include IEALGEBRA' with type 'a t = 'a ugraph and type 'a r = 'a Term.u
-
-  val is_full: 'a ugraph -> bool
-  val is_prime: 'a ugraph -> bool
-  val is_fullprime: 'a ugraph -> bool
-  val is_atomic: 'a ugraph -> bool
-  val is_empty: 'a ugraph -> bool
-  val is_hard: 'a ugraph -> bool
-
-  val adjacent: 'a ugraph -> 'a vertex -> 'a vertex -> bool
-
-  val width_less_than: int -> 'a ugraph -> bool
-  
-  val components: 'a ugraph -> 'a ugraph mset
-  (* decompose a graph g into an injection i and a full graph g' such that g = {i}g' *)
-  val reduce: 'a ugraph -> iseq * 'a ugraph 
-  val reduced_components: 'a ugraph -> (iseq * 'a ugraph) mset
-
-  val is_forget_point: 'a ugraph -> int -> 'a -> bool
-  val forget_points: 'a ugraph -> int -> 'a mset
-  
-  val is_anchor: 'a ugraph -> 'a -> bool
-  val find_anchor: 'a ugraph -> 'a option
-  val anchors: 'a ugraph -> 'a mset
-
-  val is_separator: 'a ugraph -> int -> int -> 'a list -> bool
- 
-  val iter_edges: ('a -> 'a vertex seq -> unit) -> 'a ugraph -> unit
-  val iter_edges': ('a edge -> unit) -> 'a ugraph -> unit
-  val iter_edges'': ('a edge -> 'a -> 'a vertex seq -> unit) -> 'a ugraph -> unit
-  val iter_ivertices: ('a -> unit) -> 'a ugraph -> unit
-  
-  val rem_edge: 'a edge -> 'a ugraph -> 'a ugraph
-  val rem_ivertex: 'a -> 'a ugraph -> 'a ugraph
-  val rem_source: int -> 'a ugraph -> 'a ugraph
-  val rem_vertex: 'a vertex -> 'a ugraph -> 'a ugraph
-  val filter_edges: ('a edge -> bool) -> 'a ugraph -> 'a ugraph
-
-  val subst_edge: 'a ugraph -> 'a edge -> 'a ugraph -> 'a ugraph * 'a edge mset
-  
-  val add_edge: 'a -> 'a vertex seq -> 'a ugraph -> 'a edge * 'a ugraph
-  val add_ivertex: 'a -> 'a ugraph -> 'a ugraph    
-
-  val iso: ('a -> 'a -> bool) -> 'a ugraph -> 'a ugraph -> bool
-end
+val find: ('a -> bool) -> 'a graph -> [`P of 'a port | `E of 'a edge | `N]
+ *)

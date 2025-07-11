@@ -1,11 +1,11 @@
 (lang dune 3.14)
 
-(name hypergraphs)
+(name string-diagrams)
 
 (generate_opam_files true)
 
 (source
- (github damien-pous/hypergraphs))
+ (github damien-pous/string-diagrams))
 
 (authors "Damien Pous")
 
@@ -18,11 +18,11 @@
 (using menhir 3.0)
 
 (package
- (name hypergraphs)
- (synopsis "visualize and edit hypergraphs")
- (description "visualize and edit sourced labelled hypergraphs")
+ (name string-diagrams)
+ (synopsis "visualize and edit string diagrams")
+ (description "visualize and edit string diagrams")
  (depends ocaml dune cairo2-gtk vg)
  (tags
-   ("hypergraph" "treewidth")))
+   ("string diagrams" "monoidal categories")))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

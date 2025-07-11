@@ -1,5 +1,5 @@
 RUN=hgui
-WWW=~/work/public_html/hypergraph/
+WWW=~/work/public_html/string-diagrams/
 
 all:: run
 

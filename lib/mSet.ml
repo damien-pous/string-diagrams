@@ -11,6 +11,12 @@ let union x y =
   | _ -> U (x,y)
 let add a = union (single a)
 
+let init n f =
+  let rec build = function
+    | 0 -> empty
+    | n -> add (f n) (build (n-1))
+  in build n
+
 let rec mem a = function
   | N -> false
   | S b -> a=b
@@ -20,6 +26,11 @@ let rec filter f = function
   | S i as x when f i -> x
   | U(x,y) -> union (filter f x) (filter f y)
   | _ -> N
+
+let rec memq a = function
+  | N -> false
+  | S b -> a==b
+  | U(x,y) -> memq a x || memq a y
 let remq x = filter ((!=) x)
 
 let case x =

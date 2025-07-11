@@ -1,7 +1,7 @@
 (library
- (name hypergraphs)
+ (name diagrams)
  (libraries vg unix)
- (modules_without_implementation types)
+ (modules_without_implementation types set)
 ; (flags -w -27)
  (modules :standard \ gArena file))
 
@@ -9,11 +9,11 @@
 (ocamllex lexer)
 
 (library
- (name hypergraphs_cairo)
- (libraries hypergraphs vg.cairo)
+ (name diagrams_cairo)
+ (libraries diagrams vg.cairo)
  (modules file))
 
 (library
- (name hypergraphs_gtk)
- (libraries hypergraphs_cairo cairo2-gtk)
+ (name diagrams_gtk)
+ (libraries diagrams_cairo cairo2-gtk)
  (modules gArena))

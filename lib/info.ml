@@ -25,7 +25,6 @@ let kv k v =
   | _ -> ());
   k,v
 
-let get_color l = Option.map Constants.color (List.assoc_opt "color" l)
 let get_label l = Option.value ~default:"" (List.assoc_opt "label" l)
 
 let same_label x y = x#label = y#label
@@ -43,8 +42,6 @@ let forbidden s =
   || s.[0]<'a' || s.[0]>'z'
 
 let escape s = if forbidden s then "-"^s else s
-
-let pp_label f s = Format.pp_print_string f (escape s)
 
 class virtual holder_ = 
   object
@@ -104,17 +101,7 @@ class sprinter i l =
     inherit sprinter_ i
   end
 
-class virtual eprinter_ =
-  object(self)
-    inherit printer
-    method private pp_label _ f = pp_label f label
-    method private pp_other mode f = if mode=Full then pp_kvl f self#kvl
-    method kind = `E
-    initializer label <- get_label self#kvl; self#rem "label"
-  end
-class eprinter _ l = object inherit holder l inherit eprinter_ end
-
-let kvl_to_printable = {fs=new sprinter;fi=new iprinter;fe=new eprinter}
+let kvl_to_printable = {fs=new sprinter;ft=new sprinter;fi=new iprinter}
 
 
 class virtual positioner =
@@ -160,22 +147,9 @@ class spositioner i l =
       if not (self#has "radius") then radius <- Constants.sradius
   end
 
-class epositioner k l =
-  object(self)
-    inherit holder l
-    inherit eprinter_
-    inherit! positioner
-    initializer
-      color <- Constants.color' ?color:(get_color l) label;
-      if not (self#has "radius") then radius <- Constants.eradius k;
-      if not placed then 
-        (match self#get "shift" with Some v -> pos <- p2_of_string v | None -> ());
-  end
-
-let kvl_to_positionned = {fs=new spositioner;fi=new ipositioner;fe=new epositioner}
+let kvl_to_positionned = {fs=new spositioner;ft=new spositioner;fi=new ipositioner}
 
 
-let positionned_ivertex p = new ipositioner ["pos", string_of_p2 p]
-let positionned_source i p = new spositioner i ["pos", string_of_p2 p]
-let positionned_edge k l = new epositioner k ["label", l]
+let positionned_node p = new ipositioner ["pos", string_of_p2 p]
+let positionned_port i p = new spositioner i ["pos", string_of_p2 p]
 
