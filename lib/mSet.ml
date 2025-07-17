@@ -128,3 +128,4 @@ let to_list l = fold List.cons [] l
 let pp ppe f l = Format.fprintf f "{%a}" (pp_print_list "," ppe) (to_list l)
 
 let lmap f l = to_list (map f l)
+let mapl f = List.fold_left (fun l x -> add (f x) l) empty 

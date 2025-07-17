@@ -42,17 +42,24 @@ rule token = parse
   | ')'                                    { RPAR }
   | '<'                                    { LT }
   | '>'                                    { GT }
-  | '['                                    { LBRK }
-  | ']'                                    { RBRK }
+  | '['                                    { LSQR }
+  | ']'                                    { RSQR }
+  | '{'                                    { LBRK }
+  | '}'                                    { RBRK }
+  | '.'                                    { DOT }
   | ','                                    { COMMA }
   | ';'                                    { SEMI }
   | ':'                                    { COLON }
   | '*'                                    { STAR }
+  | '-'                                    { DASH }
   | '='                                    { EQ }
+  | "->"                                   { TO }
   | "id"                                   { ID }
   | "let"                                  { LET }
   | "in"                                   { IN }
+  | "size"                                 { SIZE }
   | (digit+) as n                          { INT (int_of_string n) }
+  | float as x                             { FLOAT (float_of_string x) }
   (* cycles&permutations: at least two elements, if comma then arbitrary ints, otherwise digits *)
   | '(' (ndigit ndigit+ as s) ')'          { PRM (Perm.of_cycle (diglist_of_string s)) }
   | '(' (nint as x) ((',' nint)+ as q) ')' { PRM (Perm.of_cycle (numlist_of_string x q)) }
@@ -69,7 +76,6 @@ rule token = parse
   | "size=(" (pos as p) ')'                { keyval "size" p }
   | "shift=" (pos as v)
   | "shift=(" (pos as v) ')'               { keyval "shift" v }
-  | "radius=" (float as x)                 { keyval "radius" x }
   | "scale=" (float as x)                  { keyval "scale" x }
   | (key as k) '=' (word as v)             { keyval k v }
   | (key as k) "=\"" ([^'"']* as v) '"'    { keyval k v }

@@ -1,14 +1,16 @@
-%token LPAR RPAR LBRK RBRK LT GT COMMA COLON LET EQ IN TO EOF
-%token ID SEMI STAR 
+%token LPAR RPAR LBRK RBRK LSQR RSQR LT GT
+%token COMMA COLON SEMI DOT STAR DASH
+%token ID SIZE LET EQ IN TO EOF
 %token <Types.name> NAME
 %token <Types.perm> PRM
 %token <Types.inj> INJ
 %token <int> INT
+%token <float> FLOAT
 %token <Info.kv> KEYVAL
 
 %left SEMI
 %left STAR
-%nonassoc PRM INJ CNV
+
 
 %type <Info.kvl Types.Raw.envterm> envterm
 %start envterm
@@ -26,8 +28,27 @@ term:
 | f=NAME             { Var f }
 | u=term SEMI v=term { Seq(u,v) }
 | u=term STAR v=term { Tns(u,v) }
-| LBRK u=term RBRK   { Box u }
+| LSQR u=term RSQR   { Box u }
 | LPAR t=term RPAR   { t }
+| LBRK n=INT TO m=INT
+       SIZE EQ w=float COMMA h=float
+       nodes=list(node)
+       edges=list(edge)
+  RBRK               { Gph(n,m,Gg.Size2.v w h,nodes,edges) }
+
+node:
+| n=INT l=kvl COLON u=term { (n,l,u) }
+
+edge:
+| DASH i=port o=port { (i,o) }
+
+port:
+| i=INT { Outer i }
+| n=INT DOT i=INT { Inner(n,i) }
+
+float:
+| i=INT { float_of_int i }
+| x=FLOAT { x }
 
 env:
 | h=list(decl) { h }

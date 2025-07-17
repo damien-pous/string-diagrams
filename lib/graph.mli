@@ -1,18 +1,16 @@
 open Types
 open Info
 
-type sort = {
-      sources: int;
-      targets: int;
-      mutable size: size }
 type port = private Outer of int | Inner of node * int
 and iport = port
 and oport = port
 and edge = private { src: iport; tgt: oport }
-and kind = private Var of sort*name | Box of graph
+and kind = private Var of int*int*name | Box of graph
 and node = private { info: positionned; kind: kind }
 and graph = private {
-    gsort: sort;
+    sources: int;
+    targets: int;
+    mutable size: size;
     nodes: node mset;
     edges: edge mset }
 
@@ -38,7 +36,6 @@ val gbox: graph -> box
 
 val nsources: node -> int
 val ntargets: node -> int
-val nsize: node -> size
 val nbox: node -> box
 
 val is_empty: graph -> bool
@@ -59,7 +56,7 @@ val rem_edge: graph -> edge -> graph
 val rem_node: graph -> node -> graph
 
 val add_edge: graph -> iport -> oport -> graph * edge
-val add_var: graph -> positionned -> sort -> name -> graph * node
+val add_var: graph -> positionned -> int -> int -> name -> graph * node
 val add_box: graph -> positionned -> graph -> graph * node
 
 val subst: graph -> node -> graph -> graph
@@ -67,7 +64,7 @@ val unbox: graph -> node -> graph
 
 val nshift: node -> vector -> unit
 val nmove: node -> point -> unit
-
+val gscale: float -> graph -> unit
 
 val npos: node -> point
 val ipos: graph -> iport -> point

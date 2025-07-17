@@ -40,7 +40,3 @@ let improve_placement s g =
 
 let fix x = x.info#set "fixed" "true"
 let unfix x = x.info#unset "fixed"
-
-let scale k g =
-  let s = g.gsort in
-  s.size <- V2.smul k s.size

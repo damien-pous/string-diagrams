@@ -23,6 +23,7 @@ val map: ('a -> 'b) -> 'a t -> 'b t
 val omap: ('a -> 'b option) -> 'a t -> 'b t
 val partition: ('a -> bool) -> 'a t -> 'a t * 'a t
 val lmap: ('a -> 'b) -> 'a t -> 'b list
+val mapl: ('a -> 'b) -> 'a list -> 'b t
 val iter: ('a -> unit) -> 'a t -> unit
 val fold: ('a -> 'b -> 'b) -> 'b -> 'a t -> 'b
 val big: ('a -> 'a -> 'a) -> 'a -> 'a t -> 'a

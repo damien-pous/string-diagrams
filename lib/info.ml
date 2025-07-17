@@ -25,23 +25,11 @@ let kv k v =
   | _ -> ());
   k,v
 
-let add_name f l = ("name",f)::l
-let get_name = List.assoc "name"
-
 let pp_kvl f l =
   if l<>[] then
     Format.fprintf f "<%a>"
       (pp_print_list ";" (fun f (k,v)-> Format.fprintf f "%s='%s'" k v))
       l
-
-let color l = Option.map Constants.color (List.assoc_opt "color" l)
-    
-let get_color f l =
-  Constants.color' ?color:(color l) f
-
-let get_size n m l =
-  try p2_of_string (List.assoc "size" l)
-  with Not_found -> Constants.varsize n m
 
 class holder (l: kvl) =
   object(self)
@@ -58,23 +46,21 @@ class holder (l: kvl) =
 class printer l =
   object(self)
     inherit holder l
-    method name = get_name self#kvl
-    method private pp_name _ f = Format.fprintf f "%s" self#name
-    method private pp_other mode f = if mode=Full then pp_kvl f self#kvl
     method private update_kvl = ()
-    method pp mode f = self#update_kvl; self#pp_name mode f; self#pp_other mode f
+    method pp mode f = self#update_kvl; if mode=Full then pp_kvl f self#kvl
     method pp_empty mode = mode=Sparse || (self#update_kvl; self#kvl=[])
   end
 
-class positioner l =
+class positioner size l =
   object(self)
     inherit printer l
     val mutable pos = V2.zero
     val mutable placed = false
-    val mutable size = Size2.zero
+    val mutable size = size
     val mutable sized = false
     val mutable color = Constants.gray
     method pos = pos    
+    method size = size
     method box = Box2.v_mid pos size
     method safebox = Box2.v_mid pos (V2.smul 1.1 size)
     method color = color
@@ -92,7 +78,5 @@ class positioner l =
       (match self#get "color" with Some c -> color <- Constants.color c | None -> ());      
   end
 
-let kvl_to_printable = new printer
-let kvl_to_positionned = new positioner
-
-let pos0 () = new positioner []
+let box = new positioner
+let var n m = box (Constants.varsize n m)

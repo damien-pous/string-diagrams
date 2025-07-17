@@ -31,9 +31,8 @@ module Raw: sig
     | Seq of 'a term * 'a term
     | Tns of 'a term * 'a term
     | Box of 'a term
-    | Gph of int*int*size*(string*'a*'a node) list*('a port*'a port) list
-  and 'a node = NVar of name | NBox of 'a term
-  and 'a port = Outer of int | Inner of string*int
+    | Gph of int*int*size*(int*'a*'a term) list*('a port*'a port) list
+  and 'a port = Outer of int | Inner of int*int
   (* environments *)
   type 'a env = (name*('a*(int*int) option*'a term option)) list
   type 'a envterm = 'a env * 'a term
@@ -41,7 +40,6 @@ end
 
 class type printable =
   object
-    method name: string
     method get: string -> string option
     method set: string -> string -> unit
     method unset: string -> unit
@@ -53,6 +51,7 @@ class type positionned =
   object
     inherit printable
     method pos: point
+    method size: size
     method box: box
     method safebox: box
     method color: color
