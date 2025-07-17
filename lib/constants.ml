@@ -10,10 +10,11 @@ let font = Vg.Font.{name="Latin Modern Roman"; slant=`Italic; weight=`W100; size
 (* in inches *)
 let linewidth = 0.5
 let pradius = 2.0
-let iradius = fontsize *. 0.4
-let sradius = fontsize *. 0.5
-let eradius0 = fontsize *. 1.0
-let eradius = function 3 -> 3. *. eradius0 | _ -> eradius0
+
+let spacing = fontsize *. 3.
+let expand s = V2.(s + v spacing spacing)
+let idsize n = Size2.v (float_of_int n *. spacing) spacing
+let varsize n m = idsize (max n m)
 
 let gray = Color.gray 0.5
 let xcolor = function

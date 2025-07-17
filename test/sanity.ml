@@ -1,4 +1,4 @@
-open Hypergraphs
+open Diagrams
 
 (* let _ =  *)
 (*   try *)
@@ -11,13 +11,13 @@ open Hypergraphs
 let from_string s =
   try
     let l = Lexing.from_string s in
-    let t = Parser.sterm Lexer.token l in
-    Term.map Info.kvl_to_printable t
+    let et = Parser.envterm Lexer.token l in
+    Graph.envgraph et
   with e -> Format.eprintf "error parsing  %s@." s; raise e
 
-let to_string = Format.kasprintf (fun s -> s) "%a" (Term.pp Full)
+let to_string = Format.kasprintf (fun s -> s) "%a" (Graph.pp Full)
 
-let iso = Graph.iso Info.same_label
+let iso = Graph.iso
 let gpp = Graph.pp Sparse
 let rpp = Term.pp Sparse
 (* let rpp_full = Term.spp Full *)
@@ -48,13 +48,6 @@ let test_iso s s' =
   let g' = Graph.of_term t' in
   iso g g' ||
     (Format.eprintf "Sanity failed iso:\nt = %a\nt'= %a@." rpp t rpp t'; failwith "iso")
-
-let test_tw s k =
-  let t = from_string s in
-  let g = Graph.of_term t in
-  let k' = Graph.width g in
-  k' = k ||
-    (Format.eprintf "Sanity failed treewidth of %s\nReturned %i instead of %i@." s k' k; failwith "tw")
   
 
 let _ = test "a|(b|c)"

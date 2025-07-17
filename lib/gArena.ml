@@ -1,4 +1,4 @@
-open Hypergraphs
+open Diagrams
 open Gg
 open Vg
 

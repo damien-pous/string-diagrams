@@ -1,4 +1,4 @@
-open Hypergraphs
+open Diagrams
 open Gg
 open Vg
 
@@ -57,30 +57,25 @@ let svg_via_vg image view file =
   ignore (Vgr.render r `End);
   close_out o
 
-
-type term = Types.positionned Term.t
+open Graph
 
 let read f =
-  let i = open_in (f^".hg") in
+  let i = open_in (f^".sd") in
   let l = Lexing.from_channel i in
-  let l = Parser.file Lexer.token l in
+  let t = Parser.envterm Lexer.token l in
   close_in i;
-  List.map (Term.map Info.kvl_to_positionned) l
+  envgraph t
 
 let write f l =
-  let o = open_out (f^".hg") in
+  let o = open_out (f^".sd") in
   let f = Format.formatter_of_out_channel o in
-  Format.fprintf f "%a" (Misc.pp_print_list " ;\n" (Term.pp Full)) l;
+  Format.fprintf f "%a" (pp_envgraph Full) l;
   close_out o
     
-let export f l =
-  let l = List.map (fun t ->
-              let g = Graph.of_term t in
-              Graph.draw g, Graph.bbox g
-            ) l
-  in
-  multi_pdf l (f^".pdf");
-  multi_svg l (f^".svg")
+let export f (_,g) =
+  let i,b = Graph.draw g, Graph.gbox g in
+  pdf i b (f^".pdf");
+  svg i b (f^".svg")
 
-let exists f = Sys.file_exists (f ^ ".hg")
+let exists f = Sys.file_exists (f ^ ".sd")
   

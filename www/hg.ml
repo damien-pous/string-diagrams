@@ -1,20 +1,12 @@
-open Hypergraphs
+open Diagrams
 
 open Js_of_ocaml
 open Gg
 open Vg
 
 
-let initial_terms =
-  [
-    "#<pos='0,0'>,<pos='400,0'>a.b|fc|ld"
-  ;
-    "#<pos='0,0'>,<pos='400,0'> f<pos='100,100';label='x';radius='6'>f<pos='100,-100';label='y';radius='6'>({234}f<pos='300,100';label='z';radius='6'>({234}-?<pos='166.667,33.3333';color='red';split='s3'> | {14}r-<pos='350,50';color='violet'>) | {234}f<pos='300,-100';label='t';radius='6'>({14}r-<pos='350,-50';color='blue'> | {234}-?<pos='166.667,-33.3333';color='orange';split='s3'>) | {134}-?<pos='66.6667,0';color='yellow';radius='25'>)"
-  ;
-    "#<pos='0,0'>,<pos='400,0'> f<pos='100,100';label='x';radius='6'>f<pos='100,-100';label='y';radius='6'>({234}f<pos='200,0'>({134}f<pos='300,-100';label='t';radius='6'>({234}r-?<pos='200,-66.6667';color='orange';split='s1'> | {134}(13)-?<pos='300,-33.3333';color='blue';radius='25';split='1'>) | {124}f<pos='300,100';label='z';radius='6'>({234}r-?<pos='200,66.6667';color='red';split='s1'> | {134}(13)-?<pos='300,33.3333';color='violet';radius='25';split='1'>) | {234}-?<pos='133.333,0';color='yellow';radius='25';split='s'>) | {134}-?<pos='66.6667,0';color='green';radius='25';split='s1'>)"
-  ;
-    "#<pos='0,0'>,<pos='400,0'> f<pos='100,-100';label='y';radius='6'>f<pos='100,100';label='x';radius='6'>({234}f<pos='200,0'>({124}f<pos='300,-100';label='t';radius='6'>({234}r-?<pos='200,-66.6667';color='orange';split='s2'> | {134}(13)-?<pos='300,-33.3333';color='blue';radius='25';split='s3'>) | {134}f<pos='300,100';label='z';radius='6'>({234}r-?<pos='200,66.6667';color='red';split='s2'> | {134}(13)-?<pos='300,33.3333';color='violet';radius='25';split='s3'>)) | {134}r-?<pos='66.6667,0';color='green';radius='25';split='s1'>)"
-  ]
+let initial_term =
+  "let f: 2 -> 1 in f*id ; f"
 
 module Html = Dom_html
 	
@@ -87,8 +79,9 @@ class arena (canvasdiv: Html.divElement Js.t) (canvas: Html.canvasElement Js.t) 
       if Js.to_bool ev##.ctrlKey then
         (mode <- Some dpointer; Js._false)
       else Js._true
-    method private mousemove ev =
-      dpointer <- ev##.offsetX, ev##.offsetY; 
+    method private mousemove (ev: Html.mouseEvent Js.t)  =
+      dpointer <- int_of_float (Js.float_of_number ev##.offsetX),
+                  int_of_float (Js.float_of_number ev##.offsetY); 
       match Js.to_bool ev##.ctrlKey, mode with
       | true,Some(x0,y0) ->
          let x,y = dpointer in
@@ -166,7 +159,7 @@ let onload _ =
   add_listener entry Html.Event.keyup onkeyup;
   (* add_listener entry Html.Event.focus (fun _ -> entryfocused := true; Js._true); *)
   (* add_listener entry Html.Event.blur (fun _ -> entryfocused := false; Js._true); *)
-  self#init initial_terms;
+  self#init initial_term;
   strokes##focus;
   Js._false
 

@@ -1,4 +1,4 @@
-open Hypergraphs
+open Diagrams
 open Types
 
 (* exporting lists of images as multipage documents *)
@@ -14,17 +14,17 @@ val svg_via_vg: image -> box -> string -> unit
 
 
 (* below, files are given by their basenames,
-   extensions ".hg", ".pdf" or ".svg" are automativally added *)
+   extensions ".sd", ".pdf" or ".svg" are automativally added *)
 
-type term = positionned Term.t
+open Graph
 
 (* reading from / writing to files
-   first argument is the basename, extension ".hg" is added *)
-val read: string -> term list
-val write: string -> term list -> unit
+   first argument is the basename, extension ".sd" is added *)
+val read: string -> env*graph
+val write: string -> env*graph -> unit
 
 (* exporting to both PDF & SVG *)
-val export: string -> term list -> unit
+val export: string -> env*graph -> unit
 
 (* does the given HG file already exists *)
 val exists: string -> bool

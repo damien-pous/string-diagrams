@@ -14,10 +14,3 @@
  (name scales)
  (modules scales)
  (libraries vg.cairo))
-
-;; internal: to play with edge geometry
-(executable
- (name geo)
- (modules geo)
- (libraries diagrams diagrams_gtk) 
- )

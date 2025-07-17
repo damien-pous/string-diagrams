@@ -16,4 +16,7 @@ val comp: ('b -> 'c) -> ('a -> 'b) -> 'a -> 'c
 val memo: ('a -> 'b) -> 'a -> 'b
 
 val iter: int -> ('a -> 'a) -> 'a -> 'a
+
 val fold: (int -> 'a -> 'a) -> int -> 'a -> 'a
+val forall: int -> (int -> bool) -> bool
+val exists: int -> (int -> bool) -> bool

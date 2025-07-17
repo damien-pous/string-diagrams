@@ -10,11 +10,14 @@ val mm: float
 val fontsize : float
 val font : font
 
-val iradius : float
-val sradius : float
-val eradius : int -> float
-val pradius : float
 val linewidth : float
+
+val idsize: int -> size2
+val varsize: int -> int -> size2
+val expand: size2 -> size2
+
+val pradius : float
+
 
 val gray : color
 val color : string -> color

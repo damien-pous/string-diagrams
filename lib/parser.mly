@@ -1,75 +1,52 @@
-%token LPAR RPAR LT GT COMMA SEMI STAR SERIES DOT CNV HAT SHARP
-%token PAR NIL LFT FGT EOF
-%token <Types.label> LABEL
+%token LPAR RPAR LBRK RBRK LT GT COMMA COLON LET EQ IN TO EOF
+%token ID SEMI STAR 
+%token <Types.name> NAME
 %token <Types.perm> PRM
 %token <Types.inj> INJ
-%token <int> FIX
+%token <int> INT
 %token <Info.kv> KEYVAL
 
-%left PAR
-%left DOT
-%nonassoc LFT FGT PRM INJ CNV
+%left SEMI
+%left STAR
+%nonassoc PRM INJ CNV
 
-%type <Info.kvl Term.t> sterm
-%start sterm
+%type <Info.kvl Types.Raw.envterm> envterm
+%start envterm
 
-%type <Info.kvl Term.t list> file
-%start file
-
-
-
-(* for parsing dot files and extracting positions *)
-%token <Gg.p2> POS
-%token <Gg.box2> BOX
-%token <Types.kind*int> ID
-
-%type <Gg.box2*(((Types.kind*int)*Gg.p2) list)> dotlines
-%start dotlines
 
 %{
-    open Term
-    open Flexible
+    open Types.Raw
 %}
 
 %%
 
 term:
-| LPAR; t=term; RPAR { t }
-| NIL { nil() }
-| u=term; PAR; v=term { par u v }
-| FGT; x=kvl; t=term { fgt x t }
-| LFT; t=term { lft t }
-| p=PRM; t=term { prm p t }
-| label=LABEL; x=kvl { edg (Info.kv "label" label :: x) }
-(* syntactic sugar *)
-| CNV; t=term { cnv t }
-| i=INJ; t=term { inj i t }
-| u=term; DOT; x=kvl; v=term { dot x u v }
-| label=LABEL; HAT { dot [] (edg [Info.kv "label" label]) (edg [Info.kv "label" (label^"^")]) }
-| STAR; x=kvl; LPAR; ts=separated_list(COMMA, term); RPAR { str x ts }
-| SERIES; LPAR; ts=separated_list(COMMA, term); RPAR { ser ts }
+|                    { Emp }
+| ID                 { Idm }
+| f=NAME             { Var f }
+| u=term SEMI v=term { Seq(u,v) }
+| u=term STAR v=term { Tns(u,v) }
+| LBRK u=term RBRK   { Box u }
+| LPAR t=term RPAR   { t }
 
+env:
+| h=list(decl) { h }
+
+decl:
+| LET f=NAME l=kvl t=typ b=body IN { (f,(l,t,b)) }
+
+typ:
+| COLON n=INT TO m=INT { Some (n,m) }
+| { None }
+
+body:
+| EQ u=term { Some u }
+| { None }
+  
 kvl:
-| LT; h=separated_list(SEMI, KEYVAL); k=kvl GT { h @ k }
+| LT h=separated_list(SEMI, KEYVAL) k=kvl GT { h @ k }
 | { [] }
 
-sterm_:
-| k=FIX; t=term { fixed (Seq.init k (fun _ -> [])) t }
-| t=term { flexible (fun _ -> []) t }
-| SHARP; h=separated_nonempty_list(COMMA, kvl); t=term { fixed (Seq.of_list h) t }
-
-sterm:
-| t=sterm_; EOF { t }
-
-file:
-| l=separated_nonempty_list(SEMI, sterm_); EOF { l }
-
-(* dot files *)
-dotlines:
-| b=BOX; SEMI; l=xdotlines { b,l }
-
-xdotlines:
-| i=ID; p=POS; SEMI; q=xdotlines { (i,p)::q }
-| ID*; SEMI; q=xdotlines { q }
-| EOF { [] }
+envterm:
+| e=env u=term EOF { (e,u) }
   

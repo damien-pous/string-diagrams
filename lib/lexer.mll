@@ -15,15 +15,13 @@
   let keyval k v = KEYVAL(Info.kv k v)
   let p2_of_strings x y =
     Gg.P2.v (float_of_string x) (float_of_string y)
-  let box2_of_strings x y x' y'=
-    Gg.Box2.v (p2_of_strings x y) (p2_of_strings x' y')
 }
 
-let lstart = ['a'-'e' 'g'-'k' 'm'-'q' 't'-'z' 'A'-'Z' '1'-'9' '!' '?']
-let letter = ['a'-'z' 'A'-'Z' '0'-'9' '_' '-' '!' '?']
+let lstart = ['a'-'z' 'A'-'Z' '!' '?']
+let letter = ['a'-'z' 'A'-'Z' '0'-'9' '_' '-' '!' '?' '\'']
 let key = letter+
 let word = letter*
-let label = lstart word
+let name = lstart word
 
 let ndigit = ['1'-'9']
 let digit = ['0'-'9']
@@ -36,27 +34,25 @@ let float = sign? digit* frac? exp?
 let pos = float ',' float
 
 let blank = [ ' ' '\r' '\t' '\n' ]
-let skip = [^ ';']* ';'
-let noquote = [^ '"']
 
 rule token = parse
   | blank                                  { token lexbuf }
   | "//"                                   { comment lexbuf }
-  | '0'                                    { NIL }
-  | 'f'                                    { FGT }
-  | 'l'                                    { LFT }
-  | 's'                                    { SERIES }
-  | 'r'                                    { CNV }
-  | '|'                                    { PAR }
   | '('                                    { LPAR }
   | ')'                                    { RPAR }
   | '<'                                    { LT }
   | '>'                                    { GT }
-  | '.'                                    { DOT }
+  | '['                                    { LBRK }
+  | ']'                                    { RBRK }
   | ','                                    { COMMA }
-  | '^'                                    { HAT }
   | ';'                                    { SEMI }
+  | ':'                                    { COLON }
   | '*'                                    { STAR }
+  | '='                                    { EQ }
+  | "id"                                   { ID }
+  | "let"                                  { LET }
+  | "in"                                   { IN }
+  | (digit+) as n                          { INT (int_of_string n) }
   (* cycles&permutations: at least two elements, if comma then arbitrary ints, otherwise digits *)
   | '(' (ndigit ndigit+ as s) ')'          { PRM (Perm.of_cycle (diglist_of_string s)) }
   | '(' (nint as x) ((',' nint)+ as q) ')' { PRM (Perm.of_cycle (numlist_of_string x q)) }
@@ -66,12 +62,11 @@ rule token = parse
   | '{' (ndigit* as s) '}'                 { INJ (Inj.of_list (diglist_of_string s)) }
   | "{0" (nint as x) '}'                   { INJ (Inj.of_list (numlist_of_string x "")) }
   | "{" (nint as x)((',' nint)+ as q) '}'  { INJ (Inj.of_list (numlist_of_string x q)) }
-  | '#'                                    { SHARP }
-  | '#' (digit+ as x)                      { FIX (int_of_string x) }
-  | label as s
-  | '-' (word as s)                        { LABEL s }
+  | name as s                              { NAME s }
   | "pos=" (pos as p)
   | "pos=(" (pos as p) ')'                 { keyval "pos" p }
+  | "size=" (pos as p)
+  | "size=(" (pos as p) ')'                { keyval "size" p }
   | "shift=" (pos as v)
   | "shift=(" (pos as v) ')'               { keyval "shift" v }
   | "radius=" (float as x)                 { keyval "radius" x }
@@ -86,20 +81,3 @@ and comment = parse
   | '\n'                                   { token lexbuf }
   | eof                                    { EOF }
   | _                                      { comment lexbuf }
-
-(* for extracting positions in dot files *)
-and dotline = parse
-  | 's' (nint as i)     { ID (Types.S,int_of_string i) }
-  | 'i' (nint as i)     { ID (Types.I,int_of_string i) }
-  | 'e' (nint as i)     { ID (Types.E,int_of_string i) }
-  | "pos=\""
-      (float as x) ','
-      (float as y) '"'  { POS(p2_of_strings x y) }
-  | "bb=\""
-      (float as x1) ','
-      (float as y1) ','
-      (float as x2) ','
-      (float as y2) '"' { BOX(box2_of_strings x1 y1 x2 y2) }
-  | ';'                 { SEMI }
-  | eof                 { EOF }
-  | _                   { dotline lexbuf }

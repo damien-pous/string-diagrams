@@ -1,6 +1,6 @@
-open Hypergraphs
-open Hypergraphs_cairo
-open Hypergraphs_gtk
+open Diagrams
+open Diagrams_cairo
+open Diagrams_gtk
 
 open GMain
 
@@ -23,7 +23,6 @@ let accel_group = factory#accel_group
 let file_factory = new GMenu.factory (factory#add_submenu "File") ~accel_group
 let edit_factory = new GMenu.factory (factory#add_submenu "Edit") ~accel_group
 let view_factory = new GMenu.factory (factory#add_submenu "View") ~accel_group
-let term_factory = new GMenu.factory (factory#add_submenu "Term") ~accel_group
 
 let da = GMisc.drawing_area ~width ~height ~packing:(vbox#pack ~expand:true) ()
 let arena = GArena.create ~width ~height ~window da ()
@@ -116,8 +115,6 @@ let _ = file_factory#add_item "Quit" ~key:GdkKeysyms._Q ~callback:Main.quit
 let _ = edit_factory#add_item "Undo" ~key:GdkKeysyms._Z ~callback:self#undo
 let _ = edit_factory#add_item "Redo" ~key:GdkKeysyms._R ~callback:self#redo
 let _ = view_factory#add_item "Fullscreen" ~key:GdkKeysyms._F ~callback:fullscreen
-let _ = term_factory#add_item "Normalise" ~key:GdkKeysyms._N ~callback:self#normalise_term
-let _ = term_factory#add_item "Desugar" ~key:GdkKeysyms._D ~callback:self#desugar_term
 
 let _ = GtkBase.Widget.add_events da#as_widget
           [ `KEY_PRESS; `BUTTON_MOTION; `BUTTON_PRESS; `BUTTON_RELEASE ]

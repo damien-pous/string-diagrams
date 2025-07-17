@@ -8,6 +8,7 @@ type iseq = ISeq.t          (* increasing sequences *)
 type point= Gg.p2               (* 2D points *)
 type vector = Gg.v2             (* 2D vectors *)
 type box = Gg.box2              (* 2D boxes *)
+type size = Gg.size2            (* 2D sizes *)
 type line = { point: point; dir: vector }          (* directed lines *)
 type circle = { center: point; radius: float }     (* circles *)
 
@@ -19,44 +20,45 @@ type path = Vg.path             (* paths *)
 type formatter = Format.formatter
 type pp_mode = Full | Sparse
 
-type label = string             (* box names *)
+type name = string              (* box names *)
 
-type 'a rterm =                 (* raw terms *)
-  | Id of int
-  | Seq of 'a rterm * 'a rterm
-  | Tns of 'a rterm * 'a rterm
-  | Box of label*'a
-type 'a env = (label*(int*'a*int)) list (* environments *)
-  
-
-(* 'functions' used to map decorations in terms or graphs *)
-type ('a,'b) mapper =
-  { fs: int -> 'a -> 'b;        (* sources; first argument is the arity *)
-    ft: int -> 'a -> 'b;        (* targets; first argument is the arity *)
-    fi: 'a -> 'b }              (* inner boxes *)
+(* raw parsed terms/environments *)
+module Raw: sig
+  type 'a term =
+    | Emp
+    | Idm
+    | Var of name
+    | Seq of 'a term * 'a term
+    | Tns of 'a term * 'a term
+    | Box of 'a term
+    | Gph of int*int*size*(string*'a*'a node) list*('a port*'a port) list
+  and 'a node = NVar of name | NBox of 'a term
+  and 'a port = Outer of int | Inner of string*int
+  (* environments *)
+  type 'a env = (name*('a*(int*int) option*'a term option)) list
+  type 'a envterm = 'a env * 'a term
+end
 
 class type printable =
   object
-    method label: string
+    method name: string
     method get: string -> string option
     method set: string -> string -> unit
     method unset: string -> unit
     method pp: pp_mode -> formatter -> unit
     method pp_empty: pp_mode -> bool
-    method kind: [`E|`I|`S]
   end
-
-val same_label: #printable -> #printable -> bool
 
 class type positionned =
   object
     inherit printable
     method pos: point
-    method radius: float
-    method circle: circle
+    method box: box
+    method safebox: box
     method color: color
     method set_color: color -> unit
     method move: point -> unit
+    method shift: vector -> unit
     method scale: float -> unit
     method placed: bool (* was the element placed before? *)
   end
@@ -86,41 +88,3 @@ class type arena =
     method pointer: point
     method refresh: unit
   end
-
-module type BASE = sig
-  type 'a t
-  val nsrc: 'a t -> int
-  val ntgt: 'a t -> int
-  val size: 'a t -> int
-  val map: ('a,'b) mapper -> 'a t -> 'b t
-end
-
-module type ALGEBRA = sig
-  include BASE
-  val id: int -> 'a t
-  val seq: 'a t -> 'a t -> 'a t
-  val tns: 'a t -> 'a t -> 'a t
-  val box: int -> 'a -> int -> 'a t
-end
-
-(* initial algebras *)
-module type IALGEBRA = sig
-  include ALGEBRA
-  module I(M: ALGEBRA): sig val eval: 'a t -> 'a M.t end
-  val pp: pp_mode -> formatter -> #printable t -> unit
-end
-
-(* extension with source&target decorations *)
-module type SALGEBRA = sig
-  type 'a u 
-  module U: IALGEBRA with type 'a t = 'a u
-  include BASE
-  val decorate: 'a seq -> 'a u -> 'a seq -> 'a t
-end
-
-(* initial with source&target algebras *)
-module type ISALGEBRA = sig
-  include SALGEBRA
-  module SI(M: SALGEBRA): sig val eval: 'a t -> 'a M.t end  
-  val pp: pp_mode -> formatter -> #printable t -> unit
-end

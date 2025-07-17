@@ -1,6 +1,7 @@
 open Types
+open Graph
 
-type term = Types.positionned Term.t
+type state = env * graph
 
 class virtual locate: arena ->
   object
@@ -10,9 +11,9 @@ class virtual locate: arena ->
     method virtual info: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
     method virtual help: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
 
-    method private virtual read: string -> term list
-    method private virtual write: string -> term list -> unit
-    method private virtual export: string -> term list -> unit
+    method private virtual read: string -> state
+    method private virtual write: string -> state -> unit
+    method private virtual export: string -> state -> unit
     
     method on_button_press: unit
     method on_button_release: unit
@@ -22,12 +23,9 @@ class virtual locate: arena ->
 
     method undo: unit -> unit
     method redo: unit -> unit
-    method normalise_term: unit -> unit
-    method desugar_term: unit -> unit
 
     method load_from: string -> unit
     method save_to: string -> unit
 
-    method init: string list -> unit
+    method init: string -> unit
   end
-
