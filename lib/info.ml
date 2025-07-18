@@ -25,6 +25,10 @@ let kv k v =
   | _ -> ());
   k,v
 
+let get_size l =
+  try p2_of_string (List.assoc "size" l)
+  with Not_found -> failwith "size expected"
+
 let pp_kvl f l =
   if l<>[] then
     Format.fprintf f "<%a>"

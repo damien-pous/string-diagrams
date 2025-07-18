@@ -79,6 +79,8 @@ val draw: graph -> image
 
 (* !! only safe for graphs where all nodes are reacheable from the sources, for now *)
 val iso: graph -> graph -> bool
+val iso_env: env -> env -> bool
+val iso_envgraph: env*graph -> env*graph -> bool
 
 (* !! only returns (toplevel) nodes for now *)
 val find: point -> graph -> [ `I of iport | `O of oport | `N of node | `None ]

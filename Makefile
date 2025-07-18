@@ -11,8 +11,8 @@ test::
 	dune runtest
 
 run::
-	# dune build
-	# dune runtest
+	dune build
+	dune runtest
 	dune exec ./bin/$(RUN).exe
 
 www::

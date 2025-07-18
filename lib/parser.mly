@@ -1,16 +1,16 @@
 %token LPAR RPAR LBRK RBRK LSQR RSQR LT GT
-%token COMMA COLON SEMI DOT STAR DASH
-%token ID SIZE LET EQ IN TO EOF
+%token COMMA COLON SEMI STAR
+%token ID LET EQ IN TO EOF
 %token <Types.name> NAME
 %token <Types.perm> PRM
 %token <Types.inj> INJ
 %token <int> INT
 %token <float> FLOAT
 %token <Info.kv> KEYVAL
+%token <Types.name*int> IPORT
 
 %left SEMI
 %left STAR
-
 
 %type <Info.kvl Types.Raw.envterm> envterm
 %start envterm
@@ -30,25 +30,26 @@ term:
 | u=term STAR v=term { Tns(u,v) }
 | LSQR u=term RSQR   { Box u }
 | LPAR t=term RPAR   { t }
-| LBRK n=INT TO m=INT
-       SIZE EQ w=float COMMA h=float
-       nodes=list(node)
-       edges=list(edge)
-  RBRK               { Gph(n,m,Gg.Size2.v w h,nodes,edges) }
+| LBRK 
+     nodes=list(node) 
+     edges=list(edge) 
+     s=KEYVAL 
+  RBRK COLON n=INT TO m=INT
+                     { Gph(n,m,Info.get_size [s],nodes,edges) }
 
 node:
-| n=INT l=kvl COLON u=term { (n,l,u) }
+| n=NAME l=kvl COLON u=term COMMA { (n,l,u) }
 
 edge:
-| DASH i=port o=port { (i,o) }
+| i=port TO o=port COMMA { (i,o) }
 
 port:
 | i=INT { Outer i }
-| n=INT DOT i=INT { Inner(n,i) }
+| p=IPORT { Inner(fst p,snd p) }
 
-float:
-| i=INT { float_of_int i }
-| x=FLOAT { x }
+(* float: *)
+(* | i=INT { float_of_int i } *)
+(* | x=FLOAT { x } *)
 
 env:
 | h=list(decl) { h }

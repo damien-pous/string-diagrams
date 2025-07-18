@@ -24,6 +24,7 @@ type name = string              (* box names *)
 
 (* raw parsed terms/environments *)
 module Raw: sig
+  type port = Outer of int | Inner of string*int
   type 'a term =
     | Emp
     | Idm
@@ -31,8 +32,7 @@ module Raw: sig
     | Seq of 'a term * 'a term
     | Tns of 'a term * 'a term
     | Box of 'a term
-    | Gph of int*int*size*(int*'a*'a term) list*('a port*'a port) list
-  and 'a port = Outer of int | Inner of int*int
+    | Gph of int*int*size*(string*'a*'a term) list*(port*port) list
   (* environments *)
   type 'a env = (name*('a*(int*int) option*'a term option)) list
   type 'a envterm = 'a env * 'a term

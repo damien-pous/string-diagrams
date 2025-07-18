@@ -132,11 +132,11 @@ let gbox b n m =
               (MSet.init n (fun i -> {src=Outer i; tgt=Inner(b,i)}))
               (MSet.init m (fun j -> {src=Inner(b,j); tgt=Outer j})) }
 
-let var n m f l =
-  gbox { info = Info.var n m l; kind = Var(n,m,f) } n m
+let var_node n m f l = { info = Info.var n m l; kind = Var(n,m,f) }
+let box_node g l = { info = Info.box g.size l; kind = Box g }
 
-let box g =
-  gbox { info = Info.box g.size []; kind = Box g } g.sources g.targets
+let var n m f l = gbox (var_node n m f l) n m
+let box g = gbox (box_node g []) g.sources g.targets
 
 type env = (name*(int*int*kvl*graph option)) list  
 
@@ -157,12 +157,11 @@ let of_raw e u =
     let t = Hashtbl.create 10 in
     let nodes = 
       MSet.mapl (fun (n,l,u) ->
-          if Hashtbl.mem t n then failwith "duplicate node: %i" n;
-          let kind = match u with
-            | Raw.Var f -> let (n,m,_,_) = sym f in Var(n,m,f)
-            | _ -> let g = build u in Box g
+          if Hashtbl.mem t n then failwith "duplicate node: %s" n;
+          let node = match u with
+            | Raw.Var f -> let (n,m,_,_) = sym f in var_node n m f l
+            | _ -> let g = build u in box_node g l
           in
-          let node = {info = Info.box Size2.zero l; kind} in
           Hashtbl.add t n node;
           node
         ) nodes
@@ -172,8 +171,8 @@ let of_raw e u =
                        else failwith "invalid outer source: %i" i
       | Raw.Inner(j,i) ->
          try let n = Hashtbl.find t j in
-             if 1<=i && i<=nsources n then Inner(n,i)
-             else failwith "invalid inner source: %i.%i" j i
+             if 1<=i && i<=ntargets n then Inner(n,i)
+             else failwith "invalid inner source: %s.%i" j i
          with Not_found -> failwith "unknown source node: %i" n
     in
     let oport = function
@@ -181,8 +180,8 @@ let of_raw e u =
                        else failwith "invalid outer target: %i" i
       | Raw.Inner(j,i) ->
          try let n = Hashtbl.find t j in
-             if 1<=i && i<=ntargets n then Inner(n,i)
-             else failwith "invalid inner target: %i.%i" j i
+             if 1<=i && i<=nsources n then Inner(n,i)
+             else failwith "invalid inner target: %s.%i" j i
          with Not_found -> failwith "unknown target node: %i" n
     in
     let edges = MSet.mapl (fun (i,o) -> {src=iport i;tgt=oport o}) edges in
@@ -267,12 +266,12 @@ let iter_inner_oports f g =
   MSet.iter (fun n -> fold (fun i () -> f (Inner(n,i))) (ntargets n) ()) g.nodes
 
 
-let src_pos b i n =
+let top_pos b i n =
   let p = Gg.Box2.tl_pt b in
   let w = Gg.Box2.w b in
   let d = w /. (2. *. float_of_int n) in
   Gg.V2.add p (Gg.V2.v (d *. (float_of_int (2*i-1))) 0.)
-let tgt_pos b i n =
+let bot_pos b i n =
   let p = Gg.Box2.bl_pt b in
   let w = Gg.Box2.w b in
   let d = w /. (2. *. float_of_int n) in
@@ -283,11 +282,11 @@ let nbox n = n.info#box
 
 let npos n = n.info#pos
 let ipos g = function
-  | Outer i -> src_pos (gbox g) i (gsources g)
-  | Inner(n,i) -> tgt_pos (nbox n) i (ntargets n)
+  | Outer i -> top_pos (gbox g) i (gsources g)
+  | Inner(n,i) -> bot_pos (nbox n) i (ntargets n)
 let opos g = function
-  | Outer i -> tgt_pos (gbox g) i (gtargets g)
-  | Inner(n,i) -> src_pos (nbox n) i (nsources n)
+  | Outer i -> bot_pos (gbox g) i (gtargets g)
+  | Inner(n,i) -> top_pos (nbox n) i (nsources n)
 
 let rec draw_on (draw: canvas) g =
   let draw_node n =
@@ -329,6 +328,17 @@ let rec iso g h =
       MSet.size g.nodes = MSet.size h.nodes &&
         MSet.size g.edges = MSet.size h.edges &&
           forall (gsources g) (fun i -> iso_iports (Outer i) (Outer i))
+let rec iso_env e f =
+  match e,f with
+  | [],[] -> true
+  | (x,(n,m,_,g))::e, (x',(n',m',_,h))::f when x=x' && n=n' && m=m' ->
+     iso_env e f && (match g,h with
+                     | None, None -> true
+                     | Some g, Some h -> iso g h
+                     | _ -> false)
+  | _ -> false
+let iso_envgraph (e,g) (f,h) =
+  iso_env e f && iso g h
 
 let find p g =
   match MSet.find (fun n -> Box2.mem p (nbox n)) g.nodes with
@@ -338,20 +348,21 @@ let find p g =
 let pp mode f g =
   let pp_port g f = function
     | Outer i -> Format.fprintf f "%i" i
-    | Inner(n,i) -> Format.fprintf f "%i.%i" (MSet.index n g.nodes) i
+    | Inner(n,i) -> Format.fprintf f "n%i.%i" (MSet.index n g.nodes) i
   in
   let rec pp tab f g =
-    Format.fprintf f "%s{ %i -> %i\n%s  size = %g,%g\n"
-      tab g.sources g.targets tab (width g) (height g);
+    Format.fprintf f "%s{"
+      tab;
     MSet.iteri (fun i n ->
-        Format.fprintf f "%s  %i%t: %a\n"
+        Format.fprintf f "%s  n%i%t: %a,\n"
           tab i (n.info#pp mode) (pp_kind tab) n.kind;
       ) g.nodes;
     MSet.iter (fun e ->
-        Format.fprintf f "%s  - %a %a;\n"
+        Format.fprintf f "%s  %a -> %a,\n"
           tab (pp_port g) e.src (pp_port g) e.tgt;
       ) g.edges;
-    Format.fprintf f "%s}\n" tab
+    Format.fprintf f "%s  size=%g,%g }: %i -> %i\n" 
+      tab (width g) (height g) g.sources g.targets
   and pp_kind tab f = function
     | Var(_,_,x) -> Format.fprintf f "%s" x
     | Box g -> pp (tab^"  ") f g
