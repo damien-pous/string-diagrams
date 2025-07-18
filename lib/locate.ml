@@ -124,7 +124,7 @@ class virtual locate (arena: Types.arena) =
 
     method private scale s =
       match self#catch with
-      | `N n -> n.info#scale s; self#checkpoint; self#redraw()
+      | `N n -> Graph.nscale s n; self#checkpoint; self#redraw()
       | `None -> Graph.gscale s graph; self#checkpoint; self#redraw()
       | _ -> ()
 

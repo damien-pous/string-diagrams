@@ -5,6 +5,13 @@ open Misc
 type kv = string*string
 type kvl = kv list
 
+type 'a env = (name*(kvl*int*int*'a option)) list
+
+let envmap h =
+  List.map (function
+      | f,(l,n,m,None) -> f,(l,n,m,None)
+      | f,(l,n,m,Some t) -> f,(l,n,m,Some (h t)))
+
 let float_of_string x =
   try float_of_string x
   with _ -> failwith "not a float: %s" x
@@ -24,10 +31,6 @@ let kv k v =
   | "color" -> ignore (Constants.color v)
   | _ -> ());
   k,v
-
-let get_size l =
-  try p2_of_string (List.assoc "size" l)
-  with Not_found -> failwith "size expected"
 
 let pp_kvl f l =
   if l<>[] then
@@ -55,10 +58,10 @@ class printer l =
     method pp_empty mode = mode=Sparse || (self#update_kvl; self#kvl=[])
   end
 
-class positioner size l =
+class positioner pos size l =
   object(self)
     inherit printer l
-    val mutable pos = V2.zero
+    val mutable pos = pos
     val mutable placed = false
     val mutable size = size
     val mutable sized = false
@@ -82,5 +85,9 @@ class positioner size l =
       (match self#get "color" with Some c -> color <- Constants.color c | None -> ());      
   end
 
-let box = new positioner
-let var n m = box (Constants.varsize n m)
+let gen_at = new positioner
+let gen = gen_at P2.o
+
+let merge h k =
+  List.append h
+    (List.filter (fun (i,_) -> not (List.mem_assoc i h)) k)

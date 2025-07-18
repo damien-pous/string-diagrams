@@ -18,7 +18,7 @@ let rec sources = function
 let rec targets = function
   | Emp -> 0
   | Idm -> 1
-  | Var(n,_,_) -> n
+  | Var(_,m,_) -> m
   | Box v -> targets v
   | Seq(_,v) -> targets v
   | Tns(u,v) -> targets u + targets v

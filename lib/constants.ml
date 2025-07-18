@@ -13,8 +13,15 @@ let pradius = 2.0
 
 let spacing = fontsize *. 3.
 let expand s = V2.(s + v spacing spacing)
-let idsize n = Size2.v (float_of_int n *. spacing) spacing
-let varsize n m = idsize (max n m)
+let size n = Size2.v (float_of_int n *. spacing) spacing
+let idm_size = size 1
+let var_size n m = size (max n m)
+let empty_size n m =
+  if n+m=0 then Size2.v (spacing /. 2.) spacing
+  else var_size n m
+let estimate_size n m k =
+  let nm = max n m in
+  Size2.v (float_of_int nm *. spacing) (float_of_int nm *. spacing /. float_of_int (k+1))
 
 let gray = Color.gray 0.5
 let xcolor = function

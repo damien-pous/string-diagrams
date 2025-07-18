@@ -1,6 +1,5 @@
 open Types
 open Misc
-open Info
 open Gg
 
 type port = Outer of int | Inner of node * int
@@ -8,20 +7,16 @@ and iport = port
 and oport = port
 and edge = { src: iport; tgt: oport }
 and kind = Var of int*int*name | Box of graph
-and node = { info: positionned; kind: kind }
-and graph = {
-    sources: int;
+and node = { kind: kind; ninfo: positionned }
+and graph =
+  { sources: int;
     targets: int;
-    mutable size: size;
     nodes: node mset;
-    edges: edge mset }
+    edges: edge mset;
+    info: positionned }
 
-let gsources g = g.sources 
-let gtargets g = g.targets 
-let gsize g = g.size 
-
-let ksources = function Var(n,_,_) -> n | Box g -> gsources g
-let ktargets = function Var(_,m,_) -> m | Box g -> gtargets g
+let ksources = function Var(n,_,_) -> n | Box g -> g.sources
+let ktargets = function Var(_,m,_) -> m | Box g -> g.targets
 
 let nsources n = ksources n.kind 
 let ntargets n = ktargets n.kind
@@ -54,18 +49,30 @@ let prevs g p =
 
 let reaches g p q = Set.memq q (snd (nexts g p)) (* optimisable *)
 
+
+let gpos g = g.info#pos 
+let gsize g = g.info#size 
+let width g = Size2.w (gsize g) 
+let height g = Size2.h (gsize g)
+let gbox g = g.info#box 
+
+let npos n = n.ninfo#pos 
+let nsize n = n.ninfo#size 
+let nbox n = n.ninfo#box 
+
+
 let empty n m =
   { sources = n; targets = m;
-    size = Constants.idsize (max n m);
     nodes = MSet.empty;
-    edges = MSet.empty }
+    edges = MSet.empty;
+    info = Info.gen (Constants.empty_size n m) [] }
 let emp = empty 0 0
 
 let idm =
   { sources = 1; targets = 1; 
-    size = Constants.idsize 1;
     nodes = MSet.empty;
-    edges = MSet.single { src = Outer 1; tgt = Outer 1 } }
+    edges = MSet.single { src = Outer 1; tgt = Outer 1 };
+    info = Info.gen (Constants.idm_size) [] }
 
 let shift_port n = function
   | Outer i -> Outer (n+i)
@@ -74,42 +81,38 @@ let shift_port n = function
 let shift_edges n m =
   MSet.map (fun e -> {src=shift_port n e.src; tgt=shift_port m e.tgt})
 
-let width g = Size2.w g.size 
-let height g = Size2.h g.size
-let center g = V2.(g.size/2.)
-
 let rec gshift g d =
+  g.info#shift d;
   MSet.iter (fun n -> nshift n d) g.nodes
 and nshift n d =
-  n.info#shift d;
+  n.ninfo#shift d;
   match n.kind with
   | Box g -> gshift g d
   | _ -> ()
-let nmove n p = nshift n V2.(p - n.info#pos)
+let gmove g p = gshift g V2.(p - gpos g)
+let nmove n p = nshift n V2.(p - npos n)
 
-let gscale k g = g.size <- V2.smul k g.size
+let gscale k g = g.info#scale k
+let nscale k n = n.ninfo#scale k
 
 
 let tns g h =
   let size = Size2.v (width g +. width h) (max (height g) (height h)) in
-  let c = V2.(size/2.) in
-  gshift g (V2.(center g-c));
-  gshift h (V2.(center h-c+v (width g) 0.));
+  gmove g (P2.v (-. width h /. 2.) 0.);
+  gmove h (P2.v (width g /. 2.) 0.);
   { sources = g.sources + h.sources;
     targets = g.targets + h.targets;
-    size;
     nodes = MSet.union g.nodes h.nodes;
-    edges = MSet.union g.edges (shift_edges (gsources g) (gtargets g) h.edges) }
+    edges = MSet.union g.edges (shift_edges g.sources g.targets h.edges);
+    info = Info.gen size [] }
 
 let seq g h =
-  assert (gtargets g = gsources h);
+  assert (g.targets = h.sources);
   let size = Size2.v (max (width g) (width h)) (height g +. height h) in
-  let c = V2.(size/2.) in
-  gshift g (V2.(center g-c+v 0. (height h)));
-  gshift h (V2.(center h-c));
+  gmove g (P2.v 0. (height h /. 2.));
+  gmove h (P2.v 0. (-. height g /. 2.));
   { sources = g.sources;
     targets = h.targets;
-    size;
     nodes = MSet.union g.nodes h.nodes;
     edges = MSet.union
               (MSet.omap (fun e ->
@@ -121,46 +124,40 @@ let seq g h =
                  ) g.edges)
               (MSet.filter
                  (fun e -> match e.src with Outer _ -> false | _ -> true)
-                 h.edges) }
+                 h.edges);
+    info = Info.gen size [] }
 
-let gbox b n m =
+let gen_box b n m =
   { sources = n;
     targets = m;
-    size = Constants.expand b.info#size;
     nodes = MSet.single b;
     edges = MSet.union
               (MSet.init n (fun i -> {src=Outer i; tgt=Inner(b,i)}))
-              (MSet.init m (fun j -> {src=Inner(b,j); tgt=Outer j})) }
+              (MSet.init m (fun j -> {src=Inner(b,j); tgt=Outer j}));
+    info = Info.gen (Constants.expand (nsize b)) [] }
 
-let var_node n m f l = { info = Info.var n m l; kind = Var(n,m,f) }
-let box_node g l = { info = Info.box g.size l; kind = Box g }
+let var_node n m f l = { ninfo = Info.gen (Constants.var_size n m) l; kind = Var(n,m,f) }
+let box_node g l = { ninfo = Info.gen (gsize g) l; kind = Box g }
 
-let var n m f l = gbox (var_node n m f l) n m
-let box g = gbox (box_node g []) g.sources g.targets
+let var n m f l = gen_box (var_node n m f l) n m
+let box g l = gen_box (box_node g l) g.sources g.targets
 
-type env = (name*(int*int*kvl*graph option)) list  
-
-let of_raw e u =
-  let sym f = 
-    try List.assoc f e
-    with Not_found -> failwith "unknown symbol: %s" f
-  in
+let of_gterm u =
   let rec build = function
-    | Raw.Emp -> emp
-    | Raw.Idm -> idm
-    | Raw.Var f -> let (n,m,l,_) = sym f in var n m f l
-    | Raw.Seq(u,v) -> seq (build u) (build v)
-    | Raw.Tns(u,v) -> tns (build u) (build v)
-    | Raw.Box(u) -> box (build u)
-    | Raw.Gph(n,m,size,nodes,edges) -> gph n m size nodes edges
-  and gph n m size nodes edges =
-    let t = Hashtbl.create 10 in
+    | GTerm.Emp -> emp
+    | GTerm.Idm -> idm
+    | GTerm.Var(n,m,f,l) -> var n m f l
+    | GTerm.Seq(u,v) -> seq (build u) (build v)
+    | GTerm.Tns(u,v) -> tns (build u) (build v)
+    | GTerm.Box(u,l) -> box (build u) l
+    | GTerm.Gph(n,m,nodes,edges,l) -> gph n m nodes edges l
+  and gph n m nodes edges l =
+    let t = Hashtbl.create (List.length nodes) in
     let nodes = 
-      MSet.mapl (fun (n,l,u) ->
-          if Hashtbl.mem t n then failwith "duplicate node: %s" n;
-          let node = match u with
-            | Raw.Var f -> let (n,m,_,_) = sym f in var_node n m f l
-            | _ -> let g = build u in box_node g l
+      MSet.mapl (fun (n,(k,l)) ->
+          let node = match k with
+            | GTerm.VNode(n,m,f) -> var_node n m f l
+            | GTerm.GNode(t) -> box_node (build t) l
           in
           Hashtbl.add t n node;
           node
@@ -185,29 +182,25 @@ let of_raw e u =
          with Not_found -> failwith "unknown target node: %i" n
     in
     let edges = MSet.mapl (fun (i,o) -> {src=iport i;tgt=oport o}) edges in
-    { sources = n; targets = m; size; nodes; edges }
+    let box = MSet.fold (fun n -> Box2.union (nbox n)) Box2.empty nodes in
+    let info =
+      if Box2.is_empty box then
+        (* TODO: compute and use depth *)
+        Info.gen (Constants.estimate_size n m (MSet.size nodes)) l
+      else
+        let size = Constants.expand (Box2.size box) in
+        Info.gen_at (Box2.mid box) size l
+    in
+    { sources = n; targets = m; nodes; edges; info }
   in build u       
 
-let env e =
-  let rec env = function
-    | [] -> []
-    | (f,(l,t,b))::e ->
-       let e = env e in
-       match b,t with
-       | None,None -> failwith "variables must be given either a type or a body (%s)" f
-       | Some b,Some(n,m) ->
-          let b = of_raw e b in
-          assert(gsources b = n && gtargets b = m);
-          (f,(n,m,l,Some b))::e
-       | Some b,None ->
-          let b = of_raw e b in
-          (f,(gsources b,gtargets b,l,Some b))::e
-       | None,Some(n,m) -> 
-          (f,(n,m,l,None))::e
-  in
-  env (List.rev e)
+type env = graph Info.env
 
-let envgraph (e,t) = let e = env e in e,of_raw e t
+let env e = Info.envmap of_gterm (GTerm.env e)
+let of_raw e t = of_gterm (GTerm.of_raw e t)
+let envgraph et =
+  let (e,t) = GTerm.envterm et in
+  Info.envmap of_gterm e, of_gterm t
 
 let rem_edge g e =
   assert (MSet.memq e g.edges);
@@ -231,11 +224,11 @@ let add_edge g src tgt =
 let add_node g n =
   { g with nodes = MSet.add n g.nodes },n
 
-let add_var g info n m f = add_node g { info ; kind = Var(n,m,f) }
-let add_box g info h = add_node g { info ; kind = Box h }
+let add_var g ninfo n m f = add_node g { ninfo ; kind = Var(n,m,f) }
+let add_box g ninfo h = add_node g { ninfo ; kind = Box h }
 
 let subst g n h =
-  assert (nsources n = gsources h && ntargets n = gtargets h);
+  assert (nsources n = h.sources && ntargets n = h.targets);
   let g_n = rem_node g n in
   let remap_src p = match p with
     | Inner _ -> Some p
@@ -245,7 +238,7 @@ let subst g n h =
     | Inner _ -> Some p
     | Outer _ -> next g p
   in
-  gshift h n.info#pos;
+  gmove h (npos n);             (* TOTHINK: resize, and probably copy h first *)
   { g with nodes = MSet.union g_n.nodes h.nodes;
            edges = MSet.union g_n.edges
                      (MSet.omap (fun e ->
@@ -277,15 +270,11 @@ let bot_pos b i n =
   let d = w /. (2. *. float_of_int n) in
   Gg.V2.add p (Gg.V2.v (d *. (float_of_int (2*i-1))) 0.)
 
-let gbox g = Box2.v_mid P2.o (gsize g)
-let nbox n = n.info#box
-
-let npos n = n.info#pos
 let ipos g = function
-  | Outer i -> top_pos (gbox g) i (gsources g)
+  | Outer i -> top_pos (gbox g) i g.sources
   | Inner(n,i) -> bot_pos (nbox n) i (ntargets n)
 let opos g = function
-  | Outer i -> bot_pos (gbox g) i (gtargets g)
+  | Outer i -> bot_pos (gbox g) i g.targets
   | Inner(n,i) -> top_pos (nbox n) i (nsources n)
 
 let rec draw_on (draw: canvas) g =
@@ -293,7 +282,7 @@ let rec draw_on (draw: canvas) g =
     match n.kind with
     | Var(_,_,f) ->
        draw#box (nbox n);
-       draw#text n.info#pos f
+       draw#text (npos n) f
     | Box g -> draw_on draw g
   in
   let draw_edge e = 
@@ -323,11 +312,11 @@ let rec iso g h =
          forall (ntargets n) (fun i -> iso_iports (Inner(n,i)) (Inner(m,i)))
     | _ -> false
   in
-  gsources g = gsources h &&
-    gtargets g = gtargets h &&
+  g.sources = h.sources &&
+    g.targets = h.targets &&
       MSet.size g.nodes = MSet.size h.nodes &&
         MSet.size g.edges = MSet.size h.edges &&
-          forall (gsources g) (fun i -> iso_iports (Outer i) (Outer i))
+          forall g.sources (fun i -> iso_iports (Outer i) (Outer i))
 let rec iso_env e f =
   match e,f with
   | [],[] -> true
@@ -341,6 +330,7 @@ let iso_envgraph (e,g) (f,h) =
   iso_env e f && iso g h
 
 let find p g =
+  (* Format.eprintf "find at %a@." V2.pp p; *)
   match MSet.find (fun n -> Box2.mem p (nbox n)) g.nodes with
   | Some x -> `N x
   | None -> `None
@@ -351,33 +341,36 @@ let pp mode f g =
     | Inner(n,i) -> Format.fprintf f "n%i.%i" (MSet.index n g.nodes) i
   in
   let rec pp tab f g =
+    let first = ref true in
     Format.fprintf f "%s{"
       tab;
     MSet.iteri (fun i n ->
-        Format.fprintf f "%s  n%i%t: %a,\n"
-          tab i (n.info#pp mode) (pp_kind tab) n.kind;
+        if not !first then Format.fprintf f ",\n"; first := false;
+        Format.fprintf f "%s  n%i%t: %a"
+          tab i (n.ninfo#pp mode) (pp_kind tab) n.kind;
       ) g.nodes;
     MSet.iter (fun e ->
-        Format.fprintf f "%s  %a -> %a,\n"
+        if not !first then Format.fprintf f ",\n"; first := false;
+        Format.fprintf f "%s  %a -> %a"
           tab (pp_port g) e.src (pp_port g) e.tgt;
       ) g.edges;
-    Format.fprintf f "%s  size=%g,%g }: %i -> %i\n" 
-      tab (width g) (height g) g.sources g.targets
+    Format.fprintf f "%s}%t: %i -> %i\n" 
+      tab (g.info#pp mode) g.sources g.targets
   and pp_kind tab f = function
     | Var(_,_,x) -> Format.fprintf f "%s" x
     | Box g -> pp (tab^"  ") f g
   in pp "" f g
 
-let pp_env mode f =
+let pp_env mode f (e: env) =
   let rec pp_env f = function
     | [] -> ()
-    | (x,(n,m,l,None))::q ->
+    | (x,(l,n,m,None))::q ->
        pp_env f q;
        Format.fprintf f "let %s%a: %i -> %i in\n" x Info.pp_kvl l n m
-    | (x,(n,m,l,Some g))::q ->
+    | (x,(l,n,m,Some g))::q ->
        pp_env f q;
-       Format.fprintf f "let %s%a: %i -> %i = %a in\n" x Info.pp_kvl l n m (pp mode) g
-  in pp_env f
+       Format.fprintf f "let %s%a: %i -> %i := %a in\n" x Info.pp_kvl l n m (pp mode) g
+  in pp_env f e
 
 let pp_envgraph mode f (e,g) = pp_env mode f e; pp mode f g
     

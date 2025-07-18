@@ -12,8 +12,11 @@ val font : font
 
 val linewidth : float
 
-val idsize: int -> size2
-val varsize: int -> int -> size2
+val empty_size: int -> int -> size2
+val var_size: int -> int -> size2
+val idm_size: size2
+val estimate_size: int -> int -> int -> size2 (* sources, targets, number of nodes *)
+
 val expand: size2 -> size2
 
 val pradius : float

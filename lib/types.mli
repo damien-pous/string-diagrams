@@ -20,7 +20,7 @@ type path = Vg.path             (* paths *)
 type formatter = Format.formatter
 type pp_mode = Full | Sparse
 
-type name = string              (* box names *)
+type name = string              (* box/variable names *)
 
 (* raw parsed terms/environments *)
 module Raw: sig
@@ -28,11 +28,15 @@ module Raw: sig
   type 'a term =
     | Emp
     | Idm
-    | Var of name
+    | Var of name * 'a
     | Seq of 'a term * 'a term
     | Tns of 'a term * 'a term
-    | Box of 'a term
-    | Gph of int*int*size*(string*'a*'a term) list*(port*port) list
+    | Typ of 'a term * int * int
+    | Box of 'a term * 'a
+    | Gph of 'a elem list * 'a
+  and 'a elem =
+    | Node of string * 'a term * 'a
+    | Edge of port * port
   (* environments *)
   type 'a env = (name*('a*(int*int) option*'a term option)) list
   type 'a envterm = 'a env * 'a term

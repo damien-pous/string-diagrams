@@ -6,15 +6,15 @@ and iport = port
 and oport = port
 and edge = private { src: iport; tgt: oport }
 and kind = private Var of int*int*name | Box of graph
-and node = private { info: positionned; kind: kind }
+and node = private { kind: kind; ninfo: positionned }
 and graph = private {
     sources: int;
     targets: int;
-    mutable size: size;
     nodes: node mset;
-    edges: edge mset }
+    edges: edge mset;
+    info: positionned }
 
-type env
+type env = graph Info.env
 val env: kvl Raw.env -> env
 val of_raw: env -> kvl Raw.term -> graph
 val envgraph: kvl Raw.envterm -> env * graph
@@ -29,8 +29,6 @@ val idm: graph
 val seq: graph -> graph -> graph
 val tns: graph -> graph -> graph
 
-val gsources: graph -> int
-val gtargets: graph -> int
 val gsize: graph -> size
 val gbox: graph -> box
 
@@ -65,6 +63,7 @@ val unbox: graph -> node -> graph
 val nshift: node -> vector -> unit
 val nmove: node -> point -> unit
 val gscale: float -> graph -> unit
+val nscale: float -> node -> unit
 
 val npos: node -> point
 val ipos: graph -> iport -> point

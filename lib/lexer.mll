@@ -53,6 +53,7 @@ rule token = parse
   | ':'                                    { COLON }
   | '*'                                    { STAR }
   | '='                                    { EQ }
+  | ":="                                   { EQDEF }
   | "->"                                   { TO }
   | "id"                                   { ID }
   | "let"                                  { LET }
@@ -64,10 +65,6 @@ rule token = parse
   | '(' (nint as x) ((',' nint)+ as q) ')' { PRM (Perm.of_cycle (numlist_of_string x q)) }
   | '[' (ndigit ndigit+ as s) ']'          { PRM (Perm.of_list (diglist_of_string s)) }
   | '[' (nint as x) ((',' nint)+ as q) ']' { PRM (Perm.of_list (numlist_of_string x q)) }
-  (* injections: any number of elements, if only one large int, then have it start with a 0 *)
-  | '{' (ndigit* as s) '}'                 { INJ (Inj.of_list (diglist_of_string s)) }
-  | "{0" (nint as x) '}'                   { INJ (Inj.of_list (numlist_of_string x "")) }
-  | "{" (nint as x)((',' nint)+ as q) '}'  { INJ (Inj.of_list (numlist_of_string x q)) }
   | name as s                              { NAME s }
   | name as s '.' (nint as i)              { IPORT (s,int_of_string i) }
   | "pos=" (pos as p)

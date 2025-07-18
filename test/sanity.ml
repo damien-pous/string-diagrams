@@ -47,8 +47,10 @@ let test_iso = test_iso_ true
 let test_niso = test_iso_ false
 
 
-let _ = test "" "{ 1->1, size=1,1 }: 1->1"
-
+let _ = test "" "{ 1->1 }: 1->1"
+let _ = test "" "{ 1->1 }<size=2,2>"
+let _ = test "" "{}"
+let _ = test "" ": 0->0"
 let _ = test "" ""
 let _ = test "" "id"
 let _ = test "" "id*id"

@@ -1,5 +1,5 @@
-let g: 1 -> 1 in
-[g;g]
+// let g: 1 -> 1 in
+// [g;g]
 
 // let g: 1->1 in
 // { n1: g;g, size=100,100 }: 1 -> 1
@@ -7,10 +7,10 @@ let g: 1 -> 1 in
 // let g: 1->1 in
 // { x: { i<pos=0,10>: g, j<pos=0,-10>: g, size=5,5}: 1->1, size=33,33 }: 1 -> 1
 
-// let f: 2->1 in
-// let g: 1->1 in
-// let h: 1->1 in
-// // f*id ; f ; h
-// // g * h
-// // g ; h
+let f: 2->1 in
+let g: 1->1 in
+let h: 1->1 in
+ (f*id ; [f ; h]) * f
+// g * h
+// g ; h
 // [f] ; h
