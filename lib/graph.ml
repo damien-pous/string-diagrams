@@ -298,39 +298,35 @@ let draw g =
   c#get
 
 (** checking isomorphism
-    !! for now, only correct on graphs where each node is either reachable or coreachable
-       (or both), in a directed sense (no change of direction allowed) *)
+    !! for now, only correct on connected graphs *)
 let rec iso g h =
-  let rec iso_iports x y =
-    match next g x, next h y with
-    | None, None -> true
-    | Some (Outer i), Some (Outer j) -> i=j
-    | Some (Inner (n,i)), Some (Inner (m,j)) when i=j ->
-       (match n.kind, m.kind with
-        | Var(_,_,f), Var(_,_,g) -> f=g
-        | Box g, Box h -> iso g h
-        | _ -> false) &&
-         forall (ntargets n) (fun i -> iso_iports (Inner(n,i)) (Inner(m,i)))
-    | _ -> false
-  in
-  let rec iso_oports x y =
-    match prev g x, prev h y with
-    | None, None -> true
-    | Some (Outer i), Some (Outer j) -> i=j
-    | Some (Inner (n,i)), Some (Inner (m,j)) when i=j ->
-       (match n.kind, m.kind with
-        | Var(_,_,f), Var(_,_,g) -> f=g
-        | Box g, Box h -> iso g h
-        | _ -> false) &&
-         forall (nsources n) (fun i -> iso_oports (Inner(n,i)) (Inner(m,i)))
-    | _ -> false
-  in
   g.sources = h.sources &&
   g.targets = h.targets &&
   MSet.size g.nodes = MSet.size h.nodes &&
   MSet.size g.edges = MSet.size h.edges &&
-  forall g.sources (fun i -> iso_iports (Outer i) (Outer i)) &&
-  forall g.targets (fun i -> iso_oports (Outer i) (Outer i))
+  let bisim = Hashtbl.create (2 * (MSet.size g.edges + MSet.size h.edges)) in
+  let same_kind h k = match h,k with
+    | Var(_,_,f), Var(_,_,g) -> f=g 
+    | Box g, Box h -> iso g h
+    | _ -> false
+  in      
+  let rec iso dn x y =
+    let step = if dn then next else prev in
+    match step g x, step h y with
+    | None, None -> true
+    | Some (Outer i), Some (Outer j) when i=j -> true
+    | Some (Inner (n,i)), Some (Inner (m,j)) when i=j ->
+       Hashtbl.mem bisim (n,m) ||
+         let _ = Hashtbl.add bisim (n,m) () in
+         same_kind n.kind m.kind &&
+         forall (nsources n) (fun i -> iso_up (Inner(n,i)) (Inner(m,i))) &&
+         forall (ntargets n) (fun i -> iso_dn (Inner(n,i)) (Inner(m,i)))
+    | _ -> false
+  and iso_dn x y = iso true x y
+  and iso_up x y = iso false x y
+  in
+  forall g.sources (fun i -> iso_dn (Outer i) (Outer i)) &&
+  forall g.targets (fun i -> iso_up (Outer i) (Outer i))
 let rec iso_env e f =
   match e,f with
   | [],[] -> true
@@ -351,50 +347,113 @@ let find p g =
 
 
 (** reconstructing terms from graphs
-    !! for now, only for graphs where each node is coreachable
-    (i.e., empty target nodes are not allowed)
+    !! for now, only for connected graphs
  *)
 exception Not_a_graph_term of string
 let not_a_graph_term fmt = Format.kasprintf (fun s -> raise (Not_a_graph_term s)) fmt
+let tns_ctx u v = Term.(tns u (tns idm v))
 let rec to_term g =
-  let rec eat j n l =
-    if j>ntargets n then l
-    else match l with
-         | [] -> not_a_graph_term "did not reach all outputs of a node"
-         | i::q -> match prev g i  with
-                     | None -> not_a_graph_term "incomplete graph"
-                     | Some (Inner(n',j')) when n==n' && j=j' -> eat (j+1) n q
-                     | _ -> not_a_graph_term "incorrectly linked graph"
-  in
-  let rec add j n l =
+  let rec add_up n j l =
     if j>nsources n then l
-    else Inner(n,j)::add (j+1) n l
+    else Inner(n,j)::add_up n (j+1) l
   in
-  let rec bottom_line = function
+  let rec add_dn n j l =
+    if j>ntargets n then l
+    else Inner(n,j)::add_dn n (j+1) l
+  in
+  let rec eat_up n j j' = function
+    | [] -> tns_ctx (closed_dn n j (j'-1)) (closed_dn n (j'+1) (ntargets n)), []
+    | i::q as l -> match prev g i  with
+                    | None -> not_a_graph_term "incomplete graph"
+                    | Some (Inner(n',j'')) when n==n' ->
+                       if not (j''>j') then not_a_graph_term "needs symmetry";
+                       let u,q = eat_up n (j'+1) j'' q in
+                       tns_ctx (closed_dn n j (j'-1)) u,q
+                    | _ -> tns_ctx (closed_dn n j (j'-1)) (closed_dn n (j'+1) (ntargets n)), l
+  and eat_dn n j j' = function
+    | [] -> tns_ctx (closed_up n j (j'-1)) (closed_up n (j'+1) (nsources n)), []
+    | i::q as l -> match next g i  with
+                   | None -> not_a_graph_term "incomplete graph"
+                   | Some (Inner(n',j'')) when n==n' ->
+                      if not (j''>j') then not_a_graph_term "needs symmetry";
+                      let u,q = eat_dn n (j'+1) j'' q in
+                      tns_ctx (closed_up n j (j'-1)) u,q
+                   | _ -> tns_ctx (closed_up n j (j'-1)) (closed_up n (j'+1) (nsources n)), l
+  and bottom_line = function
     | [] -> Term.emp,[]
     | i::q -> match prev g i with
               | None -> not_a_graph_term "incomplete graph"
-              | Some (Inner(n,1)) ->
-                 let q = eat 2 n q in
+              | Some (Inner(n,j)) ->
+                 let u,q = eat_up n 1 j q in
+                 (* Format.eprintf "eat up (%i,%i): %a@." j (List.length q) Term.pp u; *)
                  let t,k = bottom_line q in
-                 let u = match n.kind with
+                 let v = match n.kind with
                    | Var(n,m,f) -> Term.var n m f
                    | Box g -> Term.box (to_term g)
                  in
-                 Term.(tns u t), add 1 n k
-              | Some _ ->
+                 Term.(tns (seq v u) t), add_up n 1 k
+              | Some (Outer _) ->
                  let t,k = bottom_line q in Term.(tns idm t), i::k
-  in
-  let rec lines l =
+  and top_line = function
+    | [] -> Term.emp,[]
+    | i::q -> match next g i with
+              | None -> not_a_graph_term "incomplete graph"
+              | Some (Inner(n,j)) ->
+                 let u,q = eat_dn n 1 j q in
+                 let t,k = top_line q in
+                 let v = match n.kind with
+                   | Var(n,m,f) -> Term.var n m f
+                   | Box g -> Term.box (to_term g)
+                 in
+                 Term.(tns (seq u v) t), add_dn n 1 k
+              | Some (Outer _) ->
+                 let t,k = top_line q in Term.(tns idm t), i::k
+  and up l =
     let u,l = bottom_line l in
-    if Term.is_id u then
-      if List.map (prev g) l = List.init g.sources (fun i -> Some (Outer(i+1)))
-      then u
-      else not_a_graph_term "not properly linking sources"
-    else Term.seq (lines l) u
+    (* Format.eprintf "bottom line was %a@." Term.pp u; *)
+    if Term.is_id u then u,l
+    else let v,l = up l in Term.seq v u,l
+  and dn l =
+    let u,l = top_line l in
+    if Term.is_id u then u,l
+    else let v,l = dn l in Term.seq u v,l
+  and closed_dn n j k =
+    if k<j then Term.emp else 
+    let l = List.init (1+k-j) (fun i -> Inner(n,j+i)) in
+    let u,l = dn l in
+    (* Format.eprintf "closing down (%i-%i): %a@." j k Term.pp u; *)
+    if l<>[] then not_a_graph_term "closing down reached a target";
+    u
+  and closed_up n j k =
+    if k<j then Term.emp else 
+    let l = List.init (1+k-j) (fun i -> Inner(n,j+i)) in
+    let u,l = up l in
+    if l<>[] then not_a_graph_term "closing up reached a source";
+    u
+  in
+  let closed_outer_dn j k =
+    if k<j then Term.emp else 
+    let l = List.init (1+k-j) (fun i -> Outer(j+i)) in
+    let u,l = dn l in
+    if l<>[] then not_a_graph_term "closing outer down reached a target";
+    u
+  in  
+  let rec complete i n = function
+    | [] ->
+       (* Format.eprintf "complete %i %i []@." i n; *)
+       closed_outer_dn i n
+    | p :: q -> match prev g p with
+                | Some (Outer j) ->
+                   (* Format.eprintf "complete %i %i (%i::...)@." i n j; *)
+                   tns_ctx (closed_outer_dn i (j-1)) (complete (j+1) n q)
+                | _ -> assert false
   in
   let targets = List.init g.targets (fun i -> Outer(i+1)) in
-  lines targets
+  let u,l = up targets in
+  (* Format.eprintf "before completion: %a (remains %i)@." Term.pp u (List.length l); *)
+  let v = complete 1 g.sources l in
+  (* Format.eprintf "completion: %a@." Term.pp v; *)
+  Term.seq v u
   
 
 

@@ -78,8 +78,7 @@ val iter_inner_oports: (oport -> unit) -> graph -> unit
 val draw_on: canvas -> graph -> unit
 val draw: graph -> image
 
-(* !! for now, only correct on graphs where each node is either reachable or coreachable
-       (or both), in a directed sense (no change of direction allowed) *)
+(* !! for now, only correct on connected graphs *)
 val iso: graph -> graph -> bool
 val iso_env: env -> env -> bool
 val iso_envgraph: env*graph -> env*graph -> bool

@@ -81,7 +81,7 @@ let of_raw (e: 'a Info.env) u =
           | _ -> m
         ) 0 elems
     in
-    if m=0 then failwith "empty target graphs are not yet supported";
+    (* if m=0 then failwith "empty target graphs are not yet supported"; *)
     let nodes =
       List.fold_left (fun nodes e ->
           match e with
@@ -97,7 +97,7 @@ let of_raw (e: 'a Info.env) u =
     in
     let kind j =
       try fst (List.assoc j nodes)
-      with Not_found -> failwith "undeclare inner node: %s" j
+      with Not_found -> failwith "undeclared inner node: %s" j
     in
     let iport = function
       | Raw.Outer i as p ->
@@ -137,14 +137,14 @@ let env (e: kvl Raw.env) =
        match b,t with
        | None,None -> failwith "variables must be given either a type or a body (%s)" f
        | Some b,Some(n,m) ->
-          if m=0 then failwith "empty target variables are not yet supported";
+          (* if m=0 then failwith "empty target variables are not yet supported"; *)
           let b = typ (of_raw e b) n m in
           (f,(l,n,m,Some b))::e
        | Some b,None ->
           let b = of_raw e b in
           (f,(l,sources b,targets b,Some b))::e
        | None,Some(n,m) -> 
-          if m=0 then failwith "empty target variables are not yet supported";
+          (* if m=0 then failwith "empty target variables are not yet supported"; *)
           (f,(l,n,m,None))::e
   in
   env (List.rev e)
