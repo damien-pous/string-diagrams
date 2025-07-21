@@ -35,7 +35,7 @@ let kv k v =
 let pp_kvl f l =
   if l<>[] then
     Format.fprintf f "<%a>"
-      (pp_print_list ";" (fun f (k,v)-> Format.fprintf f "%s='%s'" k v))
+      (pp_print_list ";" (fun f (k,v)-> Format.fprintf f "%s=%s" k v))
       l
 
 class holder (l: kvl) =

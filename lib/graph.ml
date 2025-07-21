@@ -7,13 +7,13 @@ and iport = port
 and oport = port
 and edge = { src: iport; tgt: oport }
 and kind = Var of int*int*name | Box of graph
-and node = { kind: kind; ninfo: positionned }
+and node = { ninfo: positionned; kind: kind }
 and graph =
-  { sources: int;
+  { info: positionned;
+    sources: int;
     targets: int;
     nodes: node mset;
-    edges: edge mset;
-    info: positionned }
+    edges: edge mset }
 
 let ksources = function Var(n,_,_) -> n | Box g -> g.sources
 let ktargets = function Var(_,m,_) -> m | Box g -> g.targets
@@ -281,7 +281,7 @@ let rec draw_on (draw: canvas) g =
   let draw_node n =
     match n.kind with
     | Var(_,_,f) ->
-       draw#box (nbox n);
+       draw#box ~fill:n.ninfo#color (nbox n);
        draw#text (npos n) f
     | Box g -> draw_on draw g
   in
@@ -345,16 +345,16 @@ let pp mode f g =
     Format.fprintf f "%s{"
       tab;
     MSet.iteri (fun i n ->
-        if not !first then Format.fprintf f ",\n"; first := false;
-        Format.fprintf f "%s  n%i%t: %a"
+        if not !first then Format.fprintf f ",\n "; first := false;
+        Format.fprintf f "%s n%i%t: %a"
           tab i (n.ninfo#pp mode) (pp_kind tab) n.kind;
       ) g.nodes;
     MSet.iter (fun e ->
-        if not !first then Format.fprintf f ",\n"; first := false;
-        Format.fprintf f "%s  %a -> %a"
+        if not !first then Format.fprintf f ",\n "; first := false;
+        Format.fprintf f "%s %a -> %a"
           tab (pp_port g) e.src (pp_port g) e.tgt;
       ) g.edges;
-    Format.fprintf f "%s}%t: %i -> %i\n" 
+    Format.fprintf f "%s}%t: %i -> %i" 
       tab (g.info#pp mode) g.sources g.targets
   and pp_kind tab f = function
     | Var(_,_,x) -> Format.fprintf f "%s" x

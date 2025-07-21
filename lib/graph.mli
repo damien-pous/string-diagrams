@@ -6,13 +6,13 @@ and iport = port
 and oport = port
 and edge = private { src: iport; tgt: oport }
 and kind = private Var of int*int*name | Box of graph
-and node = private { kind: kind; ninfo: positionned }
-and graph = private {
-    sources: int;
-    targets: int;
-    nodes: node mset;
-    edges: edge mset;
-    info: positionned }
+and node = private { ninfo: positionned; kind: kind }
+and graph = private
+    { info: positionned;
+      sources: int;
+      targets: int;
+      nodes: node mset;
+      edges: edge mset }
 
 type env = graph Info.env
 val env: kvl Raw.env -> env

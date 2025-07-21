@@ -13,8 +13,9 @@ class virtual locate (arena: Types.arena) =
     
     method virtual entry: string
     method virtual set_entry: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
-    method virtual warning: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
+    method virtual entry_warning: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
     method virtual info: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
+    method virtual warning: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
     method virtual help: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
 
     method private virtual read: string -> state
@@ -37,8 +38,9 @@ class virtual locate (arena: Types.arena) =
       if rebox then arena#ensure (Graph.gbox graph);
       arena#refresh
 
-    method private display_graph_infos = ()
-      (* self#info "%t" pp_graph_infos *)
+    method private display_graph_infos = 
+    (* self#info "%t" pp_graph_infos *)
+      self#info ""
     
     method private set_state ?rebox (e,g) =
       (* print_endline "set_graph"; *)
@@ -55,12 +57,12 @@ class virtual locate (arena: Types.arena) =
     method undo () =
       match History.undo hist with
       | Some s -> self#set_state (state_of_string s)
-      | None -> self#warning "no more undos"
+      | None -> self#info "no more undos"
 
     method redo () =
       match History.redo hist with
       | Some s -> self#set_state (state_of_string s)
-      | None -> self#warning "no more redos"
+      | None -> self#info "no more redos"
 
     method private on_graph f =
       self#set_state (env,f graph);
@@ -80,9 +82,9 @@ class virtual locate (arena: Types.arena) =
            self#checkpoint)
          else
            self#display_graph_infos
-      | exception (Failure s) -> self#info "%s" s
-      | exception Parser.Error -> self#info "%s" "Parsing error"
-      | exception e -> self#info "%s" (Printexc.to_string e)
+      | exception (Failure s) -> self#entry_warning "%s" s
+      | exception Parser.Error -> self#entry_warning "Parsing error"
+      | exception e -> self#entry_warning "%s" (Printexc.to_string e)
 
     method private catch =
       Graph.find arena#pointer graph
@@ -104,15 +106,15 @@ class virtual locate (arena: Types.arena) =
     (* method private promote = *)
     (*   match self#catch with *)
     (*   | `V (Inn v) -> self#on_graph (Graph.promote v) *)
-    (*   | `V (Src _) -> self#warning "cannot promote a source" *)
-    (*   | `E _ -> self#warning "cannot promote an edge" *)
+    (*   | `V (Src _) -> self#general_warning "cannot promote a source" *)
+    (*   | `E _ -> self#general_warning "cannot promote an edge" *)
     (*   | `None -> () *)
 
     (* method private forget = *)
     (*   match self#catch with *)
     (*   | `V (Src i) -> self#on_graph (Graph.forget i) *)
-    (*   | `V (Inn _) -> self#warning "cannot forget an inner vertex (use r to remove it)" *)
-    (*   | `E _ -> self#warning "cannot forget an edge (use r to remove it)" *)
+    (*   | `V (Inn _) -> self#general_warning "cannot forget an inner vertex (use r to remove it)" *)
+    (*   | `E _ -> self#general_warning "cannot forget an edge (use r to remove it)" *)
     (*   | `None -> () *)
 
     (* method private edge l s = *)
@@ -139,7 +141,7 @@ class virtual locate (arena: Types.arena) =
 
     method on_button_press =
       match mode, self#catch with
-      | `Normal, `N x -> active <- `N x
+      | `Normal, `N x -> active <- `N (x,Gg.V2.sub arena#pointer (npos x))
       (* | `InsertEdge l, `V v -> mode <- `InsertEdge (Seq.snoc l v) *)
       (* | `InsertEdge l, `N -> *)
       (*    mode <- `InsertEdge (Seq.snoc l (Inn self#ivertex)) *)
@@ -151,8 +153,8 @@ class virtual locate (arena: Types.arena) =
 
     method on_motion =
       match active with
-      | `N n ->
-         nmove n arena#pointer;
+      | `N (n,u) ->
+         nmove n (Gg.V2.sub arena#pointer u);
          self#redraw()
       | `None -> ()    
 
@@ -176,12 +178,12 @@ h:      print this help message"
           | "r" -> arena#refresh
           | "Z" -> self#undo()
           | "R" -> self#redo()
-          | s -> self#warning "skipping key %s@." s)
+          | s -> self#warning "skipping key '%s'@." s)
 
     method private on_term f =
       match state_of_string self#entry with
       | t -> self#set_entry "%a" (pp_envgraph Sparse) (f t)
-      | exception _ -> self#warning "current term is not valid"
+      | exception _ -> self#entry_warning "current term is not valid"
 
     method private init_from s =
       self#set_state ~rebox:true s;

@@ -7,10 +7,10 @@
 // let g: 1->1 in
 // { x: { i<pos=0,10>: g, j<pos=0,-10>: g, size=5,5}: 1->1, size=33,33 }: 1 -> 1
 
-let f: 2->1 in
+let f<color=red>: 2->1 in
 let g: 1->1 in
 let h: 1->1 in
- (f*id ; [f ; h]) * f
+ (f*id ; [f ; h]) * f<color=orange>
 // g * h
 // g ; h
 // [f] ; h
