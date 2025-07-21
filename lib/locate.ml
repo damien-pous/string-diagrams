@@ -52,7 +52,7 @@ class virtual locate (arena: Types.arena) =
           | _,g' -> not (Graph.iso g g')
           | exception _ -> true)
       then
-        self#set_entry "%a" (pp_envgraph Sparse) (e,g)
+        self#set_entry "%a" (pp_envgraph Term) (e,g)
 
     method undo () =
       match History.undo hist with
@@ -182,7 +182,7 @@ h:      print this help message"
 
     method private on_term f =
       match state_of_string self#entry with
-      | t -> self#set_entry "%a" (pp_envgraph Sparse) (f t)
+      | t -> self#set_entry "%a" (pp_envgraph Term) (f t)
       | exception _ -> self#entry_warning "current term is not valid"
 
     method private init_from s =

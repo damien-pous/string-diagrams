@@ -19,6 +19,9 @@ val env: kvl Raw.env -> env
 val of_raw: env -> kvl Raw.term -> graph
 val envgraph: kvl Raw.envterm -> env * graph
 
+(* !! for now, forgetting isolated components *)
+val to_term: graph -> Term.term
+
 val pp: pp_mode -> formatter -> graph -> unit
 val pp_env: pp_mode -> formatter -> env -> unit
 val pp_envgraph: pp_mode -> formatter -> env*graph -> unit
@@ -75,8 +78,8 @@ val iter_inner_oports: (oport -> unit) -> graph -> unit
 val draw_on: canvas -> graph -> unit
 val draw: graph -> image
 
-
-(* !! only safe for graphs where all nodes are reacheable from the sources, for now *)
+(* !! for now, only correct on graphs where each node is either reachable or coreachable
+       (or both), in a directed sense (no change of direction allowed) *)
 val iso: graph -> graph -> bool
 val iso_env: env -> env -> bool
 val iso_envgraph: env*graph -> env*graph -> bool

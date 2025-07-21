@@ -297,8 +297,9 @@ let draw g =
   draw_on c g;
   c#get
 
-(* checking isomorphism
-   (only safe for graphs where all nodes are reacheable from the sources, for now) *)
+(** checking isomorphism
+    !! for now, only correct on graphs where each node is either reachable or coreachable
+       (or both), in a directed sense (no change of direction allowed) *)
 let rec iso g h =
   let rec iso_iports x y =
     match next g x, next h y with
@@ -312,11 +313,24 @@ let rec iso g h =
          forall (ntargets n) (fun i -> iso_iports (Inner(n,i)) (Inner(m,i)))
     | _ -> false
   in
+  let rec iso_oports x y =
+    match prev g x, prev h y with
+    | None, None -> true
+    | Some (Outer i), Some (Outer j) -> i=j
+    | Some (Inner (n,i)), Some (Inner (m,j)) when i=j ->
+       (match n.kind, m.kind with
+        | Var(_,_,f), Var(_,_,g) -> f=g
+        | Box g, Box h -> iso g h
+        | _ -> false) &&
+         forall (nsources n) (fun i -> iso_oports (Inner(n,i)) (Inner(m,i)))
+    | _ -> false
+  in
   g.sources = h.sources &&
-    g.targets = h.targets &&
-      MSet.size g.nodes = MSet.size h.nodes &&
-        MSet.size g.edges = MSet.size h.edges &&
-          forall g.sources (fun i -> iso_iports (Outer i) (Outer i))
+  g.targets = h.targets &&
+  MSet.size g.nodes = MSet.size h.nodes &&
+  MSet.size g.edges = MSet.size h.edges &&
+  forall g.sources (fun i -> iso_iports (Outer i) (Outer i)) &&
+  forall g.targets (fun i -> iso_oports (Outer i) (Outer i))
 let rec iso_env e f =
   match e,f with
   | [],[] -> true
@@ -335,6 +349,56 @@ let find p g =
   | Some x -> `N x
   | None -> `None
 
+
+(** reconstructing terms from graphs
+    !! for now, only for graphs where each node is coreachable
+    (i.e., empty target nodes are not allowed)
+ *)
+exception Not_a_graph_term of string
+let not_a_graph_term fmt = Format.kasprintf (fun s -> raise (Not_a_graph_term s)) fmt
+let rec to_term g =
+  let rec eat j n l =
+    if j>ntargets n then l
+    else match l with
+         | [] -> not_a_graph_term "did not reach all outputs of a node"
+         | i::q -> match prev g i  with
+                     | None -> not_a_graph_term "incomplete graph"
+                     | Some (Inner(n',j')) when n==n' && j=j' -> eat (j+1) n q
+                     | _ -> not_a_graph_term "incorrectly linked graph"
+  in
+  let rec add j n l =
+    if j>nsources n then l
+    else Inner(n,j)::add (j+1) n l
+  in
+  let rec bottom_line = function
+    | [] -> Term.emp,[]
+    | i::q -> match prev g i with
+              | None -> not_a_graph_term "incomplete graph"
+              | Some (Inner(n,1)) ->
+                 let q = eat 2 n q in
+                 let t,k = bottom_line q in
+                 let u = match n.kind with
+                   | Var(n,m,f) -> Term.var n m f
+                   | Box g -> Term.box (to_term g)
+                 in
+                 Term.(tns u t), add 1 n k
+              | Some _ ->
+                 let t,k = bottom_line q in Term.(tns idm t), i::k
+  in
+  let rec lines l =
+    let u,l = bottom_line l in
+    if Term.is_id u then
+      if List.map (prev g) l = List.init g.sources (fun i -> Some (Outer(i+1)))
+      then u
+      else not_a_graph_term "not properly linking sources"
+    else Term.seq (lines l) u
+  in
+  let targets = List.init g.targets (fun i -> Outer(i+1)) in
+  lines targets
+  
+
+
+(** pretty printing *)
 let pp mode f g =
   let pp_port g f = function
     | Outer i -> Format.fprintf f "%i" i
@@ -359,7 +423,13 @@ let pp mode f g =
   and pp_kind tab f = function
     | Var(_,_,x) -> Format.fprintf f "%s" x
     | Box g -> pp (tab^"  ") f g
-  in pp "" f g
+  in
+  match mode with
+  | Full -> pp "" f g
+  | Term -> Term.pp f (to_term g)
+  | Sparse -> 
+    try Term.pp f (to_term g)
+    with Not_a_graph_term _ -> pp "" f g
 
 let pp_env mode f (e: env) =
   let rec pp_env f = function

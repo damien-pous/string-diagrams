@@ -18,7 +18,7 @@ type image = Vg.image           (* images *)
 type path = Vg.path             (* paths *)
 
 type formatter = Format.formatter
-type pp_mode = Full | Sparse
+type pp_mode = Full | Sparse | Term
 
 type name = string              (* box/variable names *)
 

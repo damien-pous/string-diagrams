@@ -55,7 +55,7 @@ class printer l =
     inherit holder l
     method private update_kvl = ()
     method pp mode f = self#update_kvl; if mode=Full then pp_kvl f self#kvl
-    method pp_empty mode = mode=Sparse || (self#update_kvl; self#kvl=[])
+    method pp_empty mode = mode<>Full || (self#update_kvl; self#kvl=[])
   end
 
 class positioner pos size l =
