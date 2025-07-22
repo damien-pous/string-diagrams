@@ -248,21 +248,6 @@ class gen_pregraph n m nodes edges ?pos size kvl: pregraph =
     val mutable nodes = nodes
     method edges = edges
     method nodes = nodes
-    method! shift d =
-      parent#shift d;
-      MSet.iter (fun n -> n#shift d) nodes
-    initializer
-      sources <- Seq.init n (src_port self (fun i -> Outer i));
-      targets <- Seq.init m (tgt_port self (fun i -> Outer i))
-  end
-
-(* generic graph *)
-let gen_graph n m nodes edges ?pos size kvl: graph =
-  object(self)
-    inherit gen_pregraph n m nodes edges ?pos size kvl as parent
-    
-    method is_empty =
-      MSet.is_empty self#nodes && MSet.is_empty self#edges
 
     method iport = function
       | Outer i -> self#src i
@@ -270,11 +255,9 @@ let gen_graph n m nodes edges ?pos size kvl: graph =
     method oport = function
       | Outer i -> self#tgt i
       | Inner(n,i) -> n#src i
-    method ipos p = (self#iport p)#pos
-    method opos p = (self#oport p)#pos
 
     (* memoise? *)
-    method private out_edge p = MSet.find (fun e -> e.src = p#kind) self#edges
+    method private out_edge p = MSet.find (fun e -> e.src = p#kind) edges
     method private out_free p = self#out_edge p = None
     method next_opt p = Option.map (fun e -> self#oport e.tgt) (self#out_edge p)
     method next p = match self#next_opt p with Some q -> q | None -> raise Incomplete_graph
@@ -289,8 +272,8 @@ let gen_graph n m nodes edges ?pos size kvl: graph =
       in dfs p (Set.empty,Set.empty)
 
     (* memoise? *)
-    method private inp_edge p = MSet.find (fun e -> e.tgt = p#kind) self#edges
-    (* method private inp_free p = self#inp_edge p = None  *)
+    method private inp_edge p = MSet.find (fun e -> e.tgt = p#kind) edges
+    method private inp_free p = self#inp_edge p = None
     method prev_opt p = Option.map (fun e -> self#iport e.src) (self#inp_edge p)
     method prev p = match self#prev_opt p with Some q -> q | None -> raise Incomplete_graph
     method prevs p =
@@ -304,6 +287,76 @@ let gen_graph n m nodes edges ?pos size kvl: graph =
       in dfs p (Set.empty,Set.empty)
 
     method reaches p q = Set.memq q (snd (self#nexts p)) 
+
+    method rem_edge e =
+      assert (MSet.memq e edges);
+      edges <- MSet.remq e edges
+    method rem_node n =
+      assert (MSet.memq n nodes);
+      nodes <- MSet.remq n nodes;
+      edges <- MSet.filter
+                 (fun e -> match e.src,e.tgt with
+                           | Inner(m,_),Inner(m',_) -> m!=n && m'!=n
+                           | Inner(m,_),_ | _,Inner(m,_) -> m!=n
+                           | _ -> true) edges
+    
+    method add_edge src tgt =
+      assert (self#out_free src && self#inp_free tgt);
+      assert (not (self#reaches tgt src));      
+      edges <- MSet.add { src=src#kind; tgt=tgt#kind } edges
+    
+    (* let add_node g n = *)
+    (*   { g with nodes = MSet.add n g.nodes },n *)
+    
+    (* let add_var g ninfo n m f = add_node g { ninfo ; kind = Var(n,m,f) } *)
+    (* let add_box g ninfo h = add_node g { ninfo ; kind = Box h } *)
+    
+    method subst n h =
+      assert (n#sources = h#sources && n#targets = h#targets);
+      let remap_src p = match p with
+        | Inner _ -> Some p
+        | Outer i -> okind (self#prev_opt (n#src i))
+      in
+      let remap_tgt p = match p with
+        | Inner _ -> Some p
+        | Outer j -> okind (self#next_opt (n#tgt j))
+      in
+      let new_edges =
+        MSet.omap (fun e ->
+            match remap_src e.src, remap_tgt e.tgt with
+            | Some src, Some tgt -> Some {src=src; tgt=tgt}
+            | _ -> None
+          ) h#edges
+      in
+      self#rem_node n;
+      h#move n#pos;   (* TOTHINK: resize, and probably copy h first *)
+      nodes <- MSet.union nodes h#nodes;
+      edges <- MSet.union edges new_edges
+    
+    method unbox n =
+      match n#kind with
+      | Var(_,_,_) -> assert false
+      | Box g -> self#subst n g
+    
+    method! shift d =
+      parent#shift d;
+      MSet.iter (fun n -> n#shift d) nodes
+
+    initializer
+      sources <- Seq.init n (src_port self (fun i -> Outer i));
+      targets <- Seq.init m (tgt_port self (fun i -> Outer i))
+  end
+
+(* generic graph *)
+let gen_graph n m nodes edges ?pos size kvl: graph =
+  object(self)
+    inherit gen_pregraph n m nodes edges ?pos size kvl as parent
+    
+    method is_empty =
+      MSet.is_empty self#nodes && MSet.is_empty self#edges
+
+    method ipos p = (self#iport p)#pos
+    method opos p = (self#oport p)#pos
 
     method find p =
       (* Format.eprintf "find at %a@." V2.pp p; *)
@@ -504,55 +557,6 @@ let envgraph et =
 
 (*
 
-let rem_edge g e =
-  assert (MSet.memq e g.edges);
-  { g with edges = MSet.remq e g.edges }
-
-let rem_node g n =
-  assert (MSet.memq n g.nodes);
-  { g with
-    nodes = MSet.remq n g.nodes;
-    edges = MSet.filter
-              (fun e -> match e.src,e.tgt with
-                        | Inner(m,_),_ | _,Inner(m,_) -> m!=n
-                        | _ -> true) g.edges }
-
-let add_edge g src tgt =
-  assert (out_free g src && inp_free g tgt);
-  assert (not (reaches g tgt src));
-  let e = { src; tgt } in
-  { g with edges = MSet.add e g.edges },e
-
-let add_node g n =
-  { g with nodes = MSet.add n g.nodes },n
-
-let add_var g ninfo n m f = add_node g { ninfo ; kind = Var(n,m,f) }
-let add_box g ninfo h = add_node g { ninfo ; kind = Box h }
-
-let subst g n h =
-  assert (nsources n = h.sources && ntargets n = h.targets);
-  let g_n = rem_node g n in
-  let remap_src p = match p with
-    | Inner _ -> Some p
-    | Outer _ -> prev g p
-  in
-  let remap_tgt p = match p with
-    | Inner _ -> Some p
-    | Outer _ -> next g p
-  in
-  gmove h (npos n);             (* TOTHINK: resize, and probably copy h first *)
-  { g with nodes = MSet.union g_n.nodes h.nodes;
-           edges = MSet.union g_n.edges
-                     (MSet.omap (fun e ->
-                          match remap_src e.src, remap_tgt e.tgt with
-                          | Some src, Some tgt -> Some {src; tgt}
-                          | _ -> None
-                        ) h.edges) }
-
-let unbox g n =
-  match n.kind with
-  | Var(_,_,_) -> assert false
-  | Box h -> subst g n h
 
 
 let iter_inner_iports f g =

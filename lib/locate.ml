@@ -97,12 +97,16 @@ class virtual locate (arena: Types.arena) =
     (* method private lift = *)
     (*   self#on_graph (Graph.lft (Info.positionned_source (Graph.arity graph+1) arena#pointer)) *)
 
-    (* method private remove = *)
-    (*   match self#catch with *)
-    (*   | `V v -> self#on_graph (Graph.rem_vertex v) *)
-    (*   | `E e -> self#on_graph (Graph.rem_edge e) *)
-    (*   | `None -> () *)
+    method private remove =
+      match self#catch with
+      | `N n -> graph#rem_node n; self#checkpoint; self#redraw()
+      | _ -> ()
 
+    method private unbox =
+      match self#catch with
+      | `N n -> graph#unbox n; self#checkpoint; self#redraw()
+      | _ -> ()
+    
     (* method private promote = *)
     (*   match self#catch with *)
     (*   | `V (Inn v) -> self#on_graph (Graph.promote v) *)
@@ -164,15 +168,19 @@ class virtual locate (arena: Types.arena) =
          (match s with
           | "h" -> self#help 
                      "** keys **
+d:      remove node
+u:      unbox node
 i:      improve placement
 -/+:    shrink/enlarge element
-b/u:    block/unblock element (for later placement optimisations)
+f/F:    fix/Free element (for later placement optimisations)
 Z/R:    undo/redo
 r:      refresh picture
 h:      print this help message"
           | "i" -> self#improve_placement
-          | "b" -> self#block true
-          | "u" -> self#block false
+          | "f" -> self#block true
+          | "F" -> self#block false
+          | "d" -> self#remove
+          | "u" -> self#unbox
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1
           | "r" -> arena#refresh

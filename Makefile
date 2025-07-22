@@ -13,7 +13,7 @@ test::
 run::
 	dune build
 	OCAMLRUNPARAM=b dune runtest
-	dune exec ./bin/$(RUN).exe
+	OCAMLRUNPARAM=b dune exec ./bin/$(RUN).exe
 
 www::
 	dune runtest
