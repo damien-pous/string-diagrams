@@ -32,6 +32,10 @@ let kv k v =
   | _ -> ());
   k,v
 
+let merge h k =
+  List.append h
+    (List.filter (fun (i,_) -> not (List.mem_assoc i h)) k)
+
 let pp_kvl f l =
   if l<>[] then
     Format.fprintf f "<%a>"
@@ -68,13 +72,15 @@ class positioner pos size l =
     val mutable color = Constants.gray
     method pos = pos    
     method size = size
+    method width = Size2.w size 
+    method height = Size2.h size
     method box = Box2.v_mid pos size
     method safebox = Box2.v_mid pos (V2.smul 1.1 size)
     method color = color
     method set_color c = color <- c
     method placed = placed    
-    method move p = pos <- p; placed <- true
-    method shift d = self#move V2.(pos + d)
+    method shift d = pos <- V2.(pos + d); placed <- true
+    method move p = self#shift V2.(p-pos)
     method scale s = size <- V2.smul s size; sized <- true
     method! private update_kvl =
       if placed then self#add "pos" (string_of_p2 pos);
@@ -87,7 +93,3 @@ class positioner pos size l =
 
 let gen_at = new positioner
 let gen = gen_at P2.o
-
-let merge h k =
-  List.append h
-    (List.filter (fun (i,_) -> not (List.mem_assoc i h)) k)

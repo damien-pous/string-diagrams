@@ -17,7 +17,8 @@
 
 
 %{
-    open Types.Raw
+    open Types
+    open Raw
 %}
 
 %%

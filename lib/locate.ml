@@ -34,8 +34,8 @@ class virtual locate (arena: Types.arena) =
 
     method private redraw ?(rebox=false) () =
       arena#canvas#clear;
-      Graph.draw_on arena#canvas graph;
-      if rebox then arena#ensure (Graph.gbox graph);
+      graph#draw_on arena#canvas;
+      if rebox then arena#ensure graph#box;
       arena#refresh
 
     method private display_graph_infos = 
@@ -87,7 +87,7 @@ class virtual locate (arena: Types.arena) =
       | exception e -> self#entry_warning "%s" (Printexc.to_string e)
 
     method private catch =
-      Graph.find arena#pointer graph
+      graph#find arena#pointer
 
     (* method private ivertex = *)
     (*   let v = Info.positionned_ivertex arena#pointer in *)
@@ -126,8 +126,8 @@ class virtual locate (arena: Types.arena) =
 
     method private scale s =
       match self#catch with
-      | `N n -> Graph.nscale s n; self#checkpoint; self#redraw()
-      | `None -> Graph.gscale s graph; self#checkpoint; self#redraw()
+      | `N n -> n#scale s; self#checkpoint; self#redraw()
+      | `None -> graph#scale s; self#checkpoint; self#redraw()
       | _ -> ()
 
     method private improve_placement =
@@ -141,7 +141,7 @@ class virtual locate (arena: Types.arena) =
 
     method on_button_press =
       match mode, self#catch with
-      | `Normal, `N x -> active <- `N (x,Gg.V2.sub arena#pointer (npos x))
+      | `Normal, `N x -> active <- `N (x,Gg.V2.sub arena#pointer x#pos)
       (* | `InsertEdge l, `V v -> mode <- `InsertEdge (Seq.snoc l v) *)
       (* | `InsertEdge l, `N -> *)
       (*    mode <- `InsertEdge (Seq.snoc l (Inn self#ivertex)) *)
@@ -154,7 +154,7 @@ class virtual locate (arena: Types.arena) =
     method on_motion =
       match active with
       | `N (n,u) ->
-         nmove n (Gg.V2.sub arena#pointer u);
+         n#move (Gg.V2.sub arena#pointer u);
          self#redraw()
       | `None -> ()    
 

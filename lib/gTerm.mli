@@ -1,7 +1,7 @@
 open Types
 open Info
 
-type port = Raw.port
+type port = string pkind
 
 type term =
   private

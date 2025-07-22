@@ -73,7 +73,7 @@ let write f l =
   close_out o
     
 let export f (_,g) =
-  let i,b = Graph.draw g, Graph.gbox g in
+  let i,b = g#draw, g#box in
   pdf i b (f^".pdf");
   svg i b (f^".svg")
 
