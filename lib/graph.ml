@@ -224,6 +224,11 @@ let gen_node kind ?pos size kvl =
       match kind with
       | Box g -> g#shift d
       | _ -> ()
+    method! scale s =
+      parent#scale s;
+      match kind with
+      | Box g -> g#scale s
+      | _ -> ()
     initializer
       sources <- Seq.init n (src_port self (fun i -> Inner(self,i)));
       targets <- Seq.init m (tgt_port self (fun i -> Inner(self,i)))
