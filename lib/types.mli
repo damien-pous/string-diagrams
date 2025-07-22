@@ -112,15 +112,15 @@ and pregraph =
     method nodes: node mset
     method edges: node _edge mset
 
-(* val rem_edge: graph -> edge -> graph *)
-(* val rem_node: graph -> node -> graph *)
+    (* method rem_edge: node _edge -> unit *)
+    (* method rem_node: node -> unit *)
 
-(* val add_edge: graph -> iport -> oport -> graph * edge *)
-(* val add_var: graph -> positionned -> int -> int -> name -> graph * node *)
-(* val add_box: graph -> positionned -> graph -> graph * node *)
+    (* method new_edge: port -> port -> node _edge *)
+    (* (\* method new_var_box: int -> int -> name -> node *\) *)
+    (* (\* method new_graph_box: graph -> node *\) *)
 
-(* val subst: graph -> node -> graph -> graph *)
-(* val unbox: graph -> node -> graph *)
+    (* method subst: node -> graph -> unit *)
+    (* method unbox: node -> unit *)
   end
 and node =
   object
@@ -137,19 +137,20 @@ and graph =
     inherit pregraph
     
     method is_empty: bool
-    
+
+    (* input and output ports, internally to the graph *)
     method iport: node pkind -> port
     method oport: node pkind -> port
 
-    method next: node pkind -> node pkind
-    method next_opt: node pkind -> node pkind option
-    method nexts: node pkind -> node set * node pkind set
+    method next: port -> port
+    method next_opt: port -> port option
+    method nexts: port -> node set * port set
     
-    method prev: node pkind -> node pkind
-    method prev_opt: node pkind -> node pkind option
-    method prevs: node pkind -> node set * node pkind set
+    method prev: port -> port
+    method prev_opt: port -> port option
+    method prevs: port -> node set * port set
 
-    method reaches: node pkind -> node pkind -> bool
+    method reaches: port -> port -> bool
 
     method ipos: node pkind -> point
     method opos: node pkind -> point

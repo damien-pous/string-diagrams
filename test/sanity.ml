@@ -1,13 +1,5 @@
 open Diagrams
 
-(* let _ =  *)
-(*   try *)
-(*     let i = open_in "/home/damien/git/hypergraph/test.pdot" in *)
-(*     let l = Lexing.from_channel i in *)
-(*     ignore (Parser.dotlines Lexer.dotline l); *)
-(*     close_in i *)
-(*   with e -> raise e *)
-
 let from_string s =
   try
     let l = Lexing.from_string s in
@@ -26,7 +18,9 @@ let test env s =
   try
     let t = from_string s in
     let s' = to_string t in
+    (* Format.eprintf "Sanity: looking at\n%s\n%s@." s s'; *)
     let t' = from_string s' in
+    (* Format.eprintf "Sanity: reparsed as\n%a@." (Graph.pp_envgraph Full) t'; *)
     let _ =
       same t t' ||
         (Format.eprintf "Sanity: graph reparsing mismatch\n%s\n%a\n%s\n%a@." s pp t s' pp t'; failwith "iso") in
@@ -51,7 +45,6 @@ let test_iso_ b env u u' =
   with e -> Format.eprintf "Sanity: error on %s %s ~ %s@." env u u'; raise e
 let test_iso = test_iso_ true
 let test_niso = test_iso_ false
-
 
 let _ = test "" "{ 1->1 }: 1->1"
 let _ = test "" "{ 1->1 }<size=2,2>"

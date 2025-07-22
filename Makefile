@@ -8,11 +8,11 @@ build::
 
 test::
 	dune build
-	dune runtest
+	OCAMLRUNPARAM=b dune runtest
 
 run::
 	dune build
-	dune runtest
+	OCAMLRUNPARAM=b dune runtest
 	dune exec ./bin/$(RUN).exe
 
 www::
