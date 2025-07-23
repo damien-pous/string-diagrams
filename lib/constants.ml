@@ -24,6 +24,7 @@ let estimate_size n m k =
   Size2.v (float_of_int nm *. spacing) (float_of_int nm *. spacing /. float_of_int (k+1))
 
 let gray = Color.gray 0.5
+let alpha s c = Color.with_a c s
 let xcolor = function
   | "red"    -> Color.v 0.8 0.1 0.1 1.
   | "green"  -> Color.v 0.1 0.8 0.1 1.

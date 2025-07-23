@@ -23,5 +23,6 @@ val pradius : float
 
 
 val gray : color
+val alpha : float -> color -> color
 val color : string -> color
 val color' : ?color:color -> string -> color

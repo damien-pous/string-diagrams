@@ -36,6 +36,26 @@ class virtual locate (arena: Types.arena) =
       arena#canvas#clear;
       graph#draw_on arena#canvas;
       if rebox then arena#ensure graph#box;
+      (match mode with
+       | `Select p ->
+          arena#canvas#polygon ~fill:(Gg.Color.gray ~a:0.2 0.) p;
+          MSet.iter (fun e ->              
+              let s,t = graph#ipos e.src, graph#opos e.tgt in
+              let p = Geometry.clockwise p in
+              Polygon.fold2 p (fun ij () ->
+                  match Geometry.intersection ij (s,t) with
+                  | Some(x,d) ->
+                     let color = match d with
+                       | L -> Constants.color "red"
+                       | R -> Constants.color "green"
+                       | E -> Constants.color "gray"
+                     in
+                     arena#canvas#point ~color x
+                  | None -> ()
+                ) ()
+            ) graph#edges
+       | _ -> ()
+      );  
       arena#refresh
 
     method private display_graph_infos = 
@@ -146,25 +166,33 @@ class virtual locate (arena: Types.arena) =
     method on_button_press =
       match mode, self#catch with
       | `Normal, `N x -> active <- `N (x,Gg.V2.sub arena#pointer x#pos)
+      | `Normal, `None -> mode <- let p = arena#pointer in `Select(Polygon.start p)
       (* | `InsertEdge l, `V v -> mode <- `InsertEdge (Seq.snoc l v) *)
       (* | `InsertEdge l, `N -> *)
       (*    mode <- `InsertEdge (Seq.snoc l (Inn self#ivertex)) *)
       | _ -> ()
     
     method on_button_release =
-      (match active with `N _ -> self#checkpoint | `None -> ());
-      active <- `None
+      match mode with
+      | `Normal ->
+         (match active with `N _ -> self#checkpoint | `None -> ());
+         active <- `None
+      | `Select _ -> mode <- `Normal
 
     method on_motion =
-      match active with
-      | `N (n,u) ->
+      match mode,active with
+      | `Normal,`N (n,u) ->
          n#move (Gg.V2.sub arena#pointer u);
          self#redraw()
-      | `None -> ()    
+      | `Select p, _ ->
+         let q = arena#pointer in
+         mode <-`Select(Polygon.extend p q);
+         self#redraw()         
+      | _ -> ()    
 
     method on_key_press s =
       match mode with
-      | `Normal ->
+      | _ ->
          (match s with
           | "h" -> self#help 
                      "** keys **
@@ -183,7 +211,7 @@ h:      print this help message"
           | "u" -> self#unbox
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1
-          | "r" -> arena#refresh
+          | "r" -> self#redraw()
           | "Z" -> self#undo()
           | "R" -> self#redo()
           | s -> self#warning "skipping key '%s'@." s)
@@ -205,5 +233,8 @@ h:      print this help message"
     method save_to file =
       self#write file (env,graph);
       self#export file (env,graph)
+
+    (* initializer *)
+    (*   Geometry.set_debug arena#canvas *)
 
   end

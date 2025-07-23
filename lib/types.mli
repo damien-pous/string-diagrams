@@ -9,8 +9,9 @@ type point= Gg.p2               (* 2D points *)
 type vector = Gg.v2             (* 2D vectors *)
 type box = Gg.box2              (* 2D boxes *)
 type size = Gg.size2            (* 2D sizes *)
-type line = { point: point; dir: vector }          (* directed lines *)
-type circle = { center: point; radius: float }     (* circles *)
+type line = { point: point; dir: vector }           (* directed lines *)
+type polygon = Polygon.t                            (* polygons *)
+type circle = { center: point; radius: float }      (* circles *)
 
 type color = Gg.color           (* colors *)
 type font = Vg.font             (* fonts *)
@@ -27,6 +28,7 @@ class type canvas =
     method box: ?color:color -> ?fill:color -> box -> unit 
     method circle: ?color:color -> ?fill:color -> circle -> unit
     method pentagon: ?color:color -> ?fill:color -> circle -> unit
+    method polygon: ?color:color -> ?fill:color -> polygon -> unit
     method point: ?color:color -> point -> unit
     method segment: ?color:color -> point -> point -> unit 
     method line: ?color:color -> line -> unit 

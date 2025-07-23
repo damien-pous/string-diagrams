@@ -35,28 +35,23 @@ val line_inter: line -> line -> point
 (* (directed) distance between a line and a point *)
 val line_dist : line -> point -> float
 
-(* orieantations *)
-type lr = L | R
+(* orientations *)
+type lr = L | E | R
 val swap: lr -> lr
 
 (* side of a point w.r.t. a line *)
 val side: line -> point -> lr
+
+(* orientation of three points [orient A B C = side AB C] *)
+val orient: point -> point -> point -> lr
+
+(* orient a polygon in the clockwise direction *)
+val clockwise: polygon -> polygon
+
+(* (potential, oriented) intersection of two segments
+   (allowing A,C,D, excluding B)
+   when [AB] and [CD] cross, the orientation is [side AB C] *)
+val intersection: point*point -> point*point -> (point*lr) option
   
-(* [tangent_point x c o] computes the tangents of [c] going through [x],
-   and returns the tangent point on side [o] of [xc] *)
-val tangent_point: point -> circle -> lr -> point * vector
-
-(* [bisect_point x y c] returns the point of [c] bisecting cone [xcy]  *)
-val bisect_point: point -> point -> circle -> point * vector
-
-val start: point -> path
-
-val curve: circle -> ?lx:bool -> ?ly:bool -> point -> point -> path
-val edge1: circle -> point -> path
-val edge2: circle -> point -> point -> path
-val edge3: circle -> point -> point -> point -> path
-
-val edge: circle -> point list -> path
-
 (* scale a box around its center *)
 val scale_box: float -> box -> box
