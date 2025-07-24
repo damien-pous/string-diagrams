@@ -20,3 +20,5 @@ val iter: int -> ('a -> 'a) -> 'a -> 'a
 val fold: (int -> 'a -> 'a) -> int -> 'a -> 'a
 val forall: int -> (int -> bool) -> bool
 val exists: int -> (int -> bool) -> bool
+
+val unique_assq: ('a * 'b) list -> bool

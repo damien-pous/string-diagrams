@@ -39,9 +39,9 @@ class virtual locate (arena: Types.arena) =
       (match mode with
        | `Select p ->
           arena#canvas#polygon ~fill:(Gg.Color.gray ~a:0.2 0.) p;
+          let p = Geometry.clockwise p in
           MSet.iter (fun e ->              
               let s,t = graph#ipos e.src, graph#opos e.tgt in
-              let p = Geometry.clockwise p in
               Polygon.fold2 p (fun ij () ->
                   match Geometry.intersection ij (s,t) with
                   | Some(x,d) ->
@@ -53,7 +53,11 @@ class virtual locate (arena: Types.arena) =
                      arena#canvas#point ~color x
                   | None -> ()
                 ) ()
-            ) graph#edges
+            ) graph#edges;
+          MSet.iter (fun n ->
+              if Geometry.mem_poly n#pos p then
+                arena#canvas#box ~fill:(Gg.Color.gray ~a:0.5 0.) n#box
+            ) graph#nodes
        | _ -> ()
       );  
       arena#refresh

@@ -10,7 +10,7 @@ type vector = Gg.v2             (* 2D vectors *)
 type box = Gg.box2              (* 2D boxes *)
 type size = Gg.size2            (* 2D sizes *)
 type line = { point: point; dir: vector }           (* directed lines *)
-type polygon = Polygon.t                            (* polygons *)
+type polygon = point Polygon.t                      (* polygons *)
 type circle = { center: point; radius: float }      (* circles *)
 
 type color = Gg.color           (* colors *)

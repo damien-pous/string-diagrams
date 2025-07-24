@@ -88,22 +88,46 @@ let intersection (a,b) (c,d) =
   let od = orient a b d in
   if ob <> 0.0 && lr oa <> lr ob && oc<>od then
     Some(V2.(smul (1./.(ob-.oa)) (smul ob a - smul oa b)), oc)
-  else None  
+  else None
 
+(** ensuring a polygon is presented clockwise *)
 let clockwise p =
+  let attempt cmp k p =
+    let x,y,z = Polygon.least_triple cmp p in
+    match orient x y z with
+    | L -> Polygon.rev p
+    | R -> p
+    | E -> k p
+  in
   let swap p = P2.v (P2.y p) (P2.x p) in
   let cmp1 = V2.compare in
   let cmp2 x y = V2.compare (swap x) (swap y) in  
+  let cmp3 x y = cmp1 y x in
+  let cmp4 x y = cmp2 y x in
+  let fail _ = failwith "could not orient polygon" in
   if Polygon.is_degenerate p then p
-  else let x,y,z = Polygon.least cmp1 p in
-       match orient x y z with
-       | L -> Polygon.rev p
-       | R -> p
-       | E -> let x,y,z = Polygon.least cmp2 p in
-              match orient x y z with
-              | L -> Polygon.rev p
-              | R -> p
-              | E -> failwith "could not orient polygon"
+  else attempt cmp1 (attempt cmp2 (attempt cmp3 (attempt cmp4 fail))) p
+
+(** membership of a point in a polygon *)
+let mem_poly a p =
+  let xmin = P2.x (Polygon.least_point V2.compare p) in
+  if P2.x a < xmin then false else
+    let b = P2.v (xmin -. 1.) 0. in
+    let isect (c,d) =
+      let oa = orient c d a in
+      let ob = orient c d b in
+      let oc = orient a b c in          
+      let od = orient a b d in
+      if oa <> ob && oc<>od then oc
+      else E
+    in         
+    0 <> Polygon.fold2 p (fun ij n -> 
+             match isect ij with
+             | L -> n-1
+             | R -> n+1
+             | E -> n
+           ) 0
+
 
 (* TMP
 

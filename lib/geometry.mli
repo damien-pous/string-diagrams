@@ -48,6 +48,9 @@ val orient: point -> point -> point -> lr
 (* orient a polygon in the clockwise direction *)
 val clockwise: polygon -> polygon
 
+(* membership of a point in a polygon *)
+val mem_poly: point -> polygon -> bool
+
 (* (potential, oriented) intersection of two segments
    (allowing A,C,D, excluding B)
    when [AB] and [CD] cross, the orientation is [side AB C] *)

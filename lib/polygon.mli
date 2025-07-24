@@ -1,17 +1,15 @@
-type point = Gg.p2
+type 'a t
 
-type t
+val start: 'a -> 'a t
+val extend: 'a t -> 'a -> 'a t
+val rev: 'a t -> 'a t
 
-val start: point -> t
-val extend: t -> point -> t
-val rev: t -> t
+val fold2: 'a t -> ('a * 'a -> 'b -> 'b) -> 'b -> 'b
+val fold3: 'a t -> ('a * 'a * 'a -> 'b -> 'b) -> 'b -> 'b
 
-val fold2: t -> (point * point -> 'a -> 'a) -> 'a -> 'a
-val fold3: t -> (point * point * point -> 'a -> 'a) -> 'a -> 'a
+val is_degenerate: 'a t -> bool
 
-val is_degenerate: t -> bool
-val is_simple: t -> bool
+val least_point: ('a -> 'a -> int) -> 'a t -> 'a
+val least_triple: ('a -> 'a -> int) -> 'a t -> 'a * 'a * 'a
 
-val least: (point -> point -> int) -> t -> point * point * point
-
-val to_path: t -> Vg.path
+val to_path: Gg.p2 t -> Vg.path
