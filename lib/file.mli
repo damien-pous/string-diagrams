@@ -16,7 +16,7 @@ val svg_via_vg: image -> box -> string -> unit
 (* below, files are given by their basenames,
    extensions ".sd", ".pdf" or ".svg" are automativally added *)
 
-open Graph
+open Graph_type
 
 (* reading from / writing to files
    first argument is the basename, extension ".sd" is added *)

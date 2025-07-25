@@ -1,4 +1,4 @@
-open Types
+open Graph_type
 
 (** improve the current placement, using elastic dynamics *)
 val improve_placement: float -> graph -> unit

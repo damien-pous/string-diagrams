@@ -1,7 +1,7 @@
 (library
  (name diagrams)
  (libraries vg unix)
- (modules_without_implementation types)
+ (modules_without_implementation types graph_type)
 ; (flags -w -27)
  (modules :standard \ gArena file))
 

@@ -1,5 +1,5 @@
 open Types
-open Graph
+open Graph_type
 
 type state = env * graph
 

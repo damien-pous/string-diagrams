@@ -1,4 +1,5 @@
 open Types
+open Graph_type
 open Gg
 
 let improve_placement s (g: graph) =

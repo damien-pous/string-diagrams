@@ -1,7 +1,6 @@
 open Types
 open Info
-
-type env = graph Info.env
+open Graph_type
 
 (* graph algebra *)
 val empty: int -> int -> graph

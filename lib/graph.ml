@@ -1,10 +1,9 @@
 open Types
+open Graph_type
 open Misc
 open Gg
 
 (** * misc *)
-
-type env = graph Info.env
 
 exception Incomplete_graph
 exception Not_a_graph_term of string
