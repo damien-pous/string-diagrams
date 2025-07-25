@@ -1,5 +1,7 @@
 type 'a t
 
+val map: ('a -> 'b) -> 'a t -> 'b t 
+
 val start: 'a -> 'a t
 val extend: 'a t -> 'a -> 'a t
 val rev: 'a t -> 'a t

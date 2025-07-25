@@ -1,5 +1,7 @@
 type 'a t = { points: 'a list; start: 'a } 
 
+let map f p = { points = List.map f p.points; start = f p.start }
+
 let start start = { points=[]; start }
 
 let last p = match p.points with

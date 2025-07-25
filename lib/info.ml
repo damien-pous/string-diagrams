@@ -94,9 +94,10 @@ class polygon_area poly l =
   let pos = Box2.mid box in
   let size = Box2.size box in
   object
-    inherit rectangle_area ~pos size l
+    inherit rectangle_area ~pos size l as parent
+    val mutable poly = poly
     method! contains p = Geometry.mem_poly p poly
-    method! shift _ = failwith "TODO: shift polygon"
+    method! shift d = parent#shift d; poly <- Polygon.map (V2.add d) poly
     method! scale _ = failwith "TODO: scale polygon"
   end
 
