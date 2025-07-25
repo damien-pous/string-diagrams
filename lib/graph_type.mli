@@ -2,20 +2,28 @@ open Types
 
 type 'graph nkind = Var of int*int*name | Box of 'graph
 
-class type gbox =
+class type interface =
   object
-    inherit positionned
     method sources: int
     method targets: int
+  end
+
+class type boundary =
+  object
+    inherit area
+    inherit interface
     method src: int -> port
     method tgt: int -> port
-    method draw_box_on: canvas -> unit
+    method nsrc: node -> int -> port
+    method ntgt: node -> int -> port
+    method draw_boundary: canvas -> unit
   end
 and node =
   object
-    inherit gbox
+    inherit boundary
     method kind: graph nkind    
-    method draw_on: canvas -> unit
+    method pp: pp_mode -> formatter -> unit
+    method draw: canvas -> unit
   end
 and port =
   object
@@ -24,7 +32,7 @@ and port =
   end
 and graph =
   object
-    inherit gbox
+    inherit boundary
     method nodes: node mset
     method edges: (port*port) mset
 
@@ -52,8 +60,8 @@ and graph =
 
     method find: point -> [ `I of port | `O of port | `N of node | `None ]
 
-    method draw_on: canvas -> unit
-    method draw: image
+    method pp: pp_mode -> formatter -> unit
+    method draw: canvas -> unit
   end
 
 type env = graph Info.env

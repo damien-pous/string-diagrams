@@ -54,15 +54,14 @@ class holder (l: kvl) =
     method unset k = kvl <- List.remove_assoc k kvl
   end
 
-class printer l =
+class virtual printer l =
   object(self)
     inherit holder l
-    method private update_kvl = ()
-    method pp mode f = self#update_kvl; if mode=Full then pp_kvl f self#kvl
-    method pp_empty mode = mode<>Full || (self#update_kvl; self#kvl=[])
+    method virtual private update_kvl: unit
+    method pp_infos mode f = self#update_kvl; if mode=Full then pp_kvl f self#kvl
   end
 
-class positioner ?(pos=P2.o) size l =
+class rectangle_area ?(pos=P2.o) size l =
   object(self)
     inherit printer l
     val mutable pos = pos
@@ -75,18 +74,47 @@ class positioner ?(pos=P2.o) size l =
     method width = Size2.w size 
     method height = Size2.h size
     method box = Box2.v_mid pos size
+    method contains p = Box2.mem p self#box
     method safebox = Box2.v_mid pos (V2.smul 1.1 size)
     method color = color
-    method set_color c = color <- c
-    method placed = placed    
     method shift d = pos <- V2.(pos + d); placed <- true
     method move p = self#shift V2.(p-pos)
     method scale s = size <- V2.smul s size; sized <- true
-    method! private update_kvl =
+    method private update_kvl =
       if placed then self#add "pos" (string_of_p2 pos);
       if sized then self#add "size" (string_of_p2 size)
     initializer
       (match self#get "pos" with Some p -> pos <- p2_of_string p; placed <- true | None -> ());
       (match self#get "size" with Some s -> size <- p2_of_string s; sized <- true | None -> ());
       (match self#get "color" with Some c -> color <- Constants.color c | None -> ());      
+  end
+
+class polygon_area poly l =
+  let box = Geometry.poly_box poly in
+  let pos = Box2.mid box in
+  let size = Box2.size box in
+  object
+    inherit rectangle_area ~pos size l
+    method! contains p = Geometry.mem_poly p poly
+    method! shift _ = failwith "TODO: shift polygon"
+    method! scale _ = failwith "TODO: scale polygon"
+  end
+
+class proxy (a: area): area =
+  object
+    method get = a#get
+    method set = a#set
+    method unset = a#unset
+    method pp_infos = a#pp_infos
+    method pos = a#pos    
+    method size = a#size
+    method width = a#width 
+    method height = a#height
+    method box = a#box
+    method contains = a#contains
+    method safebox = a#safebox
+    method color = a#color
+    method shift = a#shift
+    method move = a#move
+    method scale = a#scale
   end

@@ -16,9 +16,11 @@ let pp = Graph.pp_envgraph Sparse
 let test env s =
   let s = env^" "^s in  
   try
+    (* Format.eprintf "Sanity: looking at\n%s@." s; *)
     let t = from_string s in
+    (* Format.eprintf "Sanity: parsed as\n%a@." (Graph.pp_envgraph Full) t; *)
     let s' = to_string t in
-    (* Format.eprintf "Sanity: looking at\n%s\n%s@." s s'; *)
+    (* Format.eprintf "Sanity: reprinted as\n%s@."  s'; *)
     let t' = from_string s' in
     (* Format.eprintf "Sanity: reparsed as\n%a@." (Graph.pp_envgraph Full) t'; *)
     let _ =
@@ -46,6 +48,7 @@ let test_iso_ b env u u' =
 let test_iso = test_iso_ true
 let test_niso = test_iso_ false
 
+(* let _ = test "let f: 1->1 in" "[f]" *)
 let _ = test "" "{ 1->1 }: 1->1"
 let _ = test "" "{ 1->1 }<size=2,2>"
 let _ = test "" "id"

@@ -11,4 +11,7 @@ val merge: kvl -> kvl -> kvl    (* gives precedence to the first argument *)
 type 'a env = (name*(kvl*int*int*'a option)) list
 val envmap: ('a -> 'b) -> 'a env -> 'b env
 
-class positioner: ?pos:point -> size -> kvl -> positionned
+class rectangle_area: ?pos:point -> size -> kvl -> area
+class polygon_area: polygon -> kvl -> area
+
+class proxy: area -> area

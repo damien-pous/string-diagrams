@@ -71,9 +71,14 @@ let write f l =
   let f = Format.formatter_of_out_channel o in
   Format.fprintf f "%a" (pp_envgraph Full) l;
   close_out o
-    
+
+let draw g =
+  let c = new Canvas.basic in
+  g#draw c;
+  c#get
+  
 let export f (_,g) =
-  let i,b = g#draw, g#box in
+  let i,b = draw g, g#box in
   pdf i b (f^".pdf");
   svg i b (f^".svg")
 

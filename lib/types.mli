@@ -77,11 +77,10 @@ class type printable =
     method get: string -> string option
     method set: string -> string -> unit
     method unset: string -> unit
-    method pp: pp_mode -> formatter -> unit
-    method pp_empty: pp_mode -> bool
+    method pp_infos: pp_mode -> formatter -> unit
   end
 
-class type positionned =
+class type area =
   object
     inherit printable
     method pos: point
@@ -91,9 +90,8 @@ class type positionned =
     method box: box
     method safebox: box
     method color: color
-    method set_color: color -> unit
+    method contains: point -> bool
     method move: point -> unit
     method shift: vector -> unit
     method scale: float -> unit
-    method placed: bool (* was the element placed before? *)
   end

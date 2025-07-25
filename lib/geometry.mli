@@ -17,9 +17,6 @@ val random2: float -> point
 (* distance between two points *)
 val dist: point -> point -> float
 
-(* is a point inside a drawable element *)
-val inside: point -> positionned -> bool
-
 (* barycenter *)
 val center: point list -> point
 

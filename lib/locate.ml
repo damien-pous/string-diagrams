@@ -35,7 +35,7 @@ class virtual locate (arena: Types.arena) =
 
     method private redraw ?(rebox=false) () =
       arena#canvas#clear;
-      graph#draw_on arena#canvas;
+      graph#draw arena#canvas;
       if rebox then arena#ensure graph#box;
       (match mode with
        | `Select p ->
