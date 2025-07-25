@@ -62,7 +62,7 @@ class printer l =
     method pp_empty mode = mode<>Full || (self#update_kvl; self#kvl=[])
   end
 
-class positioner pos size l =
+class positioner ?(pos=P2.o) size l =
   object(self)
     inherit printer l
     val mutable pos = pos
@@ -90,6 +90,3 @@ class positioner pos size l =
       (match self#get "size" with Some s -> size <- p2_of_string s; sized <- true | None -> ());
       (match self#get "color" with Some c -> color <- Constants.color c | None -> ());      
   end
-
-let gen_at = new positioner
-let gen = gen_at P2.o

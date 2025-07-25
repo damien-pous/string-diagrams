@@ -51,6 +51,9 @@ val clockwise: polygon -> polygon
 (* membership of a point in a polygon *)
 val mem_poly: point -> polygon -> bool
 
+(* enclosing box for a polygon *)
+val poly_box: polygon -> box
+
 (* (potential, oriented) intersection of two segments
    (allowing A,C,D, excluding B)
    when [AB] and [CD] cross, the orientation is [side AB C] *)

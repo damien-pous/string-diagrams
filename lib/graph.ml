@@ -11,6 +11,9 @@ let not_a_graph_term fmt = Format.kasprintf (fun s -> raise (Not_a_graph_term s)
 let tns_ctx u v = Term.(tns u (tns idm v))
 let okind = function Some s -> Some s#kind | None -> None
 
+let src = fst
+let tgt = snd
+
 (** checking isomorphism
     !! for now, only correct on connected graphs *)
 let rec iso (g: graph) (h: graph) =    (* or pregraph? *)
@@ -184,39 +187,68 @@ let bot_pos b i n =
   let d = w /. (2. *. float_of_int n) in
   Gg.V2.add p (Gg.V2.v (d *. (float_of_int (2*i-1))) 0.)
 
-let src_port g k i =
-  let kind = k i in
+let port p k i =
   object
-    method kind = kind
-    method pos = top_pos g#box i g#sources
-  end
-let tgt_port g k i =
-  let kind = k i in
-  object
-    method kind = kind
-    method pos = bot_pos g#box i g#targets
+    method pos = p i
+    method kind = k i
   end
 
 (* generic gbox *)
-class gen_gbox n m ?(pos=P2.o) size kvl =
-  object
-    inherit Info.positioner pos size kvl
-    val mutable sources: port seq = Seq.empty
-    val mutable targets: port seq = Seq.empty
-    method src i = if 0<i && i<=n then Seq.get sources i
-                   else failwith "invalid source: %i (%i->%i)" i n m
-    method tgt i = if 0<i && i<=m then Seq.get targets i
-                   else failwith "invalid target: %i (%i->%i)" i n m
+class virtual gen_gbox n m ?pos size kvl =
+  object(self)
+    inherit Info.positioner ?pos size kvl
     method sources: int = n
     method targets: int = m
+    method private virtual ipos: int -> point
+    method private virtual opos: int -> point
+    method private virtual pkind: int -> node pkind
+    method src i =
+      if 0<i && i<=n then port self#ipos self#pkind i
+      else failwith "invalid source: %i (%i->%i)" i n m
+    method tgt i =
+      if 0<i && i<=m then port self#opos self#pkind i
+      else failwith "invalid target: %i (%i->%i)" i n m
   end
 
-(* generic inner node *)
-let gen_node kind ?pos size kvl =
+(* rectangular gbox *)
+class virtual rect_gbox n m ?pos size kvl =
+  object(self)
+    inherit gen_gbox n m ?pos size kvl
+    method private ipos i = top_pos self#box i n 
+    method private opos i = bot_pos self#box i m 
+    method draw_box_on (draw: canvas) = draw#box self#box
+  end
+
+(* polygonial gbox *)
+class virtual polygon_gbox poly ipos opos kvl =
+  let box = Geometry.poly_box poly in
+  let pos = Box2.mid box in
+  let size = Box2.size box in
+  let n = List.length ipos in
+  let m = List.length opos in
+  object
+    inherit gen_gbox n m ~pos size kvl
+    method private ipos i = List.nth ipos (i-1) 
+    method private opos i = List.nth opos (i-1) 
+    method! shift _ = failwith "TODO: shift polygon"
+    method! scale _ = failwith "TODO: scale polygon"
+    method draw_box_on (draw: canvas) = draw#polygon poly
+  end
+     
+(* (rectangular) outer gbox *)
+class virtual outer_gbox n m ?pos size kvl =
+  object
+    inherit rect_gbox n m ?pos size kvl
+    method private pkind i = Outer i
+  end
+
+(* rectangular inner node *)
+class rect_node (kind: graph nkind) ?pos size kvl =
   let n = match kind with Var(n,_,_) -> n | Box g -> g#sources in
   let m = match kind with Var(_,m,_) -> m | Box g -> g#targets in
   object(self)
-    inherit gen_gbox n m ?pos size kvl as parent
+    inherit rect_gbox n m ?pos size kvl as parent
+    method private pkind i = Inner((self:>node),i)
     method kind = kind
     method! shift d =
       parent#shift d;
@@ -228,37 +260,55 @@ let gen_node kind ?pos size kvl =
       match kind with
       | Box g -> g#scale s
       | _ -> ()
-    initializer
-      sources <- Seq.init n (src_port self (fun i -> Inner(self,i)));
-      targets <- Seq.init m (tgt_port self (fun i -> Inner(self,i)))
+    method draw_on (draw: canvas) =
+      match kind with
+      | Var(_,_,f) ->
+         draw#box ~fill:self#color self#box;
+         draw#text self#pos f
+      | Box g ->
+         parent#draw_box_on draw;
+         g#draw_on draw
   end
 
+(* polygonial inner node *)
+class polygon_node (g: graph) p ipos opos kvl =
+  let _ = assert(g#sources = List.length ipos && g#targets = List.length opos) in
+  object(self)
+    inherit polygon_gbox p ipos opos kvl as parent
+    method private pkind i = Inner((self:>node),i)
+    method kind = Box g
+    method! shift d =
+      parent#shift d;
+      g#shift d
+    method! scale s =
+      parent#scale s;
+      g#scale s
+    method draw_on (draw: canvas) =
+      parent#draw_box_on draw;
+      g#draw_on draw
+  end
+let _ = fun g p ip op l () -> new polygon_node g p ip op l
+
+
 (* variable node *)
-let var_node n m f l = gen_node (Var(n,m,f)) (Constants.var_size n m) l
+let var_node n m f l = new rect_node (Var(n,m,f)) (Constants.var_size n m) l
 
 (* box node *)
-let box_node g l = gen_node (Box g) g#size l
+let box_node g l = new rect_node (Box g) g#size l
 
 (* generic pregraph *)
-class gen_pregraph n m nodes edges ?pos size kvl: pregraph =
+let gen_graph n m nodes edges_ ?pos size kvl =
   object(self)
-    inherit gen_gbox n m ?pos size kvl as parent
-    val mutable edges = edges
+    inherit outer_gbox n m ?pos size kvl as parent
+    val mutable edges = MSet.empty
     val mutable nodes = nodes
     method edges = edges
     method nodes = nodes
 
-    method iport = function
-      | Outer i -> self#src i
-      | Inner(n,i) -> n#tgt i
-    method oport = function
-      | Outer i -> self#tgt i
-      | Inner(n,i) -> n#src i
-
     (* memoise? *)
-    method private out_edge p = MSet.find (fun e -> e.src = p#kind) edges
+    method private out_edge p = let pk = p#kind in MSet.find (fun (s,_) -> s#kind = pk) edges
     method private out_free p = self#out_edge p = None
-    method next_opt p = Option.map (fun e -> self#oport e.tgt) (self#out_edge p)
+    method next_opt p = Option.map tgt (self#out_edge p)
     method next p = match self#next_opt p with Some q -> q | None -> raise Incomplete_graph
     method nexts p =
       let rec dfs p (nodes,ports) =
@@ -271,9 +321,9 @@ class gen_pregraph n m nodes edges ?pos size kvl: pregraph =
       in dfs p (Set.empty,Set.empty)
 
     (* memoise? *)
-    method private inp_edge p = MSet.find (fun e -> e.tgt = p#kind) edges
+    method private inp_edge p = let pk = p#kind in MSet.find (fun (_,t) -> t#kind = pk) edges
     method private inp_free p = self#inp_edge p = None
-    method prev_opt p = Option.map (fun e -> self#iport e.src) (self#inp_edge p)
+    method prev_opt p = Option.map src (self#inp_edge p)
     method prev p = match self#prev_opt p with Some q -> q | None -> raise Incomplete_graph
     method prevs p =
       let rec dfs p (nodes,ports) =
@@ -287,22 +337,22 @@ class gen_pregraph n m nodes edges ?pos size kvl: pregraph =
 
     method reaches p q = Set.memq q (snd (self#nexts p)) 
 
-    method rem_edge e =
-      assert (MSet.memq e edges);
+    method rem_edge e =      
+      assert (MSet.memq e edges); (* TODO: use appropriate equality *)
       edges <- MSet.remq e edges
     method rem_node n =
       assert (MSet.memq n nodes);
       nodes <- MSet.remq n nodes;
       edges <- MSet.filter
-                 (fun e -> match e.src,e.tgt with
+                 (fun (s,t) -> match s#kind,t#kind with
                            | Inner(m,_),Inner(m',_) -> m!=n && m'!=n
                            | Inner(m,_),_ | _,Inner(m,_) -> m!=n
                            | _ -> true) edges
     
-    method add_edge src tgt =
+    method add_edge (src,tgt) =
       assert (self#out_free src && self#inp_free tgt);
       assert (not (self#reaches tgt src));      
-      edges <- MSet.add { src=src#kind; tgt=tgt#kind } edges
+      edges <- MSet.add (src,tgt) edges
     
     (* let add_node g n = *)
     (*   { g with nodes = MSet.add n g.nodes },n *)
@@ -312,18 +362,18 @@ class gen_pregraph n m nodes edges ?pos size kvl: pregraph =
     
     method subst n h =
       assert (n#sources = h#sources && n#targets = h#targets);
-      let remap_src p = match p with
+      let remap_src p = match p#kind with
         | Inner _ -> Some p
-        | Outer i -> okind (self#prev_opt (n#src i))
+        | Outer i -> self#prev_opt (n#src i)
       in
-      let remap_tgt p = match p with
+      let remap_tgt p = match p#kind with
         | Inner _ -> Some p
-        | Outer j -> okind (self#next_opt (n#tgt j))
+        | Outer j -> self#next_opt (n#tgt j)
       in
       let new_edges =
-        MSet.omap (fun e ->
-            match remap_src e.src, remap_tgt e.tgt with
-            | Some src, Some tgt -> Some {src=src; tgt=tgt}
+        MSet.omap (fun (s,t) ->
+            match remap_src s, remap_tgt t with
+            | Some s, Some t -> Some (s,t)
             | _ -> None
           ) h#edges
       in
@@ -336,26 +386,82 @@ class gen_pregraph n m nodes edges ?pos size kvl: pregraph =
       match n#kind with
       | Var(_,_,_) -> assert false
       | Box g -> self#subst n g
+
+    method add_box _ = ()
+    (* method add_box p = *)
+    (*   let p = Geometry.clockwise p in *)
+    (*   let cuts = Polygon.fold2 p (fun ij acc -> *)
+    (*                  MSet.fold (fun (s,t as e) acc -> *)
+    (*                      let s,t = s#pos, t#pos in *)
+    (*                      match Geometry.intersection ij (s,t) with *)
+    (*                      | Some(x,(L|E)) -> `S (e,x) :: acc *)
+    (*                      | Some(x,R) -> `T (e,x) :: acc *)
+    (*                      | None -> acc *)
+    (*                    ) acc edges *)
+    (*                ) [] *)
+    (*   in *)
+    (*   let rec group = function *)
+    (*     | [] -> [] *)
+    (*     | `S a :: q -> *)
+    (*        (match group q with *)
+    (*         | [] -> [`S [a]] *)
+    (*         | `S l::q -> `S(a::l)::q *)
+    (*         | l -> `S [a] :: l) *)
+    (*     | `T a :: q -> *)
+    (*        (match group q with *)
+    (*         | [] -> [`T [a]] *)
+    (*         | `T l::q -> `T(a::l)::q *)
+    (*         | l -> `T [a] :: l) *)
+    (*   in *)
+    (*   let src,tgt = match group cuts with *)
+    (*     | [] -> [],[] *)
+    (*     | [`S s] -> s,[] *)
+    (*     | [`T t] -> [],t *)
+    (*     | [`S s;`T t] *)
+    (*     | [`T t;`S s] -> s,t *)
+    (*     | [`S s;`T t;`S s'] -> s@s',t *)
+    (*     | [`T t;`S s;`T t'] -> s,t@t' *)
+    (*     | _ -> failwith "too many alternations of sources and targets" *)
+    (*   in *)
+    (*   assert(unique_assq src && unique_assq tgt); *)
+    (*   let tgt = List.rev tgt in *)
+    (*   let nodes_out,nodes_in = *)
+    (*     MSet.partition (fun n -> Geometry.mem_poly n#pos p) nodes *)
+    (*   in *)
+    (*   let kind = function *)
+    (*     | Inner(n,_) when MSet.memq n nodes_in -> `In *)
+    (*     | _ -> `Out *)
+    (*   in *)
+    (*   let b = _ in *)
+    (*   let edges_out,edges_in = *)
+    (*     MSet.fold (fun e (edges_out,edges_in) -> *)
+    (*         match kind e.src, kind e.tgt, index e src, index e tgt with *)
+    (*         | `Out, `Out, Some s, Some t -> *)
+    (*            MSet.add {e with tgt=Inner(b,s)} (MSet.add {e with src=Inner(b,t)} edges_out), *)
+    (*            MSet.add {src=Outer s; tgt=Outer t} edges_in *)
+    (*         | `Out, `Out, None, None -> *)
+    (*            MSet.add e edges_out, *)
+    (*            edges_in *)
+    (*         | `Out, `Out, _, _ -> failwith "traversing edge cut only once" *)
+    (*         | `In, `In, None, None -> *)
+    (*            edges_out, *)
+    (*            MSet.add e edges_in *)
+    (*         | `In, `In, _, _ -> failwith "edges between selected nodes cannot be cut" *)
+    (*         | `Out, `In, Some s, None -> *)
+    (*            MSet.add {e with tgt=Inner(b,s)} edges_out, *)
+    (*            MSet.add {e with src=Outer s} edges_in *)
+    (*         | `Out, `In, _, _ -> failwith "out to in edge incorrectly cut" *)
+    (*         | `In, `Out, None, Some t -> *)
+    (*            MSet.add {e with src=Inner(b,t)} edges_out, *)
+    (*            MSet.add {e with tgt=Outer t} edges_in *)
+    (*         | `In, `Out, _, _ -> failwith "in to out edge incorrectly cut" *)
+    (*       ) (MSet.empty,MSet.empty) edges *)
+    (*   in *)
+    (*   () *)
     
     method! shift d =
       parent#shift d;
       MSet.iter (fun n -> n#shift d) nodes
-
-    initializer
-      sources <- Seq.init n (src_port self (fun i -> Outer i));
-      targets <- Seq.init m (tgt_port self (fun i -> Outer i))
-  end
-
-(* generic graph *)
-let gen_graph n m nodes edges ?pos size kvl: graph =
-  object(self)
-    inherit gen_pregraph n m nodes edges ?pos size kvl as parent
-    
-    method is_empty =
-      MSet.is_empty self#nodes && MSet.is_empty self#edges
-
-    method ipos p = (self#iport p)#pos
-    method opos p = (self#oport p)#pos
 
     method find p =
       (* Format.eprintf "find at %a@." V2.pp p; *)
@@ -365,17 +471,9 @@ let gen_graph n m nodes edges ?pos size kvl: graph =
 
     (* graphical rendering *)
     method draw_on (draw: canvas) =
-      let draw_node n =
-        match n#kind with
-        | Var(_,_,f) ->
-           draw#box ~fill:n#color n#box;
-           draw#text n#pos f
-        | Box g -> g#draw_on draw
-      in
-      let draw_edge e = 
-        draw#segment (self#ipos e.src) (self#opos e.tgt)
-      in
-      draw#box self#box;
+      let draw_node n = n#draw_on draw in
+      let draw_edge (i,o) = draw#segment i#pos o#pos in
+      (* draw#box self#box; *)
       MSet.iter draw_node self#nodes;
       MSet.iter draw_edge self#edges
     method draw =
@@ -384,7 +482,8 @@ let gen_graph n m nodes edges ?pos size kvl: graph =
       c#get
 
     (* textual pretty printing *)
-    method private pp_port f = function
+    method private pp_port f p =
+      match p#kind with
       | Outer i -> Format.fprintf f "%i" i
       | Inner(n,i) -> Format.fprintf f "n%i.%i" (MSet.index n self#nodes) i
     method private pp_kind mode f = function
@@ -397,9 +496,9 @@ let gen_graph n m nodes edges ?pos size kvl: graph =
           if not !first then Format.fprintf f ",\n "; first := false;
           Format.fprintf f "n%i%t: %a" i (n#pp mode) (self#pp_kind mode) n#kind;
         ) self#nodes;
-      MSet.iter (fun e ->
+      MSet.iter (fun (s,t) ->
           if not !first then Format.fprintf f ",\n "; first := false;
-          Format.fprintf f "%a -> %a" self#pp_port e.src self#pp_port e.tgt;
+          Format.fprintf f "%a -> %a" self#pp_port s self#pp_port t;
         ) self#edges;
       Format.fprintf f "}%t: %i -> %i" (parent#pp mode) self#sources self#targets
     method! pp mode f =
@@ -409,7 +508,16 @@ let gen_graph n m nodes edges ?pos size kvl: graph =
       | Sparse ->
          try Term.pp f (to_term self)
          with Not_a_graph_term _ | Incomplete_graph -> self#pp_ mode f
+
+    method private iport = function
+      | Outer i -> self#src i
+      | Inner(n,i) -> n#tgt i
+    method private oport = function
+      | Outer i -> self#tgt i
+      | Inner(n,i) -> n#src i
     
+    initializer
+      edges <- MSet.map (fun (i,o) -> self#iport i, self#oport o) edges_
   end
 
 
@@ -430,15 +538,17 @@ let idm =
   gen_graph
     1 1
     MSet.empty
-    (MSet.single { src = Outer 1; tgt = Outer 1 })
+    (MSet.single (Outer 1, Outer 1))
     (Constants.idm_size)
-    [] 
+    []
 
 let shift_port n = function
   | Outer i -> Outer (n+i)
   | p -> p
 let shift_edges n m =
-  MSet.map (fun e -> {src=shift_port n e.src; tgt=shift_port m e.tgt})
+  MSet.map (fun (s,t) -> shift_port n s#kind, shift_port m t#kind)
+let reloc_edges =
+  MSet.map (fun (s,t) -> s#kind, t#kind)
 
 (* tensor product *)
 let tns (g: graph) (h: graph) =
@@ -448,7 +558,7 @@ let tns (g: graph) (h: graph) =
   gen_graph
     (g#sources + h#sources) (g#targets + h#targets)
     (MSet.union g#nodes h#nodes)
-    (MSet.union g#edges (shift_edges g#sources g#targets h#edges))
+    (MSet.union (reloc_edges g#edges) (shift_edges g#sources g#targets h#edges))
     size
     [] 
 
@@ -462,15 +572,15 @@ let seq (g: graph) (h: graph) =
     g#sources h#targets
     (MSet.union g#nodes h#nodes)
     (MSet.union
-       (MSet.omap (fun e ->
-            match e.tgt with
+       (MSet.omap (fun (s,t) ->
+            match t#kind with
             | Outer i -> Option.map
-                           (fun o -> {e with tgt = o#kind})
+                           (fun o -> s#kind,o#kind)
                            (h#next_opt (h#src i))
-            | _ -> Some e
+            | tk -> Some (s#kind,tk)
           ) g#edges)
-       (MSet.filter
-          (fun e -> match e.src with Outer _ -> false | _ -> true)
+       (MSet.omap (fun (s,t) ->
+            match s#kind with Outer _ -> None | sk -> Some (sk,t#kind))
           h#edges))
     size
     []
@@ -481,8 +591,8 @@ let gen_box_graph b n m =
     n m
     (MSet.single b)
     (MSet.union
-       (MSet.init n (fun i -> {src=Outer i; tgt=Inner(b,i)}))
-       (MSet.init m (fun j -> {src=Inner(b,j); tgt=Outer j})))
+       (MSet.init n (fun i -> (Outer i, Inner(b,i))))
+       (MSet.init m (fun j -> (Inner(b,j), Outer j))))
     (Constants.expand b#size)
     [] 
 
@@ -519,7 +629,7 @@ let of_gterm u =
     in
     let iport = function
       | Outer i -> if 1<=i && i<=n then Outer i
-                       else failwith "invalid outer source: %i" i
+                   else failwith "invalid outer source: %i" i
       | Inner(j,i) ->
          try let n = Hashtbl.find t j in
              if 1<=i && i<=n#targets then Inner(n,i)
@@ -528,14 +638,14 @@ let of_gterm u =
     in
     let oport = function
       | Outer i -> if 1<=i && i<=m then Outer i
-                       else failwith "invalid outer target: %i" i
+                   else failwith "invalid outer target: %i" i
       | Inner(j,i) ->
          try let n = Hashtbl.find t j in
              if 1<=i && i<=n#sources then Inner(n,i)
              else failwith "invalid inner target: %s.%i" j i
          with Not_found -> failwith "unknown target node: %i" n
     in
-    let edges = MSet.mapl (fun (i,o) -> {src=iport i;tgt=oport o}) edges in
+    let edges = MSet.mapl (fun (i,o) -> iport i,oport o) edges in
     let box = MSet.fold (fun n -> Box2.union n#box) Box2.empty nodes in
     let pos,size,l =
       if Box2.is_empty box then

@@ -25,13 +25,13 @@ let improve_placement s (g: graph) =
         ) g#nodes
     ) g#nodes;
   (* attract *)
-  MSet.iter (fun e ->
-      let x,y = g#ipos e.src, g#opos e.tgt in
+  MSet.iter (fun (i,o) ->
+      let x,y = i#pos, o#pos in
       let xy = V2.sub y x in
-      (match e.src with
+      (match i#kind with
        | Inner(n,_) -> add n (1./.float_of_int n#targets) xy
        | _ -> ());
-      (match e.tgt with
+      (match o#kind with
        | Inner(n,_) -> add n (-1./.float_of_int n#sources) xy
        | _ -> ())
     ) g#edges;

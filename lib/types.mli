@@ -51,8 +51,6 @@ type pp_mode = Full | Sparse | Term
 
 type name = string              (* box/variable names *)
 type 'node pkind = Outer of int | Inner of 'node * int
-type 'node _edge = { src: 'node pkind; tgt: 'node pkind }
-type 'graph _nkind = Var of int*int*name | Box of 'graph
 
 (* raw parsed terms/environments *)
 module Raw: sig

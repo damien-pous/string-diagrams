@@ -41,8 +41,8 @@ class virtual locate (arena: Types.arena) =
        | `Select p ->
           arena#canvas#polygon ~fill:(Gg.Color.gray ~a:0.2 0.) p;
           let p = Geometry.clockwise p in
-          MSet.iter (fun e ->              
-              let s,t = graph#ipos e.src, graph#opos e.tgt in
+          MSet.iter (fun (i,o) ->              
+              let s,t = i#pos, o#pos in
               Polygon.fold2 p (fun ij () ->
                   match Geometry.intersection ij (s,t) with
                   | Some(x,d) ->
@@ -182,7 +182,9 @@ class virtual locate (arena: Types.arena) =
       | `Normal ->
          (match active with `N _ -> self#checkpoint | `None -> ());
          active <- `None
-      | `Select _ -> mode <- `Normal
+      | `Select p ->
+         mode <- `Normal;
+         graph#add_box p; self#checkpoint; self#redraw()
 
     method on_motion =
       match mode,active with

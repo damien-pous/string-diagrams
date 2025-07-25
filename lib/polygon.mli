@@ -4,6 +4,7 @@ val start: 'a -> 'a t
 val extend: 'a t -> 'a -> 'a t
 val rev: 'a t -> 'a t
 
+val fold1: 'a t -> ('a -> 'b -> 'b) -> 'b -> 'b
 val fold2: 'a t -> ('a * 'a -> 'b -> 'b) -> 'b -> 'b
 val fold3: 'a t -> ('a * 'a * 'a -> 'b -> 'b) -> 'b -> 'b
 

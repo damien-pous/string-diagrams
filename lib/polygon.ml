@@ -13,6 +13,9 @@ let extend p q =
 
 let to_path p = Vg.(List.fold_right P.line p.points (P.empty |> P.sub p.start) |> P.close)
 
+let fold1 p f x =
+  List.fold_right f p.points (f p.start x)
+
 let fold2 p f x =
   let last,x = List.fold_right (fun q' (q,acc) -> q', f (q,q') acc) p.points (p.start,x) in
   f (last,p.start) x
