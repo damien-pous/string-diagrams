@@ -90,8 +90,13 @@ class type area =
     method box: box
     method safebox: box
     method color: color
+    
     method contains: point -> bool
+
     method move: point -> unit
     method shift: vector -> unit
+    method private on_shift: vector -> unit
     method scale: float -> unit
+
+    method draw_boundary: canvas -> unit
   end

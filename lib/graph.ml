@@ -227,7 +227,6 @@ class proxy (b: boundary) =
     method tgt = b#tgt
     method nsrc = b#nsrc
     method ntgt = b#ntgt
-    method draw_boundary = b#draw_boundary 
   end
 
 (* rectangular boundary *)
@@ -237,7 +236,6 @@ class rectangle_boundary n m ?pos size kvl =
     inherit Info.rectangle_area ?pos size kvl
     method private ipos i = top_pos self#box i n 
     method private opos i = bot_pos self#box i m 
-    method draw_boundary (draw: canvas) = draw#box self#box
   end
 
 (* polygonial boundary *)
@@ -246,10 +244,15 @@ class polygon_boundary poly ipos opos kvl =
   let m = List.length opos in
   object
     inherit gen_boundary n m
-    inherit Info.polygon_area poly kvl
+    inherit Info.polygon_area poly kvl as area
+    val mutable ipos = ipos
+    val mutable opos = opos
     method private ipos i = List.nth ipos (i-1)
     method private opos i = List.nth opos (i-1)
-    method draw_boundary (draw: canvas) = draw#polygon poly
+    method! private on_shift d =
+      area#on_shift d;
+      ipos <- List.map (V2.add d) ipos;
+      opos <- List.map (V2.add d) opos;
   end
 
 (* variable node *)

@@ -16,7 +16,6 @@ class type boundary =
     method tgt: int -> port
     method nsrc: node -> int -> port
     method ntgt: node -> int -> port
-    method draw_boundary: canvas -> unit
   end
 and node =
   object

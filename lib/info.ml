@@ -77,9 +77,11 @@ class rectangle_area ?(pos=P2.o) size l =
     method contains p = Box2.mem p self#box
     method safebox = Box2.v_mid pos (V2.smul 1.1 size)
     method color = color
-    method shift d = pos <- V2.(pos + d); placed <- true
+    method shift d = self#on_shift d; pos <- V2.(pos + d); placed <- true
     method move p = self#shift V2.(p-pos)
     method scale s = size <- V2.smul s size; sized <- true
+    method draw_boundary (draw: canvas) = draw#box self#box
+    method private on_shift _ = ()
     method private update_kvl =
       if placed then self#add "pos" (string_of_p2 pos);
       if sized then self#add "size" (string_of_p2 size)
@@ -97,12 +99,15 @@ class polygon_area poly l =
     inherit rectangle_area ~pos size l as parent
     val mutable poly = poly
     method! contains p = Geometry.mem_poly p poly
-    method! shift d = parent#shift d; poly <- Polygon.map (V2.add d) poly
+    method! private on_shift d =
+      parent#on_shift d;
+      poly <- Polygon.map (V2.add d) poly
     method! scale _ = failwith "TODO: scale polygon"
+    method! draw_boundary (draw: canvas) = draw#polygon poly
   end
 
 class proxy (a: area): area =
-  object
+  object(self)
     method get = a#get
     method set = a#set
     method unset = a#unset
@@ -115,7 +120,9 @@ class proxy (a: area): area =
     method contains = a#contains
     method safebox = a#safebox
     method color = a#color
-    method shift = a#shift
+    method shift d = self#on_shift d; a#shift d
+    method private on_shift _ = ()
     method move = a#move
     method scale = a#scale
+    method draw_boundary = a#draw_boundary
   end
