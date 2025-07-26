@@ -1,11 +1,7 @@
 open Gg
 open Types
 open Misc
-
-let nopic = new Canvas.void
-let debug = ref nopic
-let set_debug pic = debug := pic
-let unset_debug () = debug := nopic
+open Messages
 
 (* directed lines *)
 let line' x d = { point=x; dir=V2.unit d }
@@ -101,7 +97,7 @@ let clockwise p =
   let cmp2 x y = V2.compare (swap x) (swap y) in  
   let cmp3 x y = cmp1 y x in
   let cmp4 x y = cmp2 y x in
-  let fail p = Format.eprintf "could not orient polygon@."; p in
+  let fail p = temporary#msg "could not orient polygon"; p in
   if Polygon.is_degenerate p then p
   else attempt cmp1 (attempt cmp2 (attempt cmp3 (attempt cmp4 fail))) p
 

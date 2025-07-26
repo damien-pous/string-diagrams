@@ -8,8 +8,6 @@ class virtual locate: arena ->
     method virtual entry: string
     method virtual set_entry: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
     method virtual entry_warning: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
-    method virtual info: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
-    method virtual warning: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
     method virtual help: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
 
     method private virtual read: string -> state

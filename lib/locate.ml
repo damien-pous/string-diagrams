@@ -1,6 +1,7 @@
 open Types
 open Graph
 open Graph_type
+open Messages
 
 type state = env * graph
 
@@ -9,14 +10,12 @@ let state_of_string s =
   let et = Parser.envterm Lexer.token l in
   envgraph et
 
-class virtual locate (arena: Types.arena) =
+class virtual locate (arena: arena) =
   object(self)
     
     method virtual entry: string
     method virtual set_entry: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
     method virtual entry_warning: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
-    method virtual info: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
-    method virtual warning: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
     method virtual help: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
 
     method private virtual read: string -> state
@@ -64,8 +63,8 @@ class virtual locate (arena: Types.arena) =
       arena#refresh
 
     method private display_graph_infos = 
-    (* self#info "%t" pp_graph_infos *)
-      self#info ""
+      (* self#info "%t" pp_graph_infos *)
+      ()
     
     method private set_state ?rebox (e,g) =
       (* print_endline "set_graph"; *)
@@ -82,12 +81,12 @@ class virtual locate (arena: Types.arena) =
     method undo () =
       match History.undo hist with
       | Some s -> self#set_state (state_of_string s)
-      | None -> self#info "no more undos"
+      | None -> temporary#msg "no more undos"
 
     method redo () =
       match History.redo hist with
       | Some s -> self#set_state (state_of_string s)
-      | None -> self#info "no more redos"
+      | None -> temporary#msg "no more redos"
 
     method private on_graph f =
       self#set_state (env,f graph);
@@ -112,7 +111,7 @@ class virtual locate (arena: Types.arena) =
       | exception e -> self#entry_warning "%s" (Printexc.to_string e)
 
     method private catch =
-      graph#find arena#pointer
+      Graph.find graph arena#pointer
 
     (* method private ivertex = *)
     (*   let v = Info.positionned_ivertex arena#pointer in *)
@@ -125,25 +124,25 @@ class virtual locate (arena: Types.arena) =
     method private remove =
       match self#catch with
       | `N n -> graph#rem_node n; self#checkpoint; self#redraw()
-      | _ -> ()
+      | _ -> temporary#msg "nothing to remove here"
 
     method private unbox =
       match self#catch with
       | `N n -> graph#unbox n; self#checkpoint; self#redraw()
-      | _ -> ()
+      | _ -> temporary#msg "nothing to unbox here"
     
     (* method private promote = *)
     (*   match self#catch with *)
     (*   | `V (Inn v) -> self#on_graph (Graph.promote v) *)
-    (*   | `V (Src _) -> self#general_warning "cannot promote a source" *)
-    (*   | `E _ -> self#general_warning "cannot promote an edge" *)
+    (*   | `V (Src _) -> temporary#msg "cannot promote a source" *)
+    (*   | `E _ -> temporary#msg "cannot promote an edge" *)
     (*   | `None -> () *)
 
     (* method private forget = *)
     (*   match self#catch with *)
     (*   | `V (Src i) -> self#on_graph (Graph.forget i) *)
-    (*   | `V (Inn _) -> self#general_warning "cannot forget an inner vertex (use r to remove it)" *)
-    (*   | `E _ -> self#general_warning "cannot forget an edge (use r to remove it)" *)
+    (*   | `V (Inn _) -> temporary#msg "cannot forget an inner vertex (use r to remove it)" *)
+    (*   | `E _ -> temporary#msg "cannot forget an edge (use r to remove it)" *)
     (*   | `None -> () *)
 
     (* method private edge l s = *)
@@ -184,7 +183,7 @@ class virtual locate (arena: Types.arena) =
          active <- `None
       | `Select p ->
          mode <- `Normal;
-         graph#add_box p; self#checkpoint; self#redraw()
+         Graph.create_box graph p; self#checkpoint; self#redraw()
 
     method on_motion =
       match mode,active with
@@ -208,7 +207,7 @@ u:      unbox node
 i:      improve placement
 -/+:    shrink/enlarge element
 f/F:    fix/Free element (for later placement optimisations)
-Z/R:    undo/redo
+->/<-:    undo/redo
 r:      refresh picture
 h:      print this help message"
           | "i" -> self#improve_placement
@@ -219,9 +218,10 @@ h:      print this help message"
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1
           | "r" -> self#redraw()
-          | "Z" -> self#undo()
-          | "R" -> self#redo()
-          | s -> self#warning "skipping key '%s'@." s)
+          | "ArrowLeft" -> self#undo()
+          | "ArrowRight" -> self#redo()
+          | "" -> ()
+          | s -> temporary#msg "skipping key '%s'" s)
 
     method private on_term f =
       match state_of_string self#entry with
@@ -240,8 +240,5 @@ h:      print this help message"
     method save_to file =
       self#write file (env,graph);
       self#export file (env,graph)
-
-    (* initializer *)
-    (*   Geometry.set_debug arena#canvas *)
-
+    
   end

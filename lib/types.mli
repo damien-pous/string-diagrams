@@ -35,6 +35,13 @@ class type canvas =
     method text: point -> string -> unit 
   end
 
+class type msg_canvas =
+  object
+    inherit canvas
+    method msg: 'a. ('a, formatter, unit) format -> 'a
+    method messages: string
+  end
+    
 class type arena =
   object
     method canvas: canvas

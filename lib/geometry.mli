@@ -1,9 +1,5 @@
 open Types
 
-(* debug area *)
-val set_debug: canvas -> unit
-val unset_debug: unit -> unit
-
 (* directed lines *)
 val line: point -> point -> line
 val line': point -> vector -> line

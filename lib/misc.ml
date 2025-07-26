@@ -1,5 +1,7 @@
 let failwith fmt =
   Format.kasprintf failwith fmt
+let assertk b k =
+  (if not b then k()); assert b
 
 let pp_print_sep sep f () =
   Format.pp_print_string f sep

@@ -16,10 +16,6 @@ val env: kvl Raw.env -> env
 val of_raw: env -> kvl Raw.term -> graph
 val envgraph: kvl Raw.envterm -> env * graph
 
-(* terms from graph
-   !! for now, forgetting isolated components *)
-val to_term: graph -> Term.term
-
 (* textual pretty printing *)
 val pp: pp_mode -> formatter -> graph -> unit
 val pp_env: pp_mode -> formatter -> env -> unit
@@ -30,3 +26,9 @@ val pp_envgraph: pp_mode -> formatter -> env*graph -> unit
 val iso: graph -> graph -> bool
 val iso_env: env -> env -> bool
 val iso_envgraph: env*graph -> env*graph -> bool
+
+(* capturing a subgraph inside a box *)
+val create_box: graph -> polygon -> unit
+
+(* finding elements by their position *)
+val find: graph -> point -> [ `I of port | `O of port | `N of node | `None ]

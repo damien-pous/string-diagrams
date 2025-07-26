@@ -60,6 +60,7 @@ class arena (canvasdiv: Html.divElement Js.t) (canvas: Html.canvasElement Js.t) 
       let size = V2.v w h in
       let vgr = Vgr.create (Vgr_htmlc.target ~resize:false canvas) `Other in 
       let image = I.blend self#canvas#get (I.const Color.white) in
+      let image = I.blend Messages.temporary#get image in
       ignore (Vgr.render vgr (`Image (size, self#view, image)));
       ignore (Vgr.render vgr `End);
       ignore self#dsize
@@ -111,18 +112,12 @@ class locate arena entry infos warnings =
     method entry = Js.to_string (entry##.value)
     method set_entry fmt = Format.kasprintf (fun s -> entry##.value := Js.string s) fmt
     method entry_warning fmt = Format.kasprintf (print warnings) fmt
-    method info fmt = Format.kasprintf (print infos) fmt
-    method warning fmt = Format.kasprintf (print infos) fmt
     method help fmt = Format.kasprintf (print infos) fmt
     method private read _ = assert false
     method private write _ _ = assert false
     method private export _ _ = assert false
   end
 
-let std_evt f ev =
-  if not (Js.to_bool ev##.ctrlKey) then
-    (f ev; Js._false)
-  else Js._true
 
 let onload _ =
   let canvasdiv = get "canvas" in
@@ -147,6 +142,17 @@ let onload _ =
     self#on_entry_changed;
     Js._true
   in
+  let refresh() = arena#refresh; print infos Messages.temporary#messages in
+  let atomic f d x =
+    Messages.temporary#clear;  
+    Messages.catch f x d refresh
+  in
+  let std_evt f ev =
+    if not (Js.to_bool ev##.ctrlKey) then
+      (atomic (fun ev -> f ev; Js._false) Js._false ev)
+    else Js._true
+  in
+  
   entry##.style##.width := Js.string "50%";
   entry##.tabIndex := 1;
   strokes##.tabIndex := 2;
@@ -155,12 +161,12 @@ let onload _ =
   add_listener canvas Html.Event.mousemove (std_evt (fun _ -> self#on_motion));
   add_listener canvas Html.Event.mouseup (std_evt (fun _ -> self#on_button_release));      
   add_listener canvas Html.Event.click (fun _ -> strokes##focus; Js._true);      
-  add_listener strokes Html.Event.keydown (onkeypress false);
+  add_listener strokes Html.Event.keydown (atomic (onkeypress false) Js._false);
   (* add_listener Html.window Html.Event.keydown (onkeypress true); *)
-  add_listener entry Html.Event.keyup onkeyup;
+  add_listener entry Html.Event.keyup (atomic onkeyup Js._false);
   (* add_listener entry Html.Event.focus (fun _ -> entryfocused := true; Js._true); *)
   (* add_listener entry Html.Event.blur (fun _ -> entryfocused := false; Js._true); *)
-  self#init initial_term;
+  atomic self#init () initial_term;
   strokes##focus;
   Js._false
 

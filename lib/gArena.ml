@@ -22,6 +22,7 @@ class arena ~width ~height ?window da () =
       let w,h = self#dsize in
       let size = Size2.v w h in
       let image = I.blend self#canvas#get (I.const Color.white) in
+      let image = I.blend Messages.temporary#get image in
       let _ = Vgr.render vgr (`Image (size, self#view, image)) in
       let _ = Vgr.render vgr (`End) in
       da#misc#draw None
@@ -42,6 +43,7 @@ class arena ~width ~height ?window da () =
     method private configure ev =
       let width = GdkEvent.Configure.width ev in
       let height = GdkEvent.Configure.height ev in
+      (* Format.eprintf "%ix%i -> " width height; *)
       self#resize (float_of_int width, float_of_int height);
       backing <- GDraw.pixmap ~width ~height ?window ();
       self#refresh;

@@ -1,4 +1,5 @@
 open Types
+open Term
 
 type 'graph nkind = Var of int*int*name | Box of 'graph
 
@@ -23,6 +24,7 @@ and node =
     method kind: graph nkind    
     method pp: pp_mode -> formatter -> unit
     method draw: canvas -> unit
+    method term: term
   end
 and port =
   object
@@ -34,6 +36,7 @@ and graph =
     inherit boundary
     method nodes: node mset
     method edges: (port*port) mset
+    method update: node mset -> (node pkind*node pkind) mset -> unit
 
     method next: port -> port
     method next_opt: port -> port option
@@ -46,21 +49,15 @@ and graph =
     method reaches: port -> port -> bool
 
     method rem_edge: port*port -> unit
-    method rem_node: node -> unit
-
     method add_edge: port*port -> unit
-    (* method new_var_box: int -> int -> name -> node *)
-    (* method new_graph_box: graph -> node *)
-
-    method add_box: polygon -> unit
+    method rem_node: node -> unit
 
     method subst: node -> graph -> unit
     method unbox: node -> unit
 
-    method find: point -> [ `I of port | `O of port | `N of node | `None ]
-
     method pp: pp_mode -> formatter -> unit
     method draw: canvas -> unit
+    method term: term
   end
 
 type env = graph Info.env

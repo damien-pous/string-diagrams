@@ -1,6 +1,7 @@
 open Types
 open Graph_type
 open Misc
+open Messages
 open Gg
 
 (** * misc *)
@@ -91,11 +92,7 @@ let rec to_term (g: graph) =    (* or pregraph? *)
                  let u,q = eat_up n 1 j q in
                  (* Format.eprintf "eat up (%i,%i): %a@." j (List.length q) Term.pp u; *)
                  let t,k = bottom_line q in
-                 let v = match n#kind with
-                   | Var(n,m,f) -> Term.var n m f
-                   | Box g -> Term.box (to_term g)
-                 in
-                 Term.(tns (seq v u) t), add_up n 1 k
+                 Term.(tns (seq n#term u) t), add_up n 1 k
               | Outer _ ->
                  let t,k = bottom_line q in Term.(tns idm t), i::k
   and top_line = function
@@ -267,6 +264,7 @@ let var_node n m f l =
     method kind = Var(n,m,f)
     method pp mode ff =
       Format.fprintf ff "%s%t" f (self#pp_infos mode)
+    method term = Term.var n m f
   end
 
 (* box node *)
@@ -279,6 +277,7 @@ let box_node g (_: Info.kvl) =
     method kind = Box g
     method pp mode = g#pp mode 
     method draw c = g#draw c
+    method term = Term.box g#term
   end    
 
 (* generic pregraph *)
@@ -294,9 +293,8 @@ class virtual gen_graph nodes edges_ =
     method virtual ntgt: node -> int -> port
     method virtual draw_boundary: canvas -> unit
     method private virtual shift_boundary: vector -> unit
-    method private virtual polygon_graph: _ -> _ -> _ -> _ -> _ -> _ -> graph
 
-    val mutable edges = MSet.empty
+    val mutable edges: (port * port) mset = MSet.empty
     val mutable nodes = nodes
     method edges = edges
     method nodes = nodes
@@ -350,12 +348,6 @@ class virtual gen_graph nodes edges_ =
       assert (not (self#reaches tgt src));      
       edges <- MSet.add (src,tgt) edges
     
-    (* let add_node g n = *)
-    (*   { g with nodes = MSet.add n g.nodes },n *)
-    
-    (* let add_var g ninfo n m f = add_node g { ninfo ; kind = Var(n,m,f) } *)
-    (* let add_box g ninfo h = add_node g { ninfo ; kind = Box h } *)
-    
     method subst n h =
       assert (n#sources = h#sources && n#targets = h#targets);
       let remap_src p = match p#kind with
@@ -383,102 +375,6 @@ class virtual gen_graph nodes edges_ =
       | Var(_,_,_) -> assert false
       | Box g -> self#subst n g
 
-    method add_box p =
-      let p = Geometry.clockwise p in
-      let cuts = Polygon.fold2 p (fun ij acc ->
-                     MSet.fold (fun (s,t as e) acc ->
-                         let s,t = s#pos, t#pos in
-                         match Geometry.intersection ij (s,t) with
-                         | Some(x,(L|E)) -> `S (e,x) :: acc
-                         | Some(x,R) -> `T (e,x) :: acc
-                         | None -> acc
-                       ) acc edges
-                   ) []
-      in
-      let cuts = List.rev cuts in
-      let rec group = function
-        | [] -> []
-        | `S a :: q ->
-           (match group q with
-            | [] -> [`S [a]]
-            | `S l::q -> `S(a::l)::q
-            | l -> `S [a] :: l)
-        | `T a :: q ->
-           (match group q with
-            | [] -> [`T [a]]
-            | `T l::q -> `T(a::l)::q
-            | l -> `T [a] :: l)
-      in
-      let src,tgt = match group cuts with
-        | [] -> [],[]
-        | [`S s] -> s,[]
-        | [`T t] -> [],t
-        | [`S s;`T t]
-        | [`T t;`S s] -> s,t
-        | [`S s;`T t;`S s'] -> s'@s,t
-        | [`T t;`S s;`T t'] -> s,t'@t
-        | _ -> failwith "too many alternations of sources and targets"
-      in
-      (* Format.eprintf "box: %i -> %i@." (List.length src) (List.length tgt); *)
-      assert(unique_assq src && unique_assq tgt); (* TODO: with proper edge-comparison function *)
-      let tgt = List.rev tgt in
-      (* List.iteri (fun i (_,p) -> Format.eprintf "src.%i: %a@." (i+1) V2.pp p) src; *)
-      (* List.iteri (fun i (_,p) -> Format.eprintf "tgt.%i: %a@." (i+1) V2.pp p) tgt; *)
-      let nodes_out,nodes_in =
-        MSet.partition (fun n -> Geometry.mem_poly n#pos p) nodes
-      in
-      (* Format.eprintf "box: %i nodes out, %i nodes in@." (MSet.size nodes_out) (MSet.size nodes_in); *)
-      let kind = function
-        | Inner(n,_) when MSet.memq n nodes_in -> `In
-        | _ -> `Out
-      in
-      let index e l =
-        let rec index k = function
-          | [] -> None
-          | ((s,t),_)::_ when e=(s#kind,t#kind) -> Some k
-          | _::q -> index (k+1) q
-        in index 1 l
-      in  
-      let edges_out,edges_in =
-        MSet.fold (fun (i,o) (edges_out,edges_in) ->
-            let ik,ok = i#kind, o#kind in
-            match kind ik, kind ok, index (ik,ok) src, index (ik,ok) tgt with
-            | `Out, `Out, Some s, Some t ->
-               (fun b -> MSet.add (ik, Inner(b,s)) (MSet.add (Inner(b,t), ok) (edges_out b))),
-               MSet.add (Outer s, Outer t) edges_in
-            | `Out, `Out, None, None ->
-               (fun b -> MSet.add (ik,ok) (edges_out b)),
-               edges_in
-            | `Out, `Out, _, _ -> failwith "traversing edge cut only once"
-            | `In, `In, None, None ->
-               edges_out,
-               MSet.add (ik,ok) edges_in
-            | `In, `In, _, _ -> failwith "edges between selected nodes cannot be cut"
-            | `Out, `In, Some s, None ->
-               (fun b -> MSet.add (ik, Inner(b,s)) (edges_out b)),
-               MSet.add (Outer s, ok) edges_in
-            | `Out, `In, _, _ -> failwith "out to in edge incorrectly cut"
-            | `In, `Out, None, Some t ->
-               (fun b -> MSet.add (Inner(b,t), ok) (edges_out b)),
-               MSet.add (ik, Outer t) edges_in
-            | `In, `Out, _, _ -> failwith "in to out edge incorrectly cut"
-          ) ((fun _ -> MSet.empty),MSet.empty) edges
-      in
-      (* Format.eprintf "box: %i edges in@." (MSet.size edges_in); *)
-      let g = self#polygon_graph (List.map snd src) (List.map snd tgt) nodes_in edges_in p [] in
-      (* Format.eprintf "box: %t@." (g#pp Full); *)
-      let b = box_node g [] in
-      (* Format.eprintf "box: %t@." (b#pp Full); *)
-      nodes <- MSet.add b nodes_out;
-      self#set_edges (edges_out b);
-      ()
-    
-    method find p: [ `I of port | `O of port | `N of node | `None ] =
-      (* Format.eprintf "find at %a@." V2.pp p; *)
-      match MSet.find (fun n -> Box2.mem p n#box) self#nodes with
-      | Some x -> `N x
-      | None -> `None
-
     (* textual pretty printing *)
     method private pp_port f p =
       match p#kind with
@@ -501,11 +397,10 @@ class virtual gen_graph nodes edges_ =
       Format.fprintf f "}%t: %i -> %i" (self#pp_infos mode) self#sources self#targets
     method pp mode f =
       match mode with
-      | Full -> self#pp_ mode f
-      | Term -> Term.pp f (to_term (self:>graph))
-      | Sparse ->
-         try Term.pp f (to_term (self:>graph))
-         with Not_a_graph_term _ | Incomplete_graph -> self#pp_ mode f
+      | Term -> Term.pp f self#term
+      | _ -> self#pp_ mode f
+
+    method term = to_term (self:>graph)
 
     method draw (draw: canvas) =
       let draw_node n = n#draw draw in
@@ -526,17 +421,21 @@ class virtual gen_graph nodes edges_ =
       | Inner(n,i) -> n#src i
     method private set_edges edges_ =
       edges <- MSet.map (fun (i,o) -> self#iport i, self#oport o) edges_
+    
+    method update nodes' (edges_: (node pkind*node pkind) mset) =
+      (* TODO: sanity checks *)
+      nodes <- nodes';
+      self#set_edges edges_
 
     initializer
       self#set_edges edges_
   end
 
-let rec polygon_graph ipos opos nodes edges poly l =
+let polygon_graph ipos opos nodes edges poly l =
   object
     inherit polygon_boundary poly ipos opos l as boundary
     method private shift_boundary = boundary#shift
     inherit! gen_graph nodes edges
-    method private polygon_graph = polygon_graph
   end
 
 let rectangle_graph n m nodes edges ?pos size l =
@@ -544,7 +443,6 @@ let rectangle_graph n m nodes edges ?pos size l =
     inherit rectangle_boundary n m ?pos size l as boundary
     method private shift_boundary = boundary#shift
     inherit! gen_graph nodes edges
-    method private polygon_graph = polygon_graph
   end 
 
 
@@ -691,3 +589,100 @@ let envgraph et =
   let (e,t) = GTerm.envterm et in
   Info.envmap of_gterm e, of_gterm t
 
+let find g p =
+  (* Format.eprintf "find at %a@." V2.pp p; *)
+  match MSet.find (fun n -> Box2.mem p n#box) g#nodes with
+  | Some x -> `N x
+  | None -> `None
+
+let create_box g p =
+  let debug_msg fmt = debug_msg "box" fmt in
+  let p = Geometry.clockwise p in
+  let cuts = Polygon.fold2 p (fun ij acc ->
+                 MSet.fold (fun (s,t as e) acc ->
+                     let s,t = s#pos, t#pos in
+                     match Geometry.intersection ij (s,t) with
+                     | Some(x,(L|E)) -> `S (e,x) :: acc
+                     | Some(x,R) -> `T (e,x) :: acc
+                     | None -> acc
+                   ) acc g#edges
+               ) []
+  in
+  let cuts = List.rev cuts in
+  let rec group = function
+    | [] -> []
+    | `S a :: q ->
+       (match group q with
+        | [] -> [`S [a]]
+        | `S l::q -> `S(a::l)::q
+        | l -> `S [a] :: l)
+    | `T a :: q ->
+       (match group q with
+        | [] -> [`T [a]]
+        | `T l::q -> `T(a::l)::q
+        | l -> `T [a] :: l)
+  in
+  let src,tgt = match group cuts with
+    | [] -> [],[]
+    | [`S s] -> s,[]
+    | [`T t] -> [],t
+    | [`S s;`T t]
+      | [`T t;`S s] -> s,t
+    | [`S s;`T t;`S s'] -> s'@s,t
+    | [`T t;`S s;`T t'] -> s,t'@t
+    | _ -> error "too many alternations of sources and targets"
+  in
+  debug_msg "%i -> %i" (List.length src) (List.length tgt);
+  assert(unique_assq src && unique_assq tgt); (* TODO: with proper edge-comparison function *)
+  let tgt = List.rev tgt in
+  (* List.iteri (fun i (_,p) -> debug_msg "src.%i: %a@." (i+1) V2.pp p) src; *)
+  (* List.iteri (fun i (_,p) -> debug_msg "tgt.%i: %a@." (i+1) V2.pp p) tgt; *)
+  let nodes_out,nodes_in =
+    MSet.partition (fun n -> Geometry.mem_poly n#pos p) g#nodes
+  in
+  debug_msg "%i nodes out, %i nodes in" (MSet.size nodes_out) (MSet.size nodes_in);
+  let kind = function
+    | Inner(n,_) when MSet.memq n nodes_in -> `In
+    | _ -> `Out
+  in
+  let index e l =
+    let rec index k = function
+      | [] -> None
+      | ((s,t),_)::_ when e=(s#kind,t#kind) -> Some k
+      | _::q -> index (k+1) q
+    in index 1 l
+  in  
+  let edges_out,edges_in =
+    MSet.fold (fun (i,o) (edges_out,edges_in) ->
+        let error msg =
+          temporary#segment ~color:Color.red i#pos o#pos;
+          error msg
+        in              
+        let ik,ok = i#kind, o#kind in
+        match kind ik, kind ok, index (ik,ok) src, index (ik,ok) tgt with
+        | `Out, `Out, Some s, Some t ->
+           (fun b -> MSet.add (ik, Inner(b,s)) (MSet.add (Inner(b,t), ok) (edges_out b))),
+           MSet.add (Outer s, Outer t) edges_in
+        | `Out, `Out, None, None ->
+           (fun b -> MSet.add (ik,ok) (edges_out b)),
+           edges_in
+        | `Out, `Out, _, _ -> error "traversing edge cut only once"
+        | `In, `In, None, None ->
+           edges_out,
+           MSet.add (ik,ok) edges_in
+        | `In, `In, _, _ -> error "edges between selected nodes cannot be cut"
+        | `Out, `In, Some s, None ->
+           (fun b -> MSet.add (ik, Inner(b,s)) (edges_out b)),
+           MSet.add (Outer s, ok) edges_in
+        | `Out, `In, _, _ -> error "out to in edge incorrectly cut"
+        | `In, `Out, None, Some t ->
+           (fun b -> MSet.add (Inner(b,t), ok) (edges_out b)),
+           MSet.add (ik, Outer t) edges_in
+        | `In, `Out, _, _ -> error "in to out edge incorrectly cut"
+      ) ((fun _ -> MSet.empty),MSet.empty) g#edges
+  in
+  debug_msg "%i edges in" (MSet.size edges_in);
+  let h = polygon_graph (List.map snd src) (List.map snd tgt) nodes_in edges_in p [] in
+  let b = box_node h [] in
+  debug_msg "%t" (b#pp Full);
+  g#update (MSet.add b nodes_out) (edges_out b)

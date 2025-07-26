@@ -1,4 +1,5 @@
 val failwith: ('a, Format.formatter, unit, 'b) format4 -> 'a
+val assertk: bool -> (unit -> unit) -> unit
 
 val pp_print_sep:
   string -> Format.formatter -> unit -> unit
@@ -15,8 +16,10 @@ val comp: ('b -> 'c) -> ('a -> 'b) -> 'a -> 'c
 
 val memo: ('a -> 'b) -> 'a -> 'b
 
+(** iter n f x = f^n(x) *)
 val iter: int -> ('a -> 'a) -> 'a -> 'a
 
+(** starts at 1 *)
 val fold: (int -> 'a -> 'a) -> int -> 'a -> 'a
 val forall: int -> (int -> bool) -> bool
 val exists: int -> (int -> bool) -> bool

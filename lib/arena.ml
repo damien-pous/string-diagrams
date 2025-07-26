@@ -48,8 +48,8 @@ class virtual generic =
 
     method resize (w,h) =
       view <- Box2.v_mid (Box2.mid view)
-                (V2.sub (self#point_of_dpoint (w,0.)) (self#point_of_dpoint (0.,h)));      
-      (* note: self#refresh to be called concrete subclasses *)
+                (V2.sub (self#point_of_dpoint (w,0.)) (self#point_of_dpoint (0.,h)));
+      (* note: self#refresh to be called by concrete subclasses *)
     
     method zoom s =
       let c = self#pointer in

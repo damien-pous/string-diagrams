@@ -25,13 +25,16 @@ let edit_factory = new GMenu.factory (factory#add_submenu "Edit") ~accel_group
 let view_factory = new GMenu.factory (factory#add_submenu "View") ~accel_group
 
 let paned = GPack.paned `HORIZONTAL ~packing:(vbox#pack ~expand:true) ()
-let general_msg = GMisc.label ~xalign:0.01 ~justify:`LEFT ~packing:(vbox#pack ~expand:true) ()
+let vbox1 = GPack.vbox ~homogeneous:false ~packing:paned#pack1 ()
+let vbox2 = GPack.vbox ~homogeneous:false ~packing:paned#pack2 ()
 
-let da = GMisc.drawing_area ~width ~height ~packing:paned#pack1 ()
+
+let da = GMisc.drawing_area ~width ~height ~packing:(vbox1#pack ~expand:true) ()
 let arena = GArena.create ~width ~height ~window da ()
-let vbox = GPack.vbox ~homogeneous:false ~packing:paned#pack2 ()
-let entry = GText.view ~editable:true ~accepts_tab:false ~packing:(vbox#pack ~expand:true) ()
-let entry_msg = GMisc.label ~xalign:0.01 ~justify:`LEFT ~packing:(vbox#pack ~expand:true) ()
+let general_msg = GText.view ~editable:false ~cursor_visible:false ~packing:(vbox1#pack) ()
+
+let entry = GText.view ~editable:true ~accepts_tab:false ~packing:(vbox2#pack ~expand:true) ()
+let entry_msg = GMisc.label ~packing:(vbox2#pack) ()
 
 let dialog title action stock stock' filter =
   let dlg = GWindow.file_chooser_dialog
@@ -61,8 +64,6 @@ class glocate =
     method entry = entry#buffer#get_text()
     method set_entry fmt = Format.kasprintf entry#buffer#set_text fmt
     method entry_warning fmt = Format.kasprintf entry_msg#set_text fmt
-    method info fmt = Format.kasprintf general_msg#set_text fmt
-    method warning fmt = Format.kasprintf print_endline fmt
     method help fmt = Format.kasprintf print_endline fmt
     method private read = File.read
     method private write = File.write
@@ -84,12 +85,7 @@ let save_as =
     (GFile.filter ~name: "HG file" ~patterns:["*.hg"] ())
     self#save_to
 
-let clear_infos() =
-  self#entry_warning "";
-  self#info ""
-
 let on_button_press ev =
-  clear_infos();
   let state = GdkEvent.Button.state ev in
   not (Gdk.Convert.test_modifier `CONTROL state) &&
     (self#on_button_press; true)
@@ -98,15 +94,12 @@ let on_motion _ =
   self#on_motion; true
 
 let on_button_release _ =
-  clear_infos();
   self#on_button_release; true
 
 let on_entry_changed _ =
-  clear_infos();
   self#on_entry_changed
 
 let on_key_press ev =
-  clear_infos();
   (if List.mem (GdkEvent.Key.keyval ev) [GdkKeysyms._Tab; GdkKeysyms._Escape]
    then entry#misc#grab_focus()
    else if not (List.mem (GdkEvent.Key.keyval ev) [GdkKeysyms._Control_L; GdkKeysyms._Control_R]) then
@@ -125,25 +118,33 @@ let fullscreen =
   if !fs then window#unfullscreen() else window#fullscreen();
   fs := not !fs    
 
-let _ = file_factory#add_item "Open" ~key:GdkKeysyms._O ~callback:load
-let _ = file_factory#add_item "Save" ~key:GdkKeysyms._S ~callback:save
-let _ = file_factory#add_item "Save as" ~key:GdkKeysyms._E ~callback:save_as
+(* TODO: capture this in locate *)
+let refresh() = arena#refresh; general_msg#buffer#set_text Messages.temporary#messages
+let atomic f x d =
+  Messages.temporary#clear;  
+  Messages.catch f x d refresh
+let atomic_unit f x = atomic f x ()
+let atomic_true f x = atomic f x true
+
+let _ = file_factory#add_item "Open" ~key:GdkKeysyms._O ~callback:(atomic_unit load)
+let _ = file_factory#add_item "Save" ~key:GdkKeysyms._S ~callback:(atomic_unit save)
+let _ = file_factory#add_item "Save as" ~key:GdkKeysyms._E ~callback:(atomic_unit save_as)
 let _ = file_factory#add_item "Quit" ~key:GdkKeysyms._Q ~callback:Main.quit
-let _ = edit_factory#add_item "Undo" ~key:GdkKeysyms._Z ~callback:self#undo
-let _ = edit_factory#add_item "Redo" ~key:GdkKeysyms._R ~callback:self#redo
+let _ = edit_factory#add_item "Undo" ~key:GdkKeysyms._Z ~callback:(atomic_unit self#undo)
+let _ = edit_factory#add_item "Redo" ~key:GdkKeysyms._R ~callback:(atomic_unit self#redo)
 let _ = view_factory#add_item "Fullscreen" ~key:GdkKeysyms._F ~callback:fullscreen
 
 let _ = GtkBase.Widget.add_events da#as_widget
           [ `KEY_PRESS; `BUTTON_MOTION; `BUTTON_PRESS; `BUTTON_RELEASE ]
 let _ = da#misc#set_can_focus true
-let _ = da#event#connect#motion_notify ~callback:on_motion
-let _ = da#event#connect#button_press ~callback:on_button_press
-let _ = da#event#connect#button_release ~callback:on_button_release
-let _ = da#event#connect#key_press ~callback:on_key_press
-let _ = entry#buffer#connect#changed ~callback:on_entry_changed
+let _ = da#event#connect#motion_notify ~callback:(atomic_true on_motion)
+let _ = da#event#connect#button_press ~callback:(atomic_true on_button_press)
+let _ = da#event#connect#button_release ~callback:(atomic_true on_button_release)
+let _ = da#event#connect#key_press ~callback:(atomic_true on_key_press)
+let _ = entry#buffer#connect#changed ~callback:(atomic_unit on_entry_changed)
 let _ = window#connect#destroy ~callback:Main.quit
 let _ = window#add_accel_group accel_group
-let _ = self#load_from !file
+let _ = atomic_unit self#load_from !file
 
 let _ = window#show ()
 let _ = Main.main ()
