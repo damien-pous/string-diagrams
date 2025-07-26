@@ -395,6 +395,7 @@ class virtual gen_graph nodes edges_ =
                        ) acc edges
                    ) []
       in
+      let cuts = List.rev cuts in
       let rec group = function
         | [] -> []
         | `S a :: q ->
@@ -414,13 +415,15 @@ class virtual gen_graph nodes edges_ =
         | [`T t] -> [],t
         | [`S s;`T t]
         | [`T t;`S s] -> s,t
-        | [`S s;`T t;`S s'] -> s@s',t
-        | [`T t;`S s;`T t'] -> s,t@t'
+        | [`S s;`T t;`S s'] -> s'@s,t
+        | [`T t;`S s;`T t'] -> s,t'@t
         | _ -> failwith "too many alternations of sources and targets"
       in
       (* Format.eprintf "box: %i -> %i@." (List.length src) (List.length tgt); *)
       assert(unique_assq src && unique_assq tgt); (* TODO: with proper edge-comparison function *)
       let tgt = List.rev tgt in
+      (* List.iteri (fun i (_,p) -> Format.eprintf "src.%i: %a@." (i+1) V2.pp p) src; *)
+      (* List.iteri (fun i (_,p) -> Format.eprintf "tgt.%i: %a@." (i+1) V2.pp p) tgt; *)
       let nodes_out,nodes_in =
         MSet.partition (fun n -> Geometry.mem_poly n#pos p) nodes
       in
