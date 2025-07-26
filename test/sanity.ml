@@ -109,3 +109,17 @@ let _ = test e "k"
 let _ = test e "n*k"
 let _ = test e "n*k*k;m*m*id"
 let _ = test_niso e "n*k*k;m*m*id" "n'*k*k;m*m*id"
+
+let e =
+  "let g: 1 -> 1 in
+   let b: 2 -> 2 in"
+let _ = test e "g*id ; b"
+let _ = test e "id*g ; b"
+(** should eventually go through *)
+(* let _ = test e "b ; id*g" *)
+(* let _ = test e "b ; g*id" *)
+(* let _ = test e "id*g ; b ; g*id" *)
+
+(** should eventually go through *)
+(* let e = "let m: 2->0 in let k: 0->2 in" *)
+(* let _ = test e "id*k*id ; m*m" *)
