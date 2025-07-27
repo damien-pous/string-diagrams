@@ -13,7 +13,7 @@ let improve_placement s (g: graph) =
   (* repulse *)
   MSet.iter (fun x -> 
       MSet.iter (fun y -> 
-          if x!=y then
+          if x<>y then
             let xy = V2.sub y#pos x#pos in
             let d = V2.norm xy in
             if d = 0.0 then

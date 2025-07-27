@@ -26,12 +26,7 @@ let rec filter f = function
   | S i as x when f i -> x
   | U(x,y) -> union (filter f x) (filter f y)
   | _ -> N
-
-let rec memq a = function
-  | N -> false
-  | S b -> a==b
-  | U(x,y) -> memq a x || memq a y
-let remq x = filter ((!=) x)
+let rem x = filter ((<>) x)
 
 let case x =
   let rec case acc = function
@@ -111,7 +106,7 @@ let iteri f x =
 exception Found of int
 let index j x =
   try
-    iteri (fun id i -> if i==j then raise (Found id)) x;
+    iteri (fun id i -> if i=j then raise (Found id)) x;
     failwith "not found"
   with Found id -> id
 let rec nth x i =

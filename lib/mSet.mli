@@ -7,11 +7,9 @@ val single: 'a -> 'a t
 val union: 'a t -> 'a t -> 'a t
 val add: 'a -> 'a t -> 'a t
 val mem: 'a -> 'a t -> bool
+val rem: 'a -> 'a t -> 'a t
 
 val filter: ('a -> bool) -> 'a t -> 'a t
-
-val memq: 'a -> 'a t -> bool
-val remq: 'a -> 'a t -> 'a t
   
 val case: 'a t -> ('a * 'a t) option
 val is_empty: 'a t -> bool

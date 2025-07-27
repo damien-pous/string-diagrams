@@ -78,7 +78,7 @@ let rec to_term (g: graph) =    (* or pregraph? *)
   let rec eat_up n j j' = function
     | [] -> tns_ctx (closed_dn n j (j'-1)) (closed_dn n (j'+1) n#targets), []
     | i::q as l -> match g#prev i  with
-                    | InnerTarget(n',j'') when n==n' ->
+                    | InnerTarget(n',j'') when n=n' ->
                        if not (j''>j') then not_a_graph_term "needs symmetry";
                        let u,q = eat_up n (j'+1) j'' q in
                        tns_ctx (closed_dn n j (j'-1)) u,q
@@ -86,7 +86,7 @@ let rec to_term (g: graph) =    (* or pregraph? *)
   and eat_dn n j j' = function
     | [] -> tns_ctx (closed_up n j (j'-1)) (closed_up n (j'+1) n#sources), []
     | i::q as l -> match g#next i  with
-                   | InnerSource(n',j'') when n==n' ->
+                   | InnerSource(n',j'') when n=n' ->
                       if not (j''>j') then not_a_graph_term "needs symmetry";
                       let u,q = eat_dn n (j'+1) j'' q in
                       tns_ctx (closed_up n j (j'-1)) u,q
@@ -294,10 +294,10 @@ class virtual gen_graph nodes edges =
       let rec dfs p (nodes,ports) =
         match self#next_opt p with
         | None -> nodes, ports
-        | Some (InnerSource(n,_) as q) when not (Set.memq n nodes) ->
-           fold (fun i -> dfs (InnerTarget(n,i))) n#targets (Set.add n nodes, Set.add q ports)
-        | Some q -> nodes, Set.add q ports
-      in dfs p (Set.empty,Set.empty)
+        | Some (InnerSource(n,_) as q) when not (MSet.mem n nodes) ->
+           fold (fun i -> dfs (InnerTarget(n,i))) n#targets (MSet.add n nodes, MSet.add q ports)
+        | Some q -> nodes, MSet.add q ports
+      in dfs p (MSet.empty,MSet.empty)
 
     (* memoise? *)
     method private inp_edge p = MSet.find (fun e -> tgt e = p) edges
@@ -308,19 +308,19 @@ class virtual gen_graph nodes edges =
       let rec dfs p (nodes,ports) =
         match self#prev_opt p with
         | None -> nodes, ports
-        | Some (InnerTarget(n,_) as q) when not (Set.memq n nodes) ->
-           fold (fun i -> dfs (InnerSource(n,i))) n#sources (Set.add n nodes, Set.add q ports)
-        | Some q -> nodes, Set.add q ports
-      in dfs p (Set.empty,Set.empty)
+        | Some (InnerTarget(n,_) as q) when not (MSet.mem n nodes) ->
+           fold (fun i -> dfs (InnerSource(n,i))) n#sources (MSet.add n nodes, MSet.add q ports)
+        | Some q -> nodes, MSet.add q ports
+      in dfs p (MSet.empty,MSet.empty)
 
-    method reaches p q = Set.memq q (snd (self#nexts p)) 
+    method reaches p q = MSet.mem q (snd (self#nexts p)) 
 
     method rem_edge e =      
-      assert (MSet.memq e edges); (* TODO: plain equality probably better *)
-      edges <- MSet.remq e edges
+      assert (MSet.mem e edges);
+      edges <- MSet.rem e edges
     method rem_node n =
-      assert (MSet.memq n nodes); (* TODO: plain equality probably better *)
-      nodes <- MSet.remq n nodes;
+      assert (MSet.mem n nodes);
+      nodes <- MSet.rem n nodes;
       edges <- MSet.filter
                  (function
                   | InnerTarget(m,_),InnerSource(m',_) -> m<>n && m'<>n
@@ -615,11 +615,11 @@ let create_box (g: graph) p =
   in
   debug_msg "%i nodes out, %i nodes in" (MSet.size nodes_out) (MSet.size nodes_in);
   let ikind = function
-    | InnerTarget(n,_) when MSet.memq n nodes_in -> `In
+    | InnerTarget(n,_) when MSet.mem n nodes_in -> `In
     | _ -> `Out
   in
   let okind = function
-    | InnerSource(n,_) when MSet.memq n nodes_in -> `In
+    | InnerSource(n,_) when MSet.mem n nodes_in -> `In
     | _ -> `Out
   in
   let index e l =

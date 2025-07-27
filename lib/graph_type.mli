@@ -43,11 +43,11 @@ and graph =
 
     method next: node iport -> node oport
     method next_opt: node iport -> node oport option
-    method nexts: node iport -> node set * node oport set
-    
+    method nexts: node iport -> node mset * node oport mset
+
     method prev: node oport -> node iport
     method prev_opt: node oport -> node iport option
-    method prevs: node oport -> node set * node iport set
+    method prevs: node oport -> node mset * node iport mset
 
     method reaches: node iport -> node oport -> bool
 

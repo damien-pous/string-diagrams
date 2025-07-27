@@ -1,6 +1,5 @@
 type 'a seq = 'a Seq.t      (* sequences (with index starting at 1) *)
-type 'a set = 'a Set.t      (* sets *)
-type 'a mset = 'a MSet.t    (* multisets *)
+type 'a mset = 'a MSet.t    (* (multi)sets *)
 type perm = Perm.t          (* finite support permutations *)
 type inj = Inj.t            (* finite support injections *)
 type iseq = ISeq.t          (* increasing sequences *)
