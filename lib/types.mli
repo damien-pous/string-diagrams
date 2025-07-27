@@ -57,11 +57,14 @@ class type arena =
 type pp_mode = Full | Sparse | Term
 
 type name = string              (* box/variable names *)
-type 'node pkind = Outer of int | Inner of 'node * int
+
+(* input/output ports *)
+type 'node iport = Outer of int | Inner of 'node * int
+type 'node oport = 'node iport
 
 (* raw parsed terms/environments *)
 module Raw: sig
-  type port = string pkind
+  type port = string iport
   type 'a term =
     | Emp
     | Idm

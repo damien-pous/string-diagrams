@@ -41,7 +41,7 @@ class virtual locate (arena: arena) =
           arena#canvas#polygon ~fill:(Gg.Color.gray ~a:0.2 0.) p;
           let p = Geometry.clockwise p in
           MSet.iter (fun (i,o) ->              
-              let s,t = i#pos, o#pos in
+              let s,t = graph#ipos i, graph#opos o in
               Polygon.fold2 p (fun ij () ->
                   match Geometry.intersection ij (s,t) with
                   | Some(x,d) ->

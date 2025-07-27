@@ -31,4 +31,4 @@ val iso_envgraph: env*graph -> env*graph -> bool
 val create_box: graph -> polygon -> unit
 
 (* finding elements by their position *)
-val find: graph -> point -> [ `I of port | `O of port | `N of node | `None ]
+val find: graph -> point -> [ `I of iport | `O of oport | `N of node | `None ]

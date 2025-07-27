@@ -1,7 +1,8 @@
 open Types
 open Info
 
-type port = string pkind
+type iport = string Types.iport
+type oport = string Types.oport
 
 type term =
   private
@@ -11,7 +12,7 @@ type term =
   | Seq of term * term
   | Tns of term * term
   | Box of term * kvl
-  | Gph of int * int * (string*(kind*kvl)) list * (port*port) list * kvl
+  | Gph of int * int * (string*(kind*kvl)) list * (iport*oport) list * kvl
 and kind =
   private
   | VNode of int * int * name

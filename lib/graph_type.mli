@@ -5,51 +5,54 @@ type 'graph nkind = Var of int*int*name | Box of 'graph
 
 class type interface =
   object
-    method sources: int
-    method targets: int
+    method sources: int         (* number of sources *)
+    method targets: int         (* number of targets *)
   end
 
 class type boundary =
   object
     inherit area
     inherit interface
-    method src: int -> port
-    method tgt: int -> port
-    method nsrc: node -> int -> port
-    method ntgt: node -> int -> port
+    method spos: int -> point   (* position of the i-th source *)
+    method tpos: int -> point   (* position of the i-th target *)
   end
-and node =
+
+class type node =
   object
-    inherit boundary
+    inherit boundary    
     method kind: graph nkind    
     method pp: pp_mode -> formatter -> unit
     method draw: canvas -> unit
     method term: term
   end
-and port =
-  object
-    method pos: point
-    method kind: node pkind
-  end
 and graph =
   object
     inherit boundary
+    (* note below: [node iport / node oport] should be abbreviated as [iport / oport] *)
+
     method nodes: node mset
-    method edges: (port*port) mset
-    method update: node mset -> (node pkind*node pkind) mset -> unit
+    method edges: (node iport*node oport) mset    
+    method update: node mset -> (node iport*node oport) mset -> unit
 
-    method next: port -> port
-    method next_opt: port -> port option
-    method nexts: port -> node set * port set
+    (* positions relative to the interior of the graph:
+       outer sources and targets of inner nodes are input ports,
+       outer targets and sources of inner nodes are output ports,
+     *)
+    method ipos: node iport -> point
+    method opos: node oport -> point
+
+    method next: node iport -> node oport
+    method next_opt: node iport -> node oport option
+    method nexts: node iport -> node set * node oport set
     
-    method prev: port -> port
-    method prev_opt: port -> port option
-    method prevs: port -> node set * port set
+    method prev: node oport -> node iport
+    method prev_opt: node oport -> node iport option
+    method prevs: node oport -> node set * node iport set
 
-    method reaches: port -> port -> bool
+    method reaches: node iport -> node oport -> bool
 
-    method rem_edge: port*port -> unit
-    method add_edge: port*port -> unit
+    method rem_edge: node iport*node oport -> unit
+    method add_edge: node iport*node oport -> unit
     method rem_node: node -> unit
 
     method subst: node -> graph -> unit
@@ -59,5 +62,7 @@ and graph =
     method draw: canvas -> unit
     method term: term
   end
+type iport = node Types.iport
+type oport = node Types.oport
 
 type env = graph Info.env
