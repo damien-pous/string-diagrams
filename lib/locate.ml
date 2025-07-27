@@ -85,7 +85,7 @@ class virtual locate (arena: arena) =
                           self#highlight_oport o
                       )
             );
-          temporary#segment ~color:Constants.red (graph#ipos i) (arena#pointer);
+          temporary#segment ~color:Constants.red p q;
        | `New_edge_o o ->
           let p = arena#pointer in
           let q = graph#opos o in
@@ -99,7 +99,7 @@ class virtual locate (arena: arena) =
                           self#highlight_iport i
                       )
             );
-          temporary#segment ~color:Constants.red (graph#opos o) (arena#pointer)
+          temporary#segment ~color:Constants.red p q
        | `Move_node _ -> ()
        | `Normal -> ();
           match self#catch with

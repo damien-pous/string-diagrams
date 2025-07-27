@@ -65,9 +65,10 @@ let of_raw (e: 'a Info.env) u =
     | Raw.Seq(u,v) -> seq (build u) (build v)
     | Raw.Tns(u,v) -> Tns(build u, build v)
     | Raw.Box(u,l) -> Box(build u, l)
+    | Raw.Typ(Raw.Gph(elems,l),n,m) -> gph elems l (Some (n,m))
+    | Raw.Gph(elems,l) -> gph elems l None
     | Raw.Typ(u,n,m) -> typ (build u) n m
-    | Raw.Gph(elems,l) -> gph elems l
-  and gph elems l =
+  and gph elems l t =
     let n =
       List.fold_left (fun n e ->
           match e with
@@ -81,6 +82,11 @@ let of_raw (e: 'a Info.env) u =
           | Raw.Edge (_,Target i) -> max i m
           | _ -> m
         ) 0 elems
+    in
+    let n,m = match t with
+      | None -> n,m
+      | Some(n',m') when n<=n' && m<=m' -> n',m'
+      | _ -> failwith "arity mismatch (explicit graph)"
     in
     (* if m=0 then failwith "empty target graphs are not yet supported"; *)
     let nodes =
