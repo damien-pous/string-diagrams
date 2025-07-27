@@ -144,7 +144,7 @@ let _ = edit_factory#add_item "Redo" ~key:GdkKeysyms._R ~callback:(atomic_unit s
 let _ = view_factory#add_item "Fullscreen" ~key:GdkKeysyms._F ~callback:fullscreen
 
 let _ = GtkBase.Widget.add_events da#as_widget
-          [ `KEY_PRESS; `BUTTON_MOTION; `BUTTON_PRESS; `BUTTON_RELEASE ]
+          [ `KEY_PRESS; `POINTER_MOTION; `BUTTON_PRESS; `BUTTON_RELEASE ]
 let _ = da#misc#set_can_focus true
 let _ = da#event#connect#motion_notify ~callback:(atomic_true on_motion)
 let _ = da#event#connect#button_press ~callback:(atomic_true on_button_press)

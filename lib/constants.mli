@@ -24,7 +24,9 @@ val pradius: float
 val iport_color: color
 val oport_color: color
 
+val red: color
 val gray: color
+val black: color
 val alpha: float -> color -> color
 val color: string -> color
 val color': ?color:string -> string -> color

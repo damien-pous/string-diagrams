@@ -35,7 +35,7 @@ class virtual locate (arena: arena) =
 
     method private checkpoint =
       debug_msg "checkpoint" "%a" (pp_envgraph Term) (env,graph);
-      History.save hist (string_of_state (env,graph),self#entry)
+      History.save hist (string_of_state (env,graph),self#entry)      
 
     method private redraw ?(rebox=false) () =
       arena#canvas#clear;
@@ -43,6 +43,11 @@ class virtual locate (arena: arena) =
       if rebox then arena#ensure graph#box;
       self#refresh
 
+    method private highlight_iport i =
+      temporary#circle ~fill:Constants.iport_color {center=graph#ipos i;radius=Constants.pradius}      
+    method private highlight_oport o =
+      temporary#circle ~fill:Constants.oport_color {center=graph#opos o;radius=Constants.pradius}      
+    
     method private refresh =
       (match mode with
        | `Select p ->
@@ -65,7 +70,42 @@ class virtual locate (arena: arena) =
               if Geometry.mem_poly n#pos p then
                 temporary#box ~fill:(Gg.Color.gray ~a:0.5 0.) n#box
             ) graph#nodes
-       | _ -> ()
+       | `New_node ->
+          temporary#box ~color:Constants.red (Gg.Box2.v_mid arena#pointer (Constants.empty_size 0 0))
+       | `New_edge_i i ->
+          let p = arena#pointer in
+          let q = graph#ipos i in
+          if Geometry.mem_point p q then
+            temporary#circle ~fill:Constants.black {center=q;radius=Constants.pradius};
+          Graph.iter_oports graph
+            (fun o -> if graph#ofree o then (
+                        let q = graph#opos o in
+                        temporary#point ~color:Constants.oport_color q;
+                        if Geometry.mem_point p q then
+                          self#highlight_oport o
+                      )
+            );
+          temporary#segment ~color:Constants.red (graph#ipos i) (arena#pointer);
+       | `New_edge_o o ->
+          let p = arena#pointer in
+          let q = graph#opos o in
+          if Geometry.mem_point p q then
+            temporary#circle ~fill:Constants.black {center=q;radius=Constants.pradius};
+          Graph.iter_iports graph
+            (fun i -> if graph#ifree i then (
+                        let q = graph#ipos i in
+                        temporary#point ~color:Constants.iport_color q;
+                        if Geometry.mem_point p q then
+                          self#highlight_iport i
+                      )
+            );
+          temporary#segment ~color:Constants.red (graph#opos o) (arena#pointer)
+       | `Move_node _ -> ()
+       | `Normal -> ();
+          match self#catch with
+          | `I i -> self#highlight_iport i
+          | `O o -> self#highlight_oport o
+          | `N _ | `None -> ()
       );
       arena#refresh
     
@@ -77,7 +117,12 @@ class virtual locate (arena: arena) =
         | None -> entry_of_state (e,g)
       in
       self#set_entry s;
+      mode <- `Normal;
       self#redraw ?rebox ()
+
+    method private abort =
+      let (eg,s) = History.present hist in
+      self#set_state ~s (state_of_string eg)
     
     method undo () =
       match History.undo hist with
@@ -152,8 +197,12 @@ class virtual locate (arena: arena) =
       | `Normal ->
          (match self#catch with
           | `N x -> mode <- `Move_node (x,Gg.V2.sub arena#pointer x#pos)
-          | `I _ -> temporary#msg "not yet implemented"
-          | `O _ -> temporary#msg "not yet implemented"
+          | `I i -> (match graph#next_opt i with
+                     | None -> mode <- `New_edge_i i
+                     | Some o -> graph#rem_edge (i,o); mode <- `New_edge_o o; self#redraw())
+          | `O o -> (match graph#prev_opt o with
+                     | None -> mode <- `New_edge_o o
+                     | Some i -> graph#rem_edge (i,o); mode <- `New_edge_i i; self#redraw())
           | `None -> mode <- let p = arena#pointer in `Select(Polygon.start p)
          )
       | `New_node -> temporary#msg "aborted node creation"; mode <- `Normal
@@ -166,6 +215,17 @@ class virtual locate (arena: arena) =
       | `Select p ->
          mode <- `Normal;
          Graph.create_box graph p; self#graph_changed
+      | `New_edge_i i ->
+         (match self#catch with
+          | `I i' when i=i' -> mode <- `Normal; self#graph_changed
+          | `O o when graph#ofree o ->
+             mode <- `Normal; graph#add_edge (i,o); self#graph_changed
+          | _ -> self#abort)
+      | `New_edge_o o ->
+         (match self#catch with
+          | `O o' when o=o' -> mode <- `Normal; self#graph_changed
+          | `I i when graph#ifree i -> mode <- `Normal; graph#add_edge (i,o); self#graph_changed
+          | _ -> self#abort)
       | `Normal -> ()
       | `New_node -> ()
 
@@ -181,7 +241,8 @@ class virtual locate (arena: arena) =
       | _ -> self#refresh
 
     method on_key_press s =
-      match mode with
+      if s = "Escape" then self#abort
+      else match mode with
       | `Normal | `Move_node _ ->
          (match s with
           | "h" -> self#help 
@@ -193,10 +254,11 @@ i:      improve placement
 -/+:    shrink/enlarge element
 f/F:    fix/Free element (for later placement optimisations)
 ->/<-:    undo/redo
+ESC:    abort current action
 r:      refresh picture
 h:      print this help message"
           | "i" -> self#improve_placement
-          | "n" -> temporary#msg "type node name"; mode <- `New_node
+          | "n" -> temporary#msg "type node name"; mode <- `New_node; self#refresh
           | "f" -> self#block true
           | "F" -> self#block false
           | "d" -> self#remove
@@ -208,11 +270,8 @@ h:      print this help message"
           | "ArrowRight" -> self#redo()
           | "" -> ()
           | s -> temporary#msg "skipping key '%s'" s)
-      | `New_node ->
-         if s = "Escape" then (mode <- `Normal; temporary#msg "aborted node creation")
-         else (mode <- `Normal; self#add_node s)
-      | `Select _ ->
-         mode <- `Normal; temporary#msg "aborted box creation"
+      | `New_node -> mode <- `Normal; self#add_node s
+      | _ -> temporary#msg "ignored key `%s' during ongoing action" s
 
     method init s =
       self#set_state ~rebox:true ~s (state_of_string s);

@@ -296,7 +296,7 @@ class virtual gen_graph nodes edges =
     
     (* memoise? *)
     method private out_edge p = MSet.find (fun e -> src e = p) edges
-    method private ifree p = self#out_edge p = None
+    method ifree p = self#out_edge p = None
     method next_opt p = Option.map tgt (self#out_edge p)
     method next p = match self#next_opt p with Some q -> q | None -> raise Incomplete_graph
     method nexts p =
@@ -310,7 +310,7 @@ class virtual gen_graph nodes edges =
 
     (* memoise? *)
     method private inp_edge p = MSet.find (fun e -> tgt e = p) edges
-    method private ofree p = self#inp_edge p = None
+    method ofree p = self#inp_edge p = None
     method prev_opt p = Option.map src (self#inp_edge p)
     method prev p = match self#prev_opt p with Some q -> q | None -> raise Incomplete_graph
     method prevs p =
@@ -393,7 +393,9 @@ class virtual gen_graph nodes edges =
       Format.fprintf f "}%t: %i -> %i" (self#pp_infos mode) self#sources self#targets
     method pp mode f =
       match mode with
-      | Term -> Term.pp f self#term
+      | Term ->
+         (try Term.pp f self#term
+          with Not_a_graph_term _ | Incomplete_graph -> self#pp_ Sparse f)
       | _ -> self#pp_ mode f
 
     method term = to_term (self:>graph)
@@ -403,11 +405,11 @@ class virtual gen_graph nodes edges =
         n#draw draw;
         iter_iports (self:>graph) (fun p ->
             if self#ifree p then
-              draw#point ~color:Constants.iport_color (self#ipos p)
+              draw#point ~color:Constants.gray(* iport_color *) (self#ipos p)
           );
         iter_oports (self:>graph) (fun p ->
             if self#ofree p then
-              draw#point ~color:Constants.oport_color (self#opos p)
+              draw#point ~color:Constants.gray(* oport_color *) (self#opos p)
           )
       in
       let draw_edge (i,o) = draw#segment (self#ipos i) (self#opos o) in

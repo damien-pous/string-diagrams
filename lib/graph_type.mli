@@ -41,10 +41,12 @@ and graph =
     method ipos: node iport -> point
     method opos: node oport -> point
 
+    method ifree: node iport -> bool
     method next: node iport -> node oport
     method next_opt: node iport -> node oport option
     method nexts: node iport -> node mset * node oport mset
 
+    method ofree: node oport -> bool
     method prev: node oport -> node iport
     method prev_opt: node oport -> node iport option
     method prevs: node oport -> node mset * node iport mset
