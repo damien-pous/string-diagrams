@@ -36,11 +36,15 @@ term:
 
 elem:
 | n=NAME l=kvl COLON u=term  { Node(n,u,l) }
-| i=port TO o=port           { Edge(i,o) }
+| i=iport TO o=oport         { Edge(i,o) }
 
-port:
-| i=INT   { Outer i }
-| p=IPORT { Inner(fst p,snd p) }
+iport:
+| i=INT   { Source i }
+| p=IPORT { InnerTarget(fst p,snd p) }
+
+oport:
+| i=INT   { Target i }
+| p=IPORT { InnerSource(fst p,snd p) }
 
 env:
 | h=list(decl) { h }

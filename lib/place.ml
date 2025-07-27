@@ -29,10 +29,10 @@ let improve_placement s (g: graph) =
       let x,y = g#ipos i, g#opos o in
       let xy = V2.sub y x in
       (match i with
-       | Inner(n,_) -> add n (1./.float_of_int n#targets) xy
+       | InnerTarget(n,_) -> add n (1./.float_of_int n#targets) xy
        | _ -> ());
       (match o with
-       | Inner(n,_) -> add n (-1./.float_of_int n#sources) xy
+       | InnerSource(n,_) -> add n (-1./.float_of_int n#sources) xy
        | _ -> ())
     ) g#edges;
   Hashtbl.iter (fun x u ->

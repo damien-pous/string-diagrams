@@ -71,14 +71,14 @@ let of_raw (e: 'a Info.env) u =
     let n =
       List.fold_left (fun n e ->
           match e with
-          | Raw.Edge (Outer i, _) -> max i n
+          | Raw.Edge (Source i, _) -> max i n
           | _ -> n
         ) 0 elems
     in
     let m =
       List.fold_left (fun m e ->
           match e with
-          | Raw.Edge (_,Outer i) -> max i m
+          | Raw.Edge (_,Target i) -> max i m
           | _ -> m
         ) 0 elems
     in
@@ -101,22 +101,22 @@ let of_raw (e: 'a Info.env) u =
       with Not_found -> failwith "undeclared inner node: %s" j
     in
     let iport = function
-      | Outer i as p ->
+      | Source i as p ->
          if i>0 then p
          else failwith "invalid outer source: %i" i
-      | Inner(j,i) ->
+      | InnerTarget(j,i) ->
          try 
-           if 1<=i && i<=ktargets (kind j) then Inner(j,i)
+           if 1<=i && i<=ktargets (kind j) then InnerTarget(j,i)
            else failwith "invalid inner source: %s.%i" j i
          with Not_found -> failwith "unknown source node: %i" n
     in
     let oport = function
-      | Outer i as p ->
+      | Target i as p ->
          if i>0 then p
          else failwith "invalid outer target: %i" i
-      | Inner(j,i) ->
+      | InnerSource(j,i) ->
          try 
-           if 1<=i && i<=ksources (kind j) then Inner(j,i)
+           if 1<=i && i<=ksources (kind j) then InnerSource(j,i)
            else failwith "invalid inner target: %s.%i" j i
          with Not_found -> failwith "unknown target node: %i" n
     in

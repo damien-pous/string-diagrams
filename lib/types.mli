@@ -59,12 +59,11 @@ type pp_mode = Full | Sparse | Term
 type name = string              (* box/variable names *)
 
 (* input/output ports *)
-type 'node iport = Outer of int | Inner of 'node * int
-type 'node oport = 'node iport
+type 'node iport = Source of int | InnerTarget of 'node * int
+type 'node oport = Target of int | InnerSource of 'node * int
 
 (* raw parsed terms/environments *)
 module Raw: sig
-  type port = string iport
   type 'a term =
     | Emp
     | Idm
@@ -76,7 +75,7 @@ module Raw: sig
     | Gph of 'a elem list * 'a
   and 'a elem =
     | Node of string * 'a term * 'a
-    | Edge of port * port
+    | Edge of string iport * string oport
   (* environments *)
   type 'a env = (name*('a*(int*int) option*'a term option)) list
   type 'a envterm = 'a env * 'a term

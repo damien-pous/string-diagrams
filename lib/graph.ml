@@ -27,23 +27,31 @@ let rec iso (g: graph) (h: graph) =
     | Box g, Box h -> iso g h
     | _ -> false
   in      
-  let rec iso dn x y =
-    let step = if dn then (fun g -> g#next_opt) else (fun g -> g#prev_opt) in
-    match step g x, step h y with
+  let rec iso_dn x y =
+    match g#next_opt x, h#next_opt y with
     | None, None -> true
-    | Some (Outer i), Some (Outer j) when i=j -> true
-    | Some (Inner (n,i)), Some (Inner (m,j)) when i=j ->
+    | Some (Target i), Some (Target j) when i=j -> true
+    | Some (InnerSource(n,i)), Some (InnerSource(m,j)) when i=j ->
        Hashtbl.mem bisim (n,m) ||
          let _ = Hashtbl.add bisim (n,m) () in
          same_kind n#kind m#kind &&
-         forall n#sources (fun i -> iso_up (Inner(n,i)) (Inner(m,i))) &&
-         forall n#targets (fun i -> iso_dn (Inner(n,i)) (Inner(m,i)))
+         forall n#sources (fun i -> iso_up (InnerSource(n,i)) (InnerSource(m,i))) &&
+         forall n#targets (fun i -> iso_dn (InnerTarget(n,i)) (InnerTarget(m,i)))
     | _ -> false
-  and iso_dn x y = iso true x y
-  and iso_up x y = iso false x y
+  and iso_up x y =
+    match g#prev_opt x, h#prev_opt y with
+    | None, None -> true
+    | Some (Source i), Some (Source j) when i=j -> true
+    | Some (InnerTarget(n,i)), Some (InnerTarget(m,j)) when i=j ->
+       Hashtbl.mem bisim (n,m) ||
+         let _ = Hashtbl.add bisim (n,m) () in
+         same_kind n#kind m#kind &&
+         forall n#sources (fun i -> iso_up (InnerSource(n,i)) (InnerSource(m,i))) &&
+         forall n#targets (fun i -> iso_dn (InnerTarget(n,i)) (InnerTarget(m,i)))
+    | _ -> false
   in
-  forall g#sources (fun i -> iso_dn (Outer i) (Outer i)) &&
-  forall g#targets (fun i -> iso_up (Outer i) (Outer i))
+  forall g#sources (fun i -> iso_dn (Source i) (Source i)) &&
+  forall g#targets (fun i -> iso_up (Target i) (Target i))
 let rec iso_env e f =
   match e,f with
   | [],[] -> true
@@ -61,16 +69,16 @@ let iso_envgraph (e,g) (f,h) =
 let rec to_term (g: graph) =    (* or pregraph? *)
   let rec add_up n j l =
     if j>n#sources then l
-    else Inner(n,j)::add_up n (j+1) l
+    else InnerSource(n,j)::add_up n (j+1) l
   in
   let rec add_dn n j l =
     if j>n#targets then l
-    else Inner(n,j)::add_dn n (j+1) l
+    else InnerTarget(n,j)::add_dn n (j+1) l
   in
   let rec eat_up n j j' = function
     | [] -> tns_ctx (closed_dn n j (j'-1)) (closed_dn n (j'+1) n#targets), []
     | i::q as l -> match g#prev i  with
-                    | Inner(n',j'') when n==n' ->
+                    | InnerTarget(n',j'') when n==n' ->
                        if not (j''>j') then not_a_graph_term "needs symmetry";
                        let u,q = eat_up n (j'+1) j'' q in
                        tns_ctx (closed_dn n j (j'-1)) u,q
@@ -78,7 +86,7 @@ let rec to_term (g: graph) =    (* or pregraph? *)
   and eat_dn n j j' = function
     | [] -> tns_ctx (closed_up n j (j'-1)) (closed_up n (j'+1) n#sources), []
     | i::q as l -> match g#next i  with
-                   | Inner(n',j'') when n==n' ->
+                   | InnerSource(n',j'') when n==n' ->
                       if not (j''>j') then not_a_graph_term "needs symmetry";
                       let u,q = eat_dn n (j'+1) j'' q in
                       tns_ctx (closed_up n j (j'-1)) u,q
@@ -86,18 +94,18 @@ let rec to_term (g: graph) =    (* or pregraph? *)
   and bottom_line = function
     | [] -> Term.emp,[]
     | i::q -> match g#prev i with
-              | Inner(n,j) ->
+              | InnerTarget(n,j) ->
                  (* Format.eprintf "here %i@." j; *)
                  let u,q = eat_up n 1 j q in
                  (* Format.eprintf "eat up (%i,%i): %a@." j (List.length q) Term.pp u; *)
                  let t,k = bottom_line q in
                  Term.(tns (seq n#term u) t), add_up n 1 k
-              | Outer _ ->
+              | Source _ ->
                  let t,k = bottom_line q in Term.(tns idm t), i::k
   and top_line = function
     | [] -> Term.emp,[]
     | i::q -> match g#next i with
-              | Inner(n,j) ->
+              | InnerSource(n,j) ->
                  let u,q = eat_dn n 1 j q in
                  let t,k = top_line q in
                  let v = match n#kind with
@@ -105,7 +113,7 @@ let rec to_term (g: graph) =    (* or pregraph? *)
                    | Box g -> Term.box (to_term g)
                  in
                  Term.(tns (seq u v) t), add_dn n 1 k
-              | Outer _ ->
+              | Target _ ->
                  let t,k = top_line q in Term.(tns idm t), i::k
   and up l =
     let u,l = bottom_line l in
@@ -118,21 +126,21 @@ let rec to_term (g: graph) =    (* or pregraph? *)
     else let v,l = dn l in Term.seq u v,l
   and closed_dn n j k =
     if k<j then Term.emp else
-    let l = List.init (1+k-j) (fun i -> Inner(n,j+i)) in
+    let l = List.init (1+k-j) (fun i -> InnerTarget(n,j+i)) in
     let u,l = dn l in
     (* Format.eprintf "closing down (%i-%i): %a@." j k Term.pp u; *)
     if l<>[] then not_a_graph_term "closing down reached a target";
     u
   and closed_up n j k =
     if k<j then Term.emp else
-    let l = List.init (1+k-j) (fun i -> Inner(n,j+i)) in
+    let l = List.init (1+k-j) (fun i -> InnerSource(n,j+i)) in
     let u,l = up l in
     if l<>[] then not_a_graph_term "closing up reached a source";
     u
   in
   let closed_outer_dn j k =
     if k<j then Term.emp else
-    let l = List.init (1+k-j) (fun i -> Outer(j+i)) in
+    let l = List.init (1+k-j) (fun i -> Source(j+i)) in
     let u,l = dn l in
     if l<>[] then not_a_graph_term "closing outer down reached a target";
     u
@@ -142,12 +150,12 @@ let rec to_term (g: graph) =    (* or pregraph? *)
        (* Format.eprintf "complete %i %i []@." i n; *)
        closed_outer_dn i n
     | p :: q -> match g#prev p with
-                | Outer j ->
+                | Source j ->
                    (* Format.eprintf "complete %i %i (%i::...)@." i n j; *)
                    tns_ctx (closed_outer_dn i (j-1)) (complete (j+1) n q)
                 | _ -> assert false
   in
-  let targets = List.init g#targets (fun i -> Outer (i+1)) in
+  let targets = List.init g#targets (fun i -> Target (i+1)) in
   let u,l = up targets in
   (* Format.eprintf "before completion: %a (remains %i)@." Term.pp u (List.length l); *)
   let v = complete 1 g#sources l in
@@ -270,11 +278,11 @@ class virtual gen_graph nodes edges =
       edges <- edges'
 
     method ipos = function
-      | Outer i -> self#spos i
-      | Inner(n,i) -> n#tpos i
+      | Source i -> self#spos i
+      | InnerTarget(n,i) -> n#tpos i
     method opos = function
-      | Outer i -> self#tpos i
-      | Inner(n,i) -> n#spos i
+      | Target i -> self#tpos i
+      | InnerSource(n,i) -> n#spos i
 
     
     (* memoise? *)
@@ -286,8 +294,8 @@ class virtual gen_graph nodes edges =
       let rec dfs p (nodes,ports) =
         match self#next_opt p with
         | None -> nodes, ports
-        | Some (Inner(n,_) as q) when not (Set.memq n nodes) ->
-           fold (fun i -> dfs (Inner(n,i))) n#targets (Set.add n nodes, Set.add q ports)
+        | Some (InnerSource(n,_) as q) when not (Set.memq n nodes) ->
+           fold (fun i -> dfs (InnerTarget(n,i))) n#targets (Set.add n nodes, Set.add q ports)
         | Some q -> nodes, Set.add q ports
       in dfs p (Set.empty,Set.empty)
 
@@ -300,8 +308,8 @@ class virtual gen_graph nodes edges =
       let rec dfs p (nodes,ports) =
         match self#prev_opt p with
         | None -> nodes, ports
-        | Some (Inner(n,_) as q) when not (Set.memq n nodes) ->
-           fold (fun i -> dfs (Inner(n,i))) n#sources (Set.add n nodes, Set.add q ports)
+        | Some (InnerTarget(n,_) as q) when not (Set.memq n nodes) ->
+           fold (fun i -> dfs (InnerSource(n,i))) n#sources (Set.add n nodes, Set.add q ports)
         | Some q -> nodes, Set.add q ports
       in dfs p (Set.empty,Set.empty)
 
@@ -315,23 +323,23 @@ class virtual gen_graph nodes edges =
       nodes <- MSet.remq n nodes;
       edges <- MSet.filter
                  (function
-                  | Inner(m,_),Inner(m',_) -> m<>n && m'<>n
-                  | Inner(m,_),_ | _,Inner(m,_) -> m<>n
+                  | InnerTarget(m,_),InnerSource(m',_) -> m<>n && m'<>n
+                  | InnerTarget(m,_),_ | _,InnerSource(m,_) -> m<>n
                   | _ -> true) edges
     
     method add_edge (src,tgt) =
       assert (self#out_free src && self#inp_free tgt);
-      assert (not (self#reaches tgt src));      
+      (* assert (not (self#reaches tgt src));       *)
       edges <- MSet.add (src,tgt) edges
     
     method subst n h =
       assert (n#sources = h#sources && n#targets = h#targets);
       let remap_src = function
-        | Outer i -> self#prev_opt (Inner(n,i))
+        | Source i -> self#prev_opt (InnerSource(n,i))
         | p -> Some p
       in
       let remap_tgt = function
-        | Outer j -> self#next_opt (Inner(n,j))
+        | Target j -> self#next_opt (InnerTarget(n,j))
         | p -> Some p
       in
       let new_edges =
@@ -352,9 +360,12 @@ class virtual gen_graph nodes edges =
       | Box g -> self#subst n g
 
     (* textual pretty printing *)
-    method private pp_port f = function
-      | Outer i -> Format.fprintf f "%i" i
-      | Inner(n,i) -> Format.fprintf f "n%i.%i" (MSet.index n self#nodes) i
+    method private pp_iport f = function
+      | Source i -> Format.fprintf f "%i" i
+      | InnerTarget(n,i) -> Format.fprintf f "n%i.%i" (MSet.index n self#nodes) i
+    method private pp_oport f = function
+      | Target i -> Format.fprintf f "%i" i
+      | InnerSource(n,i) -> Format.fprintf f "n%i.%i" (MSet.index n self#nodes) i
     method private pp_kind mode f = function
       | Var(_,_,x) -> Format.fprintf f "%s" x
       | Box g -> g#pp mode f
@@ -367,7 +378,7 @@ class virtual gen_graph nodes edges =
         ) self#nodes;
       MSet.iter (fun (s,t) ->
           if not !first then Format.fprintf f ",\n "; first := false;
-          Format.fprintf f "%a -> %a" self#pp_port s self#pp_port t;
+          Format.fprintf f "%a -> %a" self#pp_iport s self#pp_oport t;
         ) self#edges;
       Format.fprintf f "}%t: %i -> %i" (self#pp_infos mode) self#sources self#targets
     method pp mode f =
@@ -422,15 +433,20 @@ let idm =
   rectangle_graph
     1 1
     MSet.empty
-    (MSet.single (Outer 1, Outer 1))
+    (MSet.single (Source 1, Target 1))
     (Constants.idm_size)
     []
 
-let shift_port n = function
-  | Outer i -> Outer (n+i)
-  | p -> p
 let shift_edges n m =
-  MSet.map (fun (s,t) -> shift_port n s, shift_port m t)
+  let shift_iport = function
+    | Source i -> Source (n+i)
+    | p -> p
+  in
+  let shift_oport = function
+    | Target i -> Target (m+i)
+    | p -> p
+  in
+  MSet.map (fun (s,t) -> shift_iport s, shift_oport t)
 
 (* tensor product *)
 let tns (g: graph) (h: graph) =
@@ -455,13 +471,13 @@ let seq (g: graph) (h: graph) =
     (MSet.union g#nodes h#nodes)
     (MSet.union
        (MSet.omap (function
-            | s,Outer i -> Option.map
+            | s,Target i -> Option.map
                              (fun o -> s,o)
-                             (h#next_opt (Outer i))
+                             (h#next_opt (Source i))
             | e -> Some e
           ) g#edges)
        (MSet.omap (function
-            | Outer _,_ -> None
+            | Source _,_ -> None
             | e -> Some e)
           h#edges))
     size
@@ -473,8 +489,8 @@ let gen_box_graph b n m =
     n m
     (MSet.single b)
     (MSet.union
-       (MSet.init n (fun i -> (Outer i, Inner(b,i))))
-       (MSet.init m (fun j -> (Inner(b,j), Outer j))))
+       (MSet.init n (fun i -> (Source i, InnerSource(b,i))))
+       (MSet.init m (fun j -> (InnerTarget(b,j), Target j))))
     (Constants.expand b#size)
     [] 
 
@@ -510,20 +526,20 @@ let of_gterm u =
         ) nodes
     in
     let iport = function
-      | Outer i -> if 1<=i && i<=n then Outer i
+      | Source i -> if 1<=i && i<=n then Source i
                    else failwith "invalid outer source: %i" i
-      | Inner(j,i) ->
+      | InnerTarget(j,i) ->
          try let n = Hashtbl.find t j in
-             if 1<=i && i<=n#targets then Inner(n,i)
+             if 1<=i && i<=n#targets then InnerTarget(n,i)
              else failwith "invalid inner source: %s.%i" j i
          with Not_found -> failwith "unknown source node: %i" n
     in
     let oport = function
-      | Outer i -> if 1<=i && i<=m then Outer i
+      | Target i -> if 1<=i && i<=m then Target i
                    else failwith "invalid outer target: %i" i
-      | Inner(j,i) ->
+      | InnerSource(j,i) ->
          try let n = Hashtbl.find t j in
-             if 1<=i && i<=n#sources then Inner(n,i)
+             if 1<=i && i<=n#sources then InnerSource(n,i)
              else failwith "invalid inner target: %s.%i" j i
          with Not_found -> failwith "unknown target node: %i" n
     in
@@ -598,8 +614,12 @@ let create_box (g: graph) p =
     MSet.partition (fun n -> Geometry.mem_poly n#pos p) g#nodes
   in
   debug_msg "%i nodes out, %i nodes in" (MSet.size nodes_out) (MSet.size nodes_in);
-  let kind = function
-    | Inner(n,_) when MSet.memq n nodes_in -> `In
+  let ikind = function
+    | InnerTarget(n,_) when MSet.memq n nodes_in -> `In
+    | _ -> `Out
+  in
+  let okind = function
+    | InnerSource(n,_) when MSet.memq n nodes_in -> `In
     | _ -> `Out
   in
   let index e l =
@@ -615,10 +635,10 @@ let create_box (g: graph) p =
           temporary#segment ~color:Color.red (g#ipos i) (g#opos o);
           error msg
         in              
-        match kind i, kind o, index e src, index e tgt with
+        match ikind i, okind o, index e src, index e tgt with
         | `Out, `Out, Some s, Some t ->
-           (fun b -> MSet.add (i, Inner(b,s)) (MSet.add (Inner(b,t), o) (edges_out b))),
-           MSet.add (Outer s, Outer t) edges_in
+           (fun b -> MSet.add (i, InnerSource(b,s)) (MSet.add (InnerTarget(b,t), o) (edges_out b))),
+           MSet.add (Source s, Target t) edges_in
         | `Out, `Out, None, None ->
            (fun b -> MSet.add e (edges_out b)),
            edges_in
@@ -628,12 +648,12 @@ let create_box (g: graph) p =
            MSet.add e edges_in
         | `In, `In, _, _ -> error "edges between selected nodes cannot be cut"
         | `Out, `In, Some s, None ->
-           (fun b -> MSet.add (i, Inner(b,s)) (edges_out b)),
-           MSet.add (Outer s, o) edges_in
+           (fun b -> MSet.add (i, InnerSource(b,s)) (edges_out b)),
+           MSet.add (Source s, o) edges_in
         | `Out, `In, _, _ -> error "out to in edge incorrectly cut"
         | `In, `Out, None, Some t ->
-           (fun b -> MSet.add (Inner(b,t), o) (edges_out b)),
-           MSet.add (i, Outer t) edges_in
+           (fun b -> MSet.add (InnerTarget(b,t), o) (edges_out b)),
+           MSet.add (i, Target t) edges_in
         | `In, `Out, _, _ -> error "in to out edge incorrectly cut"
       ) ((fun _ -> MSet.empty),MSet.empty) g#edges
   in
