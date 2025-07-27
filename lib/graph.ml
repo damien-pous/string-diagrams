@@ -313,8 +313,6 @@ class virtual gen_graph nodes edges =
         | Some q -> nodes, MSet.add q ports
       in dfs p (MSet.empty,MSet.empty)
 
-    method reaches p q = MSet.mem q (snd (self#nexts p)) 
-
     method rem_edge e =      
       assert (MSet.mem e edges);
       edges <- MSet.rem e edges
@@ -331,6 +329,9 @@ class virtual gen_graph nodes edges =
       assert (self#out_free src && self#inp_free tgt);
       (* assert (not (self#reaches tgt src));       *)
       edges <- MSet.add (src,tgt) edges
+
+    method add_node n m f l =
+      nodes <- MSet.add (var_node n m f l) nodes
     
     method subst n h =
       assert (n#sources = h#sources && n#targets = h#targets);

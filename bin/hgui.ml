@@ -100,12 +100,14 @@ let on_entry_changed _ =
   self#on_entry_changed
 
 let on_key_press ev =
-  (if List.mem (GdkEvent.Key.keyval ev) [GdkKeysyms._Tab; GdkKeysyms._Escape]
+  (if List.mem (GdkEvent.Key.keyval ev) [GdkKeysyms._Tab]
    then entry#misc#grab_focus()
    else if not (List.mem (GdkEvent.Key.keyval ev) [GdkKeysyms._Control_L; GdkKeysyms._Control_R]) then
      let s =
-       if GdkEvent.Key.keyval ev = GdkKeysyms._Left then "ArrowLeft"
-       else if GdkEvent.Key.keyval ev = GdkKeysyms._Right then "ArrowRight"
+       let kv = GdkEvent.Key.keyval ev in
+       if kv = GdkKeysyms._Left then "ArrowLeft"
+       else if kv = GdkKeysyms._Right then "ArrowRight"
+       else if kv = GdkKeysyms._Escape then "Escape"
        else GdkEvent.Key.string ev
      in
      self#on_key_press s

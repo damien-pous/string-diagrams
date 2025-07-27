@@ -126,6 +126,11 @@ class virtual locate (arena: arena) =
       | `N n -> graph#rem_node n; self#checkpoint; self#redraw()
       | _ -> temporary#msg "nothing to remove here"
 
+    method private add_node f =
+      try let l,n,m,_ = List.assoc f env in
+          graph#add_node n m f (Info.pos arena#pointer l); self#checkpoint; self#redraw()
+      with Not_found -> error "unknown node name: %s" f
+    
     method private unbox =
       match self#catch with
       | `N n -> graph#unbox n; self#checkpoint; self#redraw()
@@ -174,6 +179,7 @@ class virtual locate (arena: arena) =
       (* | `InsertEdge l, `V v -> mode <- `InsertEdge (Seq.snoc l v) *)
       (* | `InsertEdge l, `N -> *)
       (*    mode <- `InsertEdge (Seq.snoc l (Inn self#ivertex)) *)
+      | `New_node,_ -> temporary#msg "aborted node creation"; mode <- `Normal
       | _ -> ()
     
     method on_button_release =
@@ -184,6 +190,7 @@ class virtual locate (arena: arena) =
       | `Select p ->
          mode <- `Normal;
          Graph.create_box graph p; self#checkpoint; self#redraw()
+      | `New_node -> ()
 
     method on_motion =
       match mode,active with
@@ -198,11 +205,12 @@ class virtual locate (arena: arena) =
 
     method on_key_press s =
       match mode with
-      | _ ->
+      | `Normal ->
          (match s with
           | "h" -> self#help 
                      "** keys **
 d:      remove node
+n:      create node (give name afterward)
 u:      unbox node
 i:      improve placement
 -/+:    shrink/enlarge element
@@ -211,6 +219,7 @@ f/F:    fix/Free element (for later placement optimisations)
 r:      refresh picture
 h:      print this help message"
           | "i" -> self#improve_placement
+          | "n" -> temporary#msg "type node name"; mode <- `New_node
           | "f" -> self#block true
           | "F" -> self#block false
           | "d" -> self#remove
@@ -222,6 +231,10 @@ h:      print this help message"
           | "ArrowRight" -> self#redo()
           | "" -> ()
           | s -> temporary#msg "skipping key '%s'" s)
+      | `New_node ->
+         if s = "Escape" then (mode <- `Normal; temporary#msg "aborted node creation")
+         else (mode <- `Normal; self#add_node s)
+      | `Select _ -> mode <- `Normal; temporary#msg "aborted box creation"
 
     method private on_term f =
       match state_of_string self#entry with

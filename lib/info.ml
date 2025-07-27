@@ -36,6 +36,8 @@ let merge h k =
   List.append h
     (List.filter (fun (i,_) -> not (List.mem_assoc i h)) k)
 
+let pos p = merge ["pos",string_of_p2 p]
+
 let pp_kvl f l =
   if l<>[] then
     Format.fprintf f "<%a>"

@@ -49,11 +49,10 @@ and graph =
     method prev_opt: node oport -> node iport option
     method prevs: node oport -> node mset * node iport mset
 
-    method reaches: node iport -> node oport -> bool
-
     method rem_edge: node iport*node oport -> unit
     method add_edge: node iport*node oport -> unit
     method rem_node: node -> unit
+    method add_node: int -> int -> name -> Info.kvl -> unit
 
     method subst: node -> graph -> unit
     method unbox: node -> unit
