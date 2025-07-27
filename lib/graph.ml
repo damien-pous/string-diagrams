@@ -216,21 +216,21 @@ class proxy (b: boundary) =
   end
 
 (* rectangular boundary *)
-class rectangle_boundary n m ?pos size kvl =
+class rectangle_boundary n m ?pos size ?name kvl =
   object(self)
     inherit iface n m 
-    inherit Info.rectangle_area ?pos size kvl
+    inherit Info.rectangle_area ?pos size ?name kvl
     method spos i = top_pos self#box i n 
     method tpos i = bot_pos self#box i m 
   end
 
 (* polygonial boundary *)
-class polygon_boundary poly spos tpos kvl =
+class polygon_boundary poly spos tpos ?name kvl =
   let n = List.length spos in
   let m = List.length tpos in
   object
     inherit iface n m
-    inherit Info.polygon_area poly kvl as area
+    inherit Info.polygon_area poly ?name kvl as area
     val mutable spos = spos
     val mutable tpos = tpos
     method spos i = List.nth spos (i-1)
@@ -244,7 +244,7 @@ class polygon_boundary poly spos tpos kvl =
 (* variable node *)
 let var_node n m f l =
   object(self)
-    inherit rectangle_boundary n m (Constants.var_size n m) l
+    inherit rectangle_boundary n m (Constants.var_size n m) ~name:f l
     method draw (draw: canvas) =
       draw#box ~fill:self#color self#box;
       draw#text self#pos f

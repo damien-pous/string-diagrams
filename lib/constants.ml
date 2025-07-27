@@ -42,12 +42,12 @@ let xcolor = function
   | "gray"   -> gray
   | _        -> gray
 
-let color' ?color label =
+let color' ?color name =
   match color with
-  | Some c -> c 
+  | Some c -> xcolor c 
   | None -> xcolor
-              (if label = "" then ""
-               else match label.[0] with
+              (if name = "" then ""
+               else match name.[0] with
                | 'a' -> "yellow"
                | 'b' -> "orange"
                | 'c' -> "red"

@@ -27,4 +27,4 @@ val oport_color: color
 val gray: color
 val alpha: float -> color -> color
 val color: string -> color
-val color': ?color:color -> string -> color
+val color': ?color:string -> string -> color

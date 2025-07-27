@@ -63,7 +63,7 @@ class virtual printer l =
     method pp_infos mode f = self#update_kvl; if mode=Full then pp_kvl f self#kvl
   end
 
-class rectangle_area ?(pos=P2.o) size l =
+class rectangle_area ?(pos=P2.o) size ?(name="") l =
   object(self)
     inherit printer l
     val mutable pos = pos
@@ -90,15 +90,15 @@ class rectangle_area ?(pos=P2.o) size l =
     initializer
       (match self#get "pos" with Some p -> pos <- p2_of_string p; placed <- true | None -> ());
       (match self#get "size" with Some s -> size <- p2_of_string s; sized <- true | None -> ());
-      (match self#get "color" with Some c -> color <- Constants.color c | None -> ());      
+      color <- Constants.color' ?color:(self#get "color") name  
   end
 
-class polygon_area poly l =
+class polygon_area poly ?name l =
   let box = Geometry.poly_box poly in
   let pos = Box2.mid box in
   let size = Box2.size box in
   object
-    inherit rectangle_area ~pos size l as parent
+    inherit rectangle_area ~pos size ?name l as parent
     val mutable poly = poly
     method! contains p = Geometry.mem_poly p poly
     method! private on_shift d =
