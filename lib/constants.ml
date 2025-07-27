@@ -61,3 +61,6 @@ let color' ?color label =
                | 'k' -> "cacadoie"
                | _   -> "gray")
 let color = xcolor
+
+let iport_color = color "violet"
+let oport_color = color "turquoise"

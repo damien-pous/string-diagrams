@@ -46,9 +46,8 @@ class virtual locate (arena: arena) =
                   match Geometry.intersection ij (s,t) with
                   | Some(x,d) ->
                      let color = match d with
-                       | L -> Constants.color "red"
-                       | R -> Constants.color "green"
-                       | E -> Constants.color "gray"
+                       | R -> Constants.iport_color
+                       | _ -> Constants.oport_color
                      in
                      arena#canvas#point ~color x
                   | None -> ()

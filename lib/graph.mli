@@ -32,3 +32,8 @@ val create_box: graph -> polygon -> unit
 
 (* finding elements by their position *)
 val find: graph -> point -> [ `I of iport | `O of oport | `N of node | `None ]
+
+
+val iter_positionned_edges: graph -> (iport*point -> oport*point -> unit) -> unit
+val iter_iports: graph -> (iport -> unit) -> unit
+val iter_oports: graph -> (oport -> unit) -> unit

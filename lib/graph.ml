@@ -14,6 +14,15 @@ let tns_ctx u v = Term.(tns u (tns idm v))
 let src = fst
 let tgt = snd
 
+let iter_positionned_edges g f =
+  MSet.iter (fun (i,o) -> f (i,g#ipos i) (o,g#opos o)) g#edges
+let iter_iports g f =
+  fold (fun i () -> f (Source i)) g#sources ();  
+  MSet.iter (fun n -> fold (fun i () -> f (InnerTarget(n,i))) n#targets ()) g#nodes
+let iter_oports g f =
+  fold (fun i () -> f (Target i)) g#targets ();  
+  MSet.iter (fun n -> fold (fun i () -> f (InnerSource(n,i))) n#sources ()) g#nodes
+
 (** checking isomorphism
     !! for now, only correct on connected graphs *)
 let rec iso (g: graph) (h: graph) =
@@ -287,7 +296,7 @@ class virtual gen_graph nodes edges =
     
     (* memoise? *)
     method private out_edge p = MSet.find (fun e -> src e = p) edges
-    method private out_free p = self#out_edge p = None
+    method private ifree p = self#out_edge p = None
     method next_opt p = Option.map tgt (self#out_edge p)
     method next p = match self#next_opt p with Some q -> q | None -> raise Incomplete_graph
     method nexts p =
@@ -301,7 +310,7 @@ class virtual gen_graph nodes edges =
 
     (* memoise? *)
     method private inp_edge p = MSet.find (fun e -> tgt e = p) edges
-    method private inp_free p = self#inp_edge p = None
+    method private ofree p = self#inp_edge p = None
     method prev_opt p = Option.map src (self#inp_edge p)
     method prev p = match self#prev_opt p with Some q -> q | None -> raise Incomplete_graph
     method prevs p =
@@ -326,7 +335,7 @@ class virtual gen_graph nodes edges =
                   | _ -> true) edges
     
     method add_edge (src,tgt) =
-      assert (self#out_free src && self#inp_free tgt);
+      assert (self#ifree src && self#ofree tgt);
       (* assert (not (self#reaches tgt src));       *)
       edges <- MSet.add (src,tgt) edges
 
@@ -390,7 +399,17 @@ class virtual gen_graph nodes edges =
     method term = to_term (self:>graph)
 
     method draw (draw: canvas) =
-      let draw_node n = n#draw draw in
+      let draw_node n =
+        n#draw draw;
+        iter_iports (self:>graph) (fun p ->
+            if self#ifree p then
+              draw#point ~color:Constants.iport_color (self#ipos p)
+          );
+        iter_oports (self:>graph) (fun p ->
+            if self#ofree p then
+              draw#point ~color:Constants.oport_color (self#opos p)
+          )
+      in
       let draw_edge (i,o) = draw#segment (self#ipos i) (self#opos o) in
       self#draw_boundary draw;
       MSet.iter draw_node nodes;
