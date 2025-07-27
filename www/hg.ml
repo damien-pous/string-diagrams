@@ -110,9 +110,9 @@ class locate arena entry infos warnings =
   object
     inherit Locate.locate arena 
     method entry = Js.to_string (entry##.value)
-    method set_entry fmt = Format.kasprintf (fun s -> entry##.value := Js.string s) fmt
-    method entry_warning fmt = Format.kasprintf (print warnings) fmt
-    method help fmt = Format.kasprintf (print infos) fmt
+    method set_entry s = entry##.value := Js.string s
+    method entry_warning = print warnings
+    method help = print infos
     method private read _ = assert false
     method private write _ _ = assert false
     method private export _ _ = assert false

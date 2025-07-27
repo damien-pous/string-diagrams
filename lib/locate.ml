@@ -10,35 +10,43 @@ let state_of_string s =
   let et = Parser.envterm Lexer.token l in
   envgraph et
 
+let string_of_state =
+  Format.asprintf "%a" (Graph.pp_envgraph Full)
+
+let entry_of_state =
+  Format.asprintf "%a" (Graph.pp_envgraph Term)
+
 class virtual locate (arena: arena) =
   object(self)
     
     method virtual entry: string
-    method virtual set_entry: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
-    method virtual entry_warning: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
-    method virtual help: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
+    method virtual set_entry: string -> unit
+    method virtual entry_warning: string -> unit
+    method virtual help: string -> unit
 
     method private virtual read: string -> state
     method private virtual write: string -> state -> unit
     method private virtual export: string -> state -> unit
         
-    val hist = History.create ""
+    val hist = History.create ("","")
     val mutable env = env []
     val mutable graph = Graph.emp
-    val mutable active = `None
     val mutable mode = `Normal
 
     method private checkpoint =
-      Format.kasprintf (fun s -> History.save hist s) "%a"
-        (pp_envgraph Full) (env,graph)
+      debug_msg "checkpoint" "%a" (pp_envgraph Term) (env,graph);
+      History.save hist (string_of_state (env,graph),self#entry)
 
     method private redraw ?(rebox=false) () =
       arena#canvas#clear;
       graph#draw arena#canvas;
       if rebox then arena#ensure graph#box;
+      self#refresh
+
+    method private refresh =
       (match mode with
        | `Select p ->
-          arena#canvas#polygon ~fill:(Gg.Color.gray ~a:0.2 0.) p;
+          temporary#polygon ~fill:(Gg.Color.gray ~a:0.2 0.) p;
           let p = Geometry.clockwise p in
           MSet.iter (fun (i,o) ->              
               let s,t = graph#ipos i, graph#opos o in
@@ -49,162 +57,132 @@ class virtual locate (arena: arena) =
                        | R -> Constants.iport_color
                        | _ -> Constants.oport_color
                      in
-                     arena#canvas#point ~color x
+                     temporary#point ~color x
                   | None -> ()
                 ) ()
             ) graph#edges;
           MSet.iter (fun n ->
               if Geometry.mem_poly n#pos p then
-                arena#canvas#box ~fill:(Gg.Color.gray ~a:0.5 0.) n#box
+                temporary#box ~fill:(Gg.Color.gray ~a:0.5 0.) n#box
             ) graph#nodes
        | _ -> ()
-      );  
+      );
       arena#refresh
-
-    method private display_graph_infos = 
-      (* self#info "%t" pp_graph_infos *)
-      ()
     
-    method private set_state ?rebox (e,g) =
-      (* print_endline "set_graph"; *)
+    method private set_state ?rebox ?s (e,g) =
       env <- e;
       graph <- g;
-      self#redraw ?rebox ();
-      self#display_graph_infos;
-      if (match state_of_string self#entry with
-          | _,g' -> not (Graph.iso g g')
-          | exception _ -> true)
-      then
-        self#set_entry "%a" (pp_envgraph Term) (e,g)
-
+      let s = match s with
+        | Some s -> s
+        | None -> entry_of_state (e,g)
+      in
+      self#set_entry s;
+      self#redraw ?rebox ()
+    
     method undo () =
       match History.undo hist with
-      | Some s -> self#set_state (state_of_string s)
+      | Some (eg,s) -> self#set_state ~s (state_of_string eg)
       | None -> temporary#msg "no more undos"
 
     method redo () =
       match History.redo hist with
-      | Some s -> self#set_state (state_of_string s)
+      | Some (eg,s) -> self#set_state ~s (state_of_string eg)
       | None -> temporary#msg "no more redos"
 
-    method private on_graph f =
-      self#set_state (env,f graph);
-      if mode = `Normal then self#checkpoint
-
     method on_entry_changed =
-      active <- `None;
+      debug_msg "entry" "on entry changed with `%s'" self#entry;
+      mode <- `Normal;
       match state_of_string self#entry with
       | e,g ->
-         if not (Graph.iso g graph) then (
-           (* print_endline "text_changed.really"; *)
+         self#entry_warning "";
+         if not (Graph.iso_envgraph (e,g) (env,graph)) then (
+           temporary#msg "graph changed";
            env <- e;
            graph <- g;
-           active <- `None;
-           self#redraw ~rebox:true ();
-           self#display_graph_infos;
-           self#checkpoint)
-         else
-           self#display_graph_infos
-      | exception (Failure s) -> self#entry_warning "%s" s
+           self#checkpoint;
+           self#redraw ~rebox:true ()
+         )
+      | exception (Failure s) -> self#entry_warning s
       | exception Parser.Error -> self#entry_warning "Parsing error"
-      | exception e -> self#entry_warning "%s" (Printexc.to_string e)
+      | exception e -> self#entry_warning (Printexc.to_string e)
 
+    method private drawing_changed =
+      self#checkpoint;
+      self#redraw()
+
+    method private graph_changed =
+      self#set_entry (entry_of_state (env,graph));
+      self#drawing_changed
+    
     method private catch =
       Graph.find graph arena#pointer
 
-    (* method private ivertex = *)
-    (*   let v = Info.positionned_ivertex arena#pointer in *)
-    (*   self#on_graph (Graph.add_ivertex v); *)
-    (*   v *)
-
-    (* method private lift = *)
-    (*   self#on_graph (Graph.lft (Info.positionned_source (Graph.arity graph+1) arena#pointer)) *)
-
     method private remove =
       match self#catch with
-      | `N n -> graph#rem_node n; self#checkpoint; self#redraw()
-      | _ -> temporary#msg "nothing to remove here"
+      | `N n -> graph#rem_node n; self#graph_changed 
+      | _ -> temporary#msg "no node to remove here"
 
     method private add_node f =
       try let l,n,m,_ = List.assoc f env in
-          graph#add_node n m f (Info.pos arena#pointer l); self#checkpoint; self#redraw()
+          graph#add_node n m f (Info.pos arena#pointer l); self#graph_changed
       with Not_found -> error "unknown node name: %s" f
     
     method private unbox =
       match self#catch with
-      | `N n -> graph#unbox n; self#checkpoint; self#redraw()
-      | _ -> temporary#msg "nothing to unbox here"
-    
-    (* method private promote = *)
-    (*   match self#catch with *)
-    (*   | `V (Inn v) -> self#on_graph (Graph.promote v) *)
-    (*   | `V (Src _) -> temporary#msg "cannot promote a source" *)
-    (*   | `E _ -> temporary#msg "cannot promote an edge" *)
-    (*   | `None -> () *)
-
-    (* method private forget = *)
-    (*   match self#catch with *)
-    (*   | `V (Src i) -> self#on_graph (Graph.forget i) *)
-    (*   | `V (Inn _) -> temporary#msg "cannot forget an inner vertex (use r to remove it)" *)
-    (*   | `E _ -> temporary#msg "cannot forget an edge (use r to remove it)" *)
-    (*   | `None -> () *)
-
-    (* method private edge l s = *)
-    (*   let e = Info.positionned_edge (Seq.size l) s in *)
-    (*   let e,g = Graph.add_edge e l graph in *)
-    (*   Place.center_edge g e; *)
-    (*   self#set_graph g; *)
-    (*   self#checkpoint *)
+      | `N n -> graph#unbox n; self#graph_changed
+      | _ -> temporary#msg "no node to unbox here"
 
     method private scale s =
       match self#catch with
-      | `N n -> n#scale s; self#checkpoint; self#redraw()
-      | `None -> graph#scale s; self#checkpoint; self#redraw()
-      | _ -> ()
+      | `N n -> n#scale s; self#drawing_changed
+      | `None -> graph#scale s; self#drawing_changed
+      | _ -> temporary#msg "nothing to scale here"
 
     method private improve_placement =
-      Place.improve_placement 0.05 graph; self#checkpoint; self#redraw()
+      Place.improve_placement 0.05 graph; self#drawing_changed
 
     method private block b =
       let f = if b then Place.fix else Place.unfix in
       match self#catch with
       | `N n -> f n; self#checkpoint
-      | _ -> ()
+      | _ -> temporary#msg "no node to %s here" (if b then "fix" else "release")
 
     method on_button_press =
-      match mode, self#catch with
-      | `Normal, `N x -> active <- `N (x,Gg.V2.sub arena#pointer x#pos)
-      | `Normal, `None -> mode <- let p = arena#pointer in `Select(Polygon.start p)
-      (* | `InsertEdge l, `V v -> mode <- `InsertEdge (Seq.snoc l v) *)
-      (* | `InsertEdge l, `N -> *)
-      (*    mode <- `InsertEdge (Seq.snoc l (Inn self#ivertex)) *)
-      | `New_node,_ -> temporary#msg "aborted node creation"; mode <- `Normal
+      match mode with 
+      | `Normal ->
+         (match self#catch with
+          | `N x -> mode <- `Move_node (x,Gg.V2.sub arena#pointer x#pos)
+          | `I _ -> temporary#msg "not yet implemented"
+          | `O _ -> temporary#msg "not yet implemented"
+          | `None -> mode <- let p = arena#pointer in `Select(Polygon.start p)
+         )
+      | `New_node -> temporary#msg "aborted node creation"; mode <- `Normal
       | _ -> ()
     
     method on_button_release =
       match mode with
-      | `Normal ->
-         (match active with `N _ -> self#checkpoint | `None -> ());
-         active <- `None
+      | `Move_node _ ->
+         mode <- `Normal; self#checkpoint
       | `Select p ->
          mode <- `Normal;
-         Graph.create_box graph p; self#checkpoint; self#redraw()
+         Graph.create_box graph p; self#graph_changed
+      | `Normal -> ()
       | `New_node -> ()
 
     method on_motion =
-      match mode,active with
-      | `Normal,`N (n,u) ->
+      match mode with
+      | `Move_node (n,u) ->
          n#move (Gg.V2.sub arena#pointer u);
          self#redraw()
-      | `Select p, _ ->
+      | `Select p ->
          let q = arena#pointer in
          mode <-`Select(Polygon.extend p q);
-         self#redraw()         
-      | _ -> ()    
+         self#refresh         
+      | _ -> self#refresh
 
     method on_key_press s =
       match mode with
-      | `Normal ->
+      | `Normal | `Move_node _ ->
          (match s with
           | "h" -> self#help 
                      "** keys **
@@ -233,21 +211,18 @@ h:      print this help message"
       | `New_node ->
          if s = "Escape" then (mode <- `Normal; temporary#msg "aborted node creation")
          else (mode <- `Normal; self#add_node s)
-      | `Select _ -> mode <- `Normal; temporary#msg "aborted box creation"
+      | `Select _ ->
+         mode <- `Normal; temporary#msg "aborted box creation"
 
-    method private on_term f =
-      match state_of_string self#entry with
-      | t -> self#set_entry "%a" (pp_envgraph Term) (f t)
-      | exception _ -> self#entry_warning "current term is not valid"
-
-    method private init_from s =
-      self#set_state ~rebox:true s;
+    method init s =
+      self#set_state ~rebox:true ~s (state_of_string s);
       self#checkpoint;
       History.clear hist
 
-    method load_from file = self#init_from (self#read file)
-
-    method init s = self#init_from (state_of_string s)      
+    method load_from file =
+      self#set_state ~rebox:true (self#read file);
+      self#checkpoint;
+      History.clear hist
 
     method save_to file =
       self#write file (env,graph);

@@ -41,8 +41,9 @@ val orient: point -> point -> point -> lr
 (* orient a polygon in the clockwise direction *)
 val clockwise: polygon -> polygon
 
-(* membership of a point in a polygon *)
+(* membership of a point in a polygon, in a displayed "point" *)
 val mem_poly: point -> polygon -> bool
+val mem_point: point -> point -> bool
 
 (* enclosing box for a polygon *)
 val poly_box: polygon -> box

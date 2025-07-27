@@ -60,11 +60,18 @@ let dialog title action stock stock' filter =
 
 class glocate =
   object
-    inherit Locate.locate arena
+    inherit Locate.locate arena as parent
+    val mutable blocked_entry = false
     method entry = entry#buffer#get_text()
-    method set_entry fmt = Format.kasprintf entry#buffer#set_text fmt
-    method entry_warning fmt = Format.kasprintf entry_msg#set_text fmt
-    method help fmt = Format.kasprintf print_endline fmt
+    method set_entry s =
+      blocked_entry <- true;
+      Messages.debug_msg "entry" "set_entry to `%s'" s;
+      entry#buffer#set_text s;
+      blocked_entry <- false;
+    method! on_entry_changed =
+      if not blocked_entry then parent#on_entry_changed
+    method entry_warning = entry_msg#set_text
+    method help = print_endline
     method private read = File.read
     method private write = File.write
     method private export = File.export

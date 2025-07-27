@@ -582,11 +582,18 @@ let envgraph et =
   let (e,t) = GTerm.envterm et in
   Info.envmap of_gterm e, of_gterm t
 
+exception Found_iport of iport
+exception Found_oport of oport
 let find g p =
-  (* Format.eprintf "find at %a@." V2.pp p; *)
-  match MSet.find (fun n -> Box2.mem p n#box) g#nodes with
-  | Some x -> `N x
-  | None -> `None
+  try
+    iter_iports g (fun i -> if Geometry.mem_point p (g#ipos i) then raise (Found_iport i));
+    iter_oports g (fun o -> if Geometry.mem_point p (g#opos o) then raise (Found_oport o));
+    match MSet.find (fun n -> Box2.mem p n#box) g#nodes with
+    | Some x -> `N x
+    | None -> `None
+  with
+  | Found_iport i -> `I i
+  | Found_oport o -> `O o
 
 let create_box (g: graph) p =
   let debug_msg fmt = debug_msg "box" fmt in

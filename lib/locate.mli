@@ -6,9 +6,9 @@ type state = env * graph
 class virtual locate: arena ->
   object
     method virtual entry: string
-    method virtual set_entry: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
-    method virtual entry_warning: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
-    method virtual help: 'a. ('a, Format.formatter, unit, unit) format4 -> 'a
+    method virtual set_entry: string -> unit
+    method virtual entry_warning: string -> unit
+    method virtual help: string -> unit
 
     method private virtual read: string -> state
     method private virtual write: string -> state -> unit
