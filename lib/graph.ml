@@ -599,6 +599,10 @@ let find g p =
 
 let create_box (g: graph) p =
   let debug_msg fmt = debug_msg "box" fmt in
+  let edge_error (i,o) msg =
+    temporary#segment ~color:Color.red (g#ipos i) (g#opos o);
+    error msg
+  in              
   let p = Geometry.clockwise p in
   let cuts = Polygon.fold2 p (fun ij acc ->
                  MSet.fold (fun e acc ->
@@ -611,6 +615,27 @@ let create_box (g: graph) p =
                ) []
   in
   let cuts = List.rev cuts in
+  let _ =
+    let rec check = function
+      | [] -> ()
+      | `S(e,_)::q -> check q; check_s e q
+      | `T(e,_)::q -> check q; check_t e q
+    and check_s e = function 
+      | [] -> ()
+      | `S(e',_)::_ when e=e' -> edge_error e "edge cut twice as a source"
+      | `T(e',_)::q when e=e' -> check_st e q
+      | _::q -> check_s e q
+    and check_t e = function 
+      | [] -> ()
+      | `T(e',_)::_ when e=e' -> edge_error e "edge cut twice as a target"
+      | `S(e',_)::q when e=e' -> check_st e q
+      | _::q -> check_t e q
+    and check_st e = function 
+      | [] -> ()
+      | (`S(e',_)::_ | `T(e',_)::_) when e=e' -> edge_error e "edge cut more than twice"
+      | _::q -> check_st e q
+    in check cuts
+  in 
   let rec group = function
     | [] -> []
     | `S a :: q ->
@@ -660,10 +685,7 @@ let create_box (g: graph) p =
   in  
   let edges_out,edges_in =
     MSet.fold (fun (i,o as e) (edges_out,edges_in) ->
-        let error msg =
-          temporary#segment ~color:Color.red (g#ipos i) (g#opos o);
-          error msg
-        in              
+        let error = edge_error e in
         match ikind i, okind o, index e src, index e tgt with
         | `Out, `Out, Some s, Some t ->
            (fun b -> MSet.add (i, InnerSource(b,s)) (MSet.add (InnerTarget(b,t), o) (edges_out b))),
