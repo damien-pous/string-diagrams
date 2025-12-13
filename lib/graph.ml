@@ -75,7 +75,8 @@ let iso_envgraph (e,g) (f,h) =
 
 (** extracting terms from graphs
     !! for now, only correct on connected graphs *)
-let rec to_term (g: graph) =    (* or pregraph? *)
+let _ = 
+let rec to_term (g: graph) =
   let rec add_up n j l =
     if j>n#sources then l
     else InnerSource(n,j)::add_up n (j+1) l
@@ -170,6 +171,87 @@ let rec to_term (g: graph) =    (* or pregraph? *)
   let v = complete 1 g#sources l in
   (* Format.eprintf "completion: %a@." Term.pp v; *)
   Term.seq v u
+
+in to_term
+
+(* let to_term (g: graph) = *)
+(*   let rec up l = *)
+(*     let later = *)
+(*       List.fold_left (fun later p -> *)
+(*           match g#prev p with *)
+(*           | InnerTarget(n,_) -> *)
+(*              fold (fun i later -> match g#prev (InnerSource(n,i)) with *)
+(*                                   | InnerTarget(m,_) -> Set.add m later *)
+(*                                   | _ -> later *)
+(*                ) n#sources later *)
+(*           | _ -> later *)
+(*         ) Set.empty l *)
+(*     in *)
+(*     let rec split = function *)
+(*       | [] -> [],Term.emp,[] *)
+(*       | j::q -> *)
+(*          match g#prev j with *)
+(*          | InnerTarget(n,i) when not (Set.mem n later) -> *)
+(*             _ *)
+(*          | s -> let l',v,l'' = split q in *)
+(*                 s::l',Term.(seq idm v),j::l'' *)
+(*     in *)
+(*     let l',v,l'' = split l in *)
+(*     let w = closed_dn l' in *)
+(*     let vw = Term.seq v w in *)
+(*     if Term.is_id vw then dn' l' *)
+(*     else  *)
+(*       let u = up l'' in *)
+(*       Term.(seq u vw) *)
+(*   and closed_dn l' = *)
+    
+(*   and dn' l' = *)
+(*   in up (targets g) *)
+
+
+let to_term (g: graph) =
+  let rec add n j l =
+    if j>n#sources then l
+    else InnerSource(n,j)::add n (j+1) l
+  in
+  let rec eat n j l =
+    if j=n#targets+1 then l
+    else match l with
+         | [] -> not_a_graph_term "missing target"
+         | i::q -> match g#prev i  with
+                   | InnerTarget(n',j') when n=n' && j=j' -> eat n (j+1) q
+                   | _ -> not_a_graph_term "probably needs symmetry"
+  in
+  let rec up l =
+    let later =
+      List.fold_left (fun later p ->
+          match g#prev p with
+          | InnerTarget(n,_) ->
+             fold (fun i later -> match g#prev (InnerSource(n,i)) with
+                                  | InnerTarget(m,_) -> Set.add m later
+                                  | _ -> later
+               ) n#sources later
+          | _ -> later
+        ) Set.empty l
+    in
+    let rec split = function
+      | [] -> Term.emp,[]
+      | j::q ->
+         match g#prev j with
+         | InnerTarget(n,i) when not (Set.mem n later) ->
+            if i<>1 then not_a_graph_term "did not reach first target first";
+            let u,l = split (eat n 2 q) in
+            Term.tns n#term u, (add n 1 l)
+         | _ -> let v,l = split q in
+                Term.(tns idm v),j::l
+    in
+    let v,l = split l in
+    if Term.is_id v then v
+    else 
+      let u = up l in
+      Term.(seq u v)
+  in up (List.init g#targets (fun i -> Target(i+1)))
+
 
 (** pretty printing graphs *)
 let pp mode f g = g#pp mode f

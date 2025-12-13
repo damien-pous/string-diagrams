@@ -88,7 +88,7 @@ let of_raw (e: 'a Info.env) u =
       | Some(n',m') when n<=n' && m<=m' -> n',m'
       | _ -> failwith "arity mismatch (explicit graph)"
     in
-    (* if m=0 then failwith "empty target graphs are not yet supported"; *)
+    if m=0 then failwith "empty target graphs are not yet supported";
     let nodes =
       List.fold_left (fun nodes e ->
           match e with

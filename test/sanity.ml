@@ -58,9 +58,9 @@ let _ = test "" "[id]"
 let _ = test "" "[id]*id"
 let _ = test "" "[id];id"
 
-let _ = test "" "{}"
-let _ = test "" ": 0->0"
-let _ = test "" ""
+(* let _ = test "" "{}" *)
+(* let _ = test "" ": 0->0" *)
+(* let _ = test "" "" *)
 
 (* TODO: test ill-typed expressions *)
 
@@ -91,7 +91,7 @@ let _ = test e "n * n ; m"
 let e = "let m: 1->2 in let n: 1->0 in"
 let _ = test e "m ; id * n"
 let _ = test e "m ; n * id"
-let _ = test e "m ; n * n"
+(* let _ = test e "m ; n * n" *)
 
 let e = "let f: 0->1 in let g: 1->0 in let m: 1->2 in"
 let _ = test_iso e "g;f" "g*f"
@@ -99,9 +99,9 @@ let _ = test_iso e "g;f" "f*g"
 let _ = test_iso e "f*(m;g*id)" "m;(g*f*id)"
 let _ = test_niso e "f*(m;g*id)" "m;(g*id*f)"
 
-let e = "let m: 2->0 in let n: 0->1 in let n': 0->1 in"
-let _ = test e "n*id; m"
-let _ = test_niso e "n*id; m" "n'*id; m"
+(* let e = "let m: 2->0 in let n: 0->1 in let n': 0->1 in" *)
+(* let _ = test e "n*id; m" *)
+(* let _ = test_niso e "n*id; m" "n'*id; m" *)
 
 let e = "let n: 0->1 in let n': 0->1 in let m: 2->0 in let k: 0->2 in"
 let _ = test e "n"
