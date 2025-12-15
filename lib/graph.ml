@@ -59,8 +59,8 @@ let rec iso (g: graph) (h: graph) =
          forall n#targets (fun i -> iso_dn (InnerTarget(n,i)) (InnerTarget(m,i)))
     | _ -> false
   in
-  forall g#sources (fun i -> iso_dn (Source i) (Source i)) &&
-  forall g#targets (fun i -> iso_up (Target i) (Target i))
+  forall g#targets (fun i -> iso_up (Target i) (Target i)) &&
+    forall g#sources (fun i -> iso_dn (Source i) (Source i))
 let rec iso_env e f =
   match e,f with
   | [],[] -> true
@@ -73,9 +73,10 @@ let rec iso_env e f =
 let iso_envgraph (e,g) (f,h) =
   iso_env e f && iso g h
 
-(** extracting terms from graphs
-    !! for now, only correct on connected graphs *)
-let _ = 
+(** extracting terms from connected graphs
+    !! buggy 
+ *)
+let buggy_connected_to_term = 
 let rec to_term (g: graph) =
   let rec add_up n j l =
     if j>n#sources then l
@@ -174,42 +175,13 @@ let rec to_term (g: graph) =
 
 in to_term
 
-(* let to_term (g: graph) = *)
-(*   let rec up l = *)
-(*     let later = *)
-(*       List.fold_left (fun later p -> *)
-(*           match g#prev p with *)
-(*           | InnerTarget(n,_) -> *)
-(*              fold (fun i later -> match g#prev (InnerSource(n,i)) with *)
-(*                                   | InnerTarget(m,_) -> Set.add m later *)
-(*                                   | _ -> later *)
-(*                ) n#sources later *)
-(*           | _ -> later *)
-(*         ) Set.empty l *)
-(*     in *)
-(*     let rec split = function *)
-(*       | [] -> [],Term.emp,[] *)
-(*       | j::q -> *)
-(*          match g#prev j with *)
-(*          | InnerTarget(n,i) when not (Set.mem n later) -> *)
-(*             _ *)
-(*          | s -> let l',v,l'' = split q in *)
-(*                 s::l',Term.(seq idm v),j::l'' *)
-(*     in *)
-(*     let l',v,l'' = split l in *)
-(*     let w = closed_dn l' in *)
-(*     let vw = Term.seq v w in *)
-(*     if Term.is_id vw then dn' l' *)
-(*     else  *)
-(*       let u = up l'' in *)
-(*       Term.(seq u vw) *)
-(*   and closed_dn l' = *)
-    
-(*   and dn' l' = *)
-(*   in up (targets g) *)
 
-
-let to_term (g: graph) =
+(** extracting terms from graphs without empty target nodes
+    (building on the depth of each node)
+ *)
+let depth_to_term (g: graph) =
+  if MSet.exists (fun n -> n#targets = 0) g#nodes then
+    failwith "empty target nodes are not supported yet";
   let rec add n j l =
     if j>n#sources then l
     else InnerSource(n,j)::add n (j+1) l
@@ -222,35 +194,29 @@ let to_term (g: graph) =
                    | InnerTarget(n',j') when n=n' && j=j' -> eat n (j+1) q
                    | _ -> not_a_graph_term "probably needs symmetry"
   in
-  let rec up l =
-    let later =
-      List.fold_left (fun later p ->
-          match g#prev p with
-          | InnerTarget(n,_) ->
-             fold (fun i later -> match g#prev (InnerSource(n,i)) with
-                                  | InnerTarget(m,_) -> Set.add m later
-                                  | _ -> later
-               ) n#sources later
-          | _ -> later
-        ) Set.empty l
-    in
-    let rec split = function
-      | [] -> Term.emp,[]
-      | j::q ->
+  let rec slice d = function
+    | [] -> Term.emp,[]
+    | j::q ->
          match g#prev j with
-         | InnerTarget(n,i) when not (Set.mem n later) ->
+         | InnerTarget(n,i) when g#depth n = d ->
             if i<>1 then not_a_graph_term "did not reach first target first";
-            let u,l = split (eat n 2 q) in
-            Term.tns n#term u, (add n 1 l)
-         | _ -> let v,l = split q in
-                Term.(tns idm v),j::l
-    in
-    let v,l = split l in
-    if Term.is_id v then v
+            let u,l = slice d (eat n 2 q) in
+            Term.tns n#term u, (add n 1 l)            
+         | _ -> let u,q = slice d q in Term.(tns idm u),j::q       
+  in
+  let rec up d l =
+    let v,l = slice d l in
+    if Term.is_id v then
+      if l = (List.init g#sources (fun i -> g#next (Source(i+1)))) then v
+      else not_a_graph_term "sources improperly linked"
     else 
-      let u = up l in
+      let u = up (d+1) l in
       Term.(seq u v)
-  in up (List.init g#targets (fun i -> Target(i+1)))
+  in up 1 (List.init g#targets (fun i -> Target(i+1)))
+
+
+let _ = buggy_connected_to_term, depth_to_term
+let to_term = depth_to_term
 
 
 (** pretty printing graphs *)
@@ -359,14 +325,31 @@ class virtual gen_graph nodes edges =
     method virtual draw_boundary: canvas -> unit
     method private virtual shift_boundary: vector -> unit
 
+    val mutable depth = Hashtbl.create (MSet.size nodes)
     val mutable edges: (iport*oport) mset = edges
     val mutable nodes = nodes
+
+    (* warning: to be called whenever the graph changes *)
+    method private reset_depth = Hashtbl.clear depth
+    
     method edges = edges
     method nodes = nodes
     method update nodes' edges' =
       (* TODO: sanity checks *)
       nodes <- nodes';
-      edges <- edges'
+      edges <- edges';
+      self#reset_depth;
+
+    (* distance to the targets of the graph (TODO: acyclicity check) *)
+    method depth n =
+      try Hashtbl.find depth n
+      with Not_found ->
+            let d = 1 + fold (fun i ->
+                            max (match self#next (InnerTarget(n,i)) with
+                                 | Target _ -> 0
+                                 | InnerSource(m,_) -> self#depth m)
+                          ) n#targets 0
+            in Hashtbl.add depth n d; d
 
     method ipos = function
       | Source i -> self#spos i
@@ -406,7 +389,9 @@ class virtual gen_graph nodes edges =
 
     method rem_edge e =      
       assert (MSet.mem e edges);
-      edges <- MSet.rem e edges
+      edges <- MSet.rem e edges;
+      self#reset_depth;
+      
     method rem_node n =
       assert (MSet.mem n nodes);
       nodes <- MSet.rem n nodes;
@@ -414,15 +399,19 @@ class virtual gen_graph nodes edges =
                  (function
                   | InnerTarget(m,_),InnerSource(m',_) -> m<>n && m'<>n
                   | InnerTarget(m,_),_ | _,InnerSource(m,_) -> m<>n
-                  | _ -> true) edges
+                  | _ -> true) edges;
+      self#reset_depth;
+      
     
     method add_edge (src,tgt) =
       assert (self#ifree src && self#ofree tgt);
       (* assert (not (self#reaches tgt src));       *)
-      edges <- MSet.add (src,tgt) edges
+      edges <- MSet.add (src,tgt) edges;
+      self#reset_depth;      
 
     method add_node n m f l =
-      nodes <- MSet.add (var_node n m f l) nodes
+      nodes <- MSet.add (var_node n m f l) nodes;
+      (* self#reset_depth;       *)
     
     method subst n h =
       assert (n#sources = h#sources && n#targets = h#targets);
@@ -444,7 +433,8 @@ class virtual gen_graph nodes edges =
       self#rem_node n;
       h#move n#pos;   (* TOTHINK: resize, and probably copy h first *)
       nodes <- MSet.union nodes h#nodes;
-      edges <- MSet.union edges new_edges
+      edges <- MSet.union edges new_edges;
+      self#reset_depth;
     
     method unbox n =
       match n#kind with
@@ -475,7 +465,8 @@ class virtual gen_graph nodes edges =
       Format.fprintf f "}%t: %i -> %i" (self#pp_infos mode) self#sources self#targets
     method pp mode f =
       match mode with
-      | Term ->
+      | Term -> Term.pp f self#term
+      | TermIfPossible ->
          (try Term.pp f self#term
           with Not_a_graph_term _ | Incomplete_graph -> self#pp_ Sparse f)
       | _ -> self#pp_ mode f

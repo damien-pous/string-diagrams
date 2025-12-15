@@ -51,6 +51,9 @@ and graph =
     method prev_opt: node oport -> node iport option
     method prevs: node oport -> node mset * node iport mset
 
+    (* distance to the targets of the graph *)
+    method depth: node -> int
+
     method rem_edge: node iport*node oport -> unit
     method add_edge: node iport*node oport -> unit
     method rem_node: node -> unit

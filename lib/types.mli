@@ -54,7 +54,7 @@ class type arena =
     method refresh: unit
   end
 
-type pp_mode = Full | Sparse | Term
+type pp_mode = Full | Sparse | Term | TermIfPossible
 
 type name = string              (* box/variable names *)
 

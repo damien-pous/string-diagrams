@@ -14,7 +14,7 @@ let string_of_state =
   Format.asprintf "%a" (Graph.pp_envgraph Full)
 
 let entry_of_state =
-  Format.asprintf "%a" (Graph.pp_envgraph Term)
+  Format.asprintf "%a" (Graph.pp_envgraph TermIfPossible)
 
 class virtual locate (arena: arena) =
   object(self)
@@ -34,7 +34,7 @@ class virtual locate (arena: arena) =
     val mutable mode = `Normal
 
     method private checkpoint =
-      debug_msg "checkpoint" "%a" (pp_envgraph Term) (env,graph);
+      debug_msg "checkpoint" "%a" (pp_envgraph TermIfPossible) (env,graph);
       History.save hist (string_of_state (env,graph),self#entry)      
 
     method private redraw ?(rebox=false) () =
