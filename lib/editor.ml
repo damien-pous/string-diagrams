@@ -172,10 +172,17 @@ class virtual mk (arena: arena) =
           graph#add_node n m f (Info.pos arena#pointer l); self#graph_changed
       with Not_found -> error "unknown node name: %s" f
     
-    method private unbox =
+    method private unfold =
       match self#catch with
-      | `N n -> graph#unbox n; self#graph_changed
-      | _ -> temporary#msg "no node to unbox here"
+      | `N n ->
+         (match n#kind with
+          | Box _ -> graph#unbox n; self#graph_changed
+          | Var(_,_,f) ->
+             match List.assoc f env with
+             | (_,_,_,Some g) -> graph#subst n (Graph.copy env g); self#graph_changed
+             | _ -> temporary#msg "this box is atomic"
+         )
+      | _ -> temporary#msg "no node to unfold/unbox here"
 
     method private scale s =
       match self#catch with
@@ -249,7 +256,7 @@ class virtual mk (arena: arena) =
                      "** keys **
 d:      remove node
 n:      create node (give name afterward)
-u:      unbox node
+u:      unbox or unfold node
 i/I:    improve placement
 -/+:    shrink/enlarge element
 f/F:    fix/Free element (for later placement optimisations)
@@ -263,7 +270,7 @@ h:      print this help message"
           | "f" -> self#block true
           | "F" -> self#block false
           | "d" -> self#remove
-          | "u" -> self#unbox
+          | "u" -> self#unfold
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1
           | "r" -> self#redraw()

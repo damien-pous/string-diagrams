@@ -431,7 +431,7 @@ class virtual gen_graph nodes edges =
           ) h#edges
       in
       self#rem_node n;
-      h#move n#pos;   (* TOTHINK: resize, and probably copy h first *)
+      h#move n#pos;   (* TODO: resize h, or create it to fit the current box? *)
       nodes <- MSet.union nodes h#nodes;
       edges <- MSet.union edges new_edges;
       self#reset_depth;
@@ -662,7 +662,16 @@ let envgraph et =
 let equations ehg =
   let (e,h,g) = GTerm.equations ehg in
   Info.envmap of_gterm e, List.map of_equation h, of_equation g
-  
+
+(* copy a graph by serialisation, is there a nicer way? *)
+let copy e g =
+  let s = Format.kasprintf (fun s -> s) "%a" (pp Full) g in
+  try
+    let l = Lexing.from_string s in
+    let t = Parser.justterm Lexer.token l in
+    let t = GTerm.of_raw e t in
+    of_gterm t
+  with e -> Format.eprintf "error copying graph@."; raise e
 
 
 exception Found_iport of iport

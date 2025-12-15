@@ -59,6 +59,8 @@ and graph =
     method rem_node: node -> unit
     method add_node: int -> int -> name -> Info.kvl -> unit
 
+    (* note: the graph in argument to [subst] should be copied beforehand
+       (to avoid aliasing problems) *)
     method subst: node -> graph -> unit
     method unbox: node -> unit
 

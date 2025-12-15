@@ -12,9 +12,10 @@
 %left SEMI
 %left STAR
 
+%type <Info.kvl Types.Raw.term> justterm
 %type <Info.kvl Types.Raw.envterm> envterm
 %type <Info.kvl Types.Raw.equations> equations
-%start envterm equations
+%start justterm envterm equations
 
 
 %{
@@ -63,11 +64,14 @@ kvl:
 | LT h=separated_list(SEMI, KEYVAL) k=kvl GT { h @ k }
 | { [] }
 
-envterm:
-| e=env u=term EOF { (e,u) }
-
 equation:
 | u=term EQ v=term { (u,v) }
+
+justterm:
+| u=term EOF { u }
+
+envterm:
+| e=env u=term EOF { (e,u) }
 
 equations:
 | e=env l=separated_nonempty_list(TO,equation) EOF { (e,l) }

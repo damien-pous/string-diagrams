@@ -22,6 +22,9 @@ val pp: pp_mode -> formatter -> graph -> unit
 val pp_env: pp_mode -> formatter -> env -> unit
 val pp_envgraph: pp_mode -> formatter -> env*graph -> unit
 
+(* sharing-free copy (by serialisation for now) *)
+val copy: env -> graph -> graph
+
 (* graph isomorphism
    !! for now, forgetting isolated components *)
 val iso: graph -> graph -> bool
