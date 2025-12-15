@@ -106,9 +106,9 @@ class arena (canvasdiv: Html.divElement Js.t) (canvas: Html.canvasElement Js.t) 
 
   end
 
-class locate arena entry infos warnings =
+class editor arena entry infos warnings =
   object
-    inherit Locate.locate arena 
+    inherit Editor.mk arena 
     method entry = Js.to_string (entry##.value)
     method set_entry s = entry##.value := Js.string s
     method entry_warning = print warnings
@@ -128,7 +128,7 @@ let onload _ =
   let infos = get "infos" in
   let warnings = get "warnings" in
   let arena = new arena canvasdiv canvas in
-  let self = new locate arena entry infos warnings in
+  let self = new editor arena entry infos warnings in
   (* let entryfocused = ref false in *)
   let onkeypress b ev =
     (* if not b || not !entryfocused then *)

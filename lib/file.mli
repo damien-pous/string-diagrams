@@ -26,5 +26,5 @@ val write: string -> env*graph -> unit
 (* exporting to both PDF & SVG *)
 val export: string -> env*graph -> unit
 
-(* does the given HG file already exists *)
+(* does the given SD file already exists *)
 val exists: string -> bool

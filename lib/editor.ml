@@ -16,7 +16,7 @@ let string_of_state =
 let entry_of_state =
   Format.asprintf "%a" (Graph.pp_envgraph TermIfPossible)
 
-class virtual locate (arena: arena) =
+class virtual mk (arena: arena) =
   object(self)
     
     method virtual entry: string

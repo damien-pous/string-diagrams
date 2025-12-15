@@ -1,4 +1,4 @@
-RUN=hgui
+RUN=edit
 WWW=~/work/public_html/string-diagrams/
 
 all:: run
@@ -17,8 +17,8 @@ run::
 
 www::
 	dune runtest
-	dune build ./www/hg.bc.js
-	cp ./www/hip.css ./www/index.html _build/default/www/hg.bc.js $(WWW)
+	dune build ./www/applet.bc.js
+	cp ./www/hip.css ./www/index.html _build/default/www/applet.bc.js $(WWW)
 
 clean::
 	dune clean

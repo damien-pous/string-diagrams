@@ -58,9 +58,9 @@ let dialog title action stock stock' filter =
     | None -> ()
   ); dlg#misc#hide()
 
-class glocate =
+class geditor =
   object
-    inherit Locate.locate arena as parent
+    inherit Editor.mk arena as parent
     val mutable blocked_entry = false
     method entry = entry#buffer#get_text()
     method set_entry s =
@@ -76,12 +76,12 @@ class glocate =
     method private write = File.write
     method private export = File.export
   end
-let self = new glocate
+let self = new geditor
 
 
 let load =
   dialog "Open graph file" `OPEN `OPEN `OPEN 
-    (GFile.filter ~name: "HG file" ~patterns:["*.hg"] ())
+    (GFile.filter ~name: "SD file" ~patterns:["*.sd"] ())
     self#load_from
 
 let save () =
@@ -89,7 +89,7 @@ let save () =
 
 let save_as =
   dialog "Save graphs as" `SAVE `SAVE `SAVE 
-    (GFile.filter ~name: "HG file" ~patterns:["*.hg"] ())
+    (GFile.filter ~name: "SD file" ~patterns:["*.sd"] ())
     self#save_to
 
 let on_button_press ev =
@@ -127,7 +127,7 @@ let fullscreen =
   if !fs then window#unfullscreen() else window#fullscreen();
   fs := not !fs    
 
-(* TODO: capture this in locate *)
+(* TODO: capture this in editor *)
 let refresh() = arena#refresh; general_msg#buffer#set_text Messages.temporary#messages
 let atomic f x d =
   Messages.temporary#clear;  

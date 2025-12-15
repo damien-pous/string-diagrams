@@ -8,6 +8,6 @@ let export f =
 
 let _ =
   Arg.(parse
-         [ "-check", String check, "f\tcheck file f.hg (no output)" ]
+         [ "-check", String check, "f\tcheck file f.sd (no output)" ]
          export
-         "hg [-check file, file]*")
+         "sd [-check file, file]*")

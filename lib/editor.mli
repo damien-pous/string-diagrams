@@ -3,7 +3,7 @@ open Graph_type
 
 type state = env * graph
 
-class virtual locate: arena ->
+class virtual mk: arena ->
   object
     method virtual entry: string
     method virtual set_entry: string -> unit

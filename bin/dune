@@ -1,16 +1,11 @@
 (executable
- (public_name hgui)
- (modules hgui)
+ (public_name sd-edit)
+ (name edit)
+ (modules edit)
  (libraries diagrams diagrams_cairo diagrams_gtk))
 
 (executable
- (public_name hg)
- (modules hg)
+ (public_name sd)
+ (name text)
+ (modules text)
  (libraries diagrams diagrams_cairo))
-
-;; internal: to understand fonts & scales
-(executable
- (public_name scales)
- (name scales)
- (modules scales)
- (libraries vg.cairo))

@@ -1,10 +1,8 @@
-# hypergraph
+# string-diagram
 
-tool & library to visualize and edit sourced labelled hypergraphs
+tool & library to visualize, edit and relate string diagrams
 
 # build instructions
-
-need graphviz to place graphs, then
 
 opam install dune cairo2-gtk vg 
 make
@@ -14,61 +12,15 @@ maybe [opam install otfm brr lwt js_of_ocaml] ?
 
 # syntax
 
-## terms (u,v)
-0            empty graph
-a            a-labeled edge
-u | v        parallel composition
-fu           forget u
-lu           lift u
-pu           permute p u
-
-ru	     swap last two sources of u
-iu           u located according to injection i
-s(u1,...,uk) series composition (without the forget)
-*(u1,...,uk) star operation
-u.v          binary sequential composition
-u'           swap last two sources
-
-## sourced terms (at top level only)
-#k u                              set arity to k
-#<key=val;...><key=val;...>... u  set arity and source decorations
-
-## labels (a)
-s             when s does not start with f/l/s/r, which are reserved for forgets/lifts/series/swaplast
--s            when s does so, or when s is empty
-
-## permutations (p)
-[231]         explicit permutation of size <=9
-(234)         cyclic permutation (here, [1342]), of size <=9
-[1,..,8,10,9] explicit permutation of possibly greater size
-(9,10)        cyclic permutation of possible greater size
-note: the identity permutations cannot be written
-
-## injections (i)
-{264}         injection mapping 1 to 2, 2 to 6, 3 to 4 
-{2,6,11}      injection with potentially bigger values
-{011}         injection mapping 1 to 11
-
-## decorations
-forgets, edges, stars, and dots can be decored with key value lists:
- f<key=val;...>u
- a<key=val;...>
- *<key=val;...>(u,...,u)
- u.<key=val;...>v
-
-interpreted keys:
- pos=x,y     : give an explicit position
- shift=x,y   : give an explicit shift (for edges)
- radius=x    : give an explicit radius
- label=x     : give an explicit label
-
+TODO
 
 # modules
 
 ## lib
 Misc:        miscellaneous utilities
 
-MSet         finite multisets
+Set:         finite sets
+MSet:        finite multisets
 Seq:         finite sequences, index starting at 1, usually duplicate-free
 Perm:        finite support permutations
 Inj:         finite support injections
@@ -76,20 +28,16 @@ ISeq:        increasing sequences
 Stack:       lists with insertion capabilities at a designated position
 
 Types:       shared class & module types (no implementation)
+Graph_type:  graph class types (no implementation)
 
 Constants:   constants for drawing graphs
 Info:        informations about vertices & edges
-
-Functor:     functors to generate derived operations & source-decorated operations
-
-Term:        raw terms, where arity is inferred
-PTerm:       plain terms, as in the paper
-NTerm:       normalised terms (full prime decomposed)
 
 Lexer:       lexer
 Parser:      parser (produces raw terms)
 
 Canvas:      canvas for drawing pictures
+Polygon:     utilities about polygons
 Geometry:    geometric utilities to draw edges
 Arena: 	     canvas + viewport
 
@@ -97,19 +45,21 @@ Graph:       graphs and associated functions
 
 Place:       placing graphs
 
-File:        HG files and functions to manipulate them
+File:        SD files and functions to manipulate them
 
-Locate:	     UI-independent application logic
+Editor:	     UI-independent editor
+Prover:	     UI-independent prover
+
 GArena:	     GTK arena
 
 
 ## bin
-Hg:          text mode program
-Hgui:        GTK program
+Text:	     text mode program
+Edit:        GTK editor
+Prove:       GTK prover
 
 ## www
-Hg:	     web applet
+Applet:	     web applet
 
 ## tests
 Sanity:      sanity checks
-Geo:         GTK program to debug edge drawing
