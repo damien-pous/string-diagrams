@@ -184,7 +184,7 @@ class virtual locate (arena: arena) =
       | _ -> temporary#msg "nothing to scale here"
 
     method private improve_placement s =
-      Place.improve_placement s graph; self#drawing_changed
+      Place.improve_placement_depth s graph; self#drawing_changed
 
     method private block b =
       let f = if b then Place.fix else Place.unfix in
