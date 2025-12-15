@@ -183,8 +183,8 @@ class virtual locate (arena: arena) =
       | `None -> graph#scale s; self#drawing_changed
       | _ -> temporary#msg "nothing to scale here"
 
-    method private improve_placement =
-      Place.improve_placement 0.05 graph; self#drawing_changed
+    method private improve_placement s =
+      Place.improve_placement s graph; self#drawing_changed
 
     method private block b =
       let f = if b then Place.fix else Place.unfix in
@@ -250,14 +250,15 @@ class virtual locate (arena: arena) =
 d:      remove node
 n:      create node (give name afterward)
 u:      unbox node
-i:      improve placement
+i/I:    improve placement
 -/+:    shrink/enlarge element
 f/F:    fix/Free element (for later placement optimisations)
 ->/<-:    undo/redo
 ESC:    abort current action
 r:      refresh picture
 h:      print this help message"
-          | "i" -> self#improve_placement
+          | "i" -> self#improve_placement 0.05
+          | "I" -> self#improve_placement 0.2
           | "n" -> temporary#msg "type node name"; mode <- `New_node; self#refresh
           | "f" -> self#block true
           | "F" -> self#block false
