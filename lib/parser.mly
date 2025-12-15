@@ -13,7 +13,8 @@
 %left STAR
 
 %type <Info.kvl Types.Raw.envterm> envterm
-%start envterm
+%type <Info.kvl Types.Raw.equations> equations
+%start envterm equations
 
 
 %{
@@ -64,4 +65,10 @@ kvl:
 
 envterm:
 | e=env u=term EOF { (e,u) }
-  
+
+equation:
+| u=term EQ v=term { (u,v) }
+
+equations:
+| e=env l=separated_nonempty_list(TO,equation) EOF { (e,l) }
+

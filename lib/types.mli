@@ -79,6 +79,7 @@ module Raw: sig
   (* environments *)
   type 'a env = (name*('a*(int*int) option*'a term option)) list
   type 'a envterm = 'a env * 'a term
+  type 'a equations = 'a env * ('a term * 'a term) list 
 end
 
 class type printable =

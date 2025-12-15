@@ -70,3 +70,5 @@ type iport = node Types.iport
 type oport = node Types.oport
 
 type env = graph Info.env
+
+type equation = graph * graph

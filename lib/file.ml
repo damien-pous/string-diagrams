@@ -59,6 +59,8 @@ let svg_via_vg image view file =
 
 open Graph
 
+module SD = struct
+  
 let read f =
   let i = open_in (f^".sd") in
   let l = Lexing.from_channel i in
@@ -84,3 +86,19 @@ let export f (_,g) =
 
 let exists f = Sys.file_exists (f ^ ".sd")
   
+end
+
+module SDP = struct
+  
+let read f =
+  let i = open_in (f^".sdp") in
+  let l = Lexing.from_channel i in
+  let t = Parser.equations Lexer.token l in
+  close_in i;
+  equations t
+
+let exists f = Sys.file_exists (f ^ ".sdp")
+  
+end
+
+

@@ -649,13 +649,21 @@ let of_gterm u =
         Some (Box2.mid box), size, l
     in
     rectangle_graph n m nodes edges ?pos size l
-  in build u       
+  in build u
+
+let of_equation (u,v) = (of_gterm u, of_gterm v)
 
 let env e = Info.envmap of_gterm (GTerm.env e)
 let of_raw e t = of_gterm (GTerm.of_raw e t)
 let envgraph et =
   let (e,t) = GTerm.envterm et in
   Info.envmap of_gterm e, of_gterm t
+
+let equations ehg =
+  let (e,h,g) = GTerm.equations ehg in
+  Info.envmap of_gterm e, List.map of_equation h, of_equation g
+  
+
 
 exception Found_iport of iport
 exception Found_oport of oport

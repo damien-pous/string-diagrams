@@ -9,11 +9,13 @@ build::
 test::
 	dune build
 	OCAMLRUNPARAM=b dune runtest
+	dune exec ./bin/text.exe -- -check default
+	dune exec ./bin/text.exe -- -check mumu
 
 run::
 	dune build
 	OCAMLRUNPARAM=b dune runtest
-	OCAMLRUNPARAM=b dune exec ./bin/$(RUN).exe
+	OCAMLRUNPARAM=b dune exec ./bin/$(RUN).exe -- mumu
 
 www::
 	dune runtest

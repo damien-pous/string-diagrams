@@ -157,3 +157,19 @@ let env (e: kvl Raw.env) =
   env (List.rev e)
 
 let envterm (e,t) = let e = env e in e,of_raw e t
+
+let of_equation e (u,v) =
+  let u = of_raw e u in
+  let v = of_raw e v in
+  if (sources u,targets u) <> (sources v,targets v) then
+    failwith "arity mismatch in an equation";
+  (u,v)
+
+let equations (e,l) =
+  let h,g = match List.rev l with
+    | [] -> assert false
+    | g::h -> h,g
+  in
+  let e = env e in
+  e, List.rev_map (of_equation e) h, of_equation e g
+  

@@ -1,10 +1,11 @@
 open Diagrams_cairo
+open File.SD
 
 let check f =
-  ignore(File.read f)
+  ignore(read f)
 
 let export f =
-  File.export f (File.read f)
+  export f (read f)
 
 let _ =
   Arg.(parse

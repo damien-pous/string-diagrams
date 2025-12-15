@@ -1,4 +1,5 @@
 let m<color=red>: 2 -> 1 in
 let n<color=blue>: 2 -> 1 in
 let x<color=violet>: 2 -> 2 in
-(id*x*id;m*n)*id*id;(id*x*id;m*n)
+let mn := id*x*id;m*n in
+mn*id*id;mn

@@ -14,12 +14,14 @@ val svg_via_vg: image -> box -> string -> unit
 
 
 (* below, files are given by their basenames,
-   extensions ".sd", ".pdf" or ".svg" are automativally added *)
+   extensions ".sd", ".sdp", ".pdf" or ".svg" are automativally added *)
 
 open Graph_type
 
-(* reading from / writing to files
-   first argument is the basename, extension ".sd" is added *)
+(* reading from / writing to SD files (string diagrams) *)
+
+module SD: sig
+
 val read: string -> env*graph
 val write: string -> env*graph -> unit
 
@@ -28,3 +30,16 @@ val export: string -> env*graph -> unit
 
 (* does the given SD file already exists *)
 val exists: string -> bool
+
+end
+
+(* reading from SDP files (string diagram proofs) *)
+
+module SDP: sig
+
+val read: string -> env * (equation list) * equation
+
+(* does the given SDP file already exists *)
+val exists: string -> bool
+
+end

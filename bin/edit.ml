@@ -10,7 +10,7 @@ let height = 600
 let file = ref
              (match Sys.argv with
               | [|_|] -> "default"
-              | [|_;file|] when File.exists file -> file
+              | [|_;file|] when File.SD.exists file -> file
               | _ -> Format.eprintf "usage: hgui [file]\n"; exit 1)
 
 let _ = GtkMain.Main.init ()
@@ -72,9 +72,9 @@ class geditor =
       if not blocked_entry then parent#on_entry_changed
     method entry_warning = entry_msg#set_text
     method help = print_endline
-    method private read = File.read
-    method private write = File.write
-    method private export = File.export
+    method private read = File.SD.read
+    method private write = File.SD.write
+    method private export = File.SD.export
   end
 let self = new geditor
 
