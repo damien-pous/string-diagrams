@@ -15,12 +15,13 @@ val box: graph -> kvl -> graph
 val env: kvl Raw.env -> env
 val of_raw: env -> kvl Raw.term -> graph
 val envgraph: kvl Raw.envterm -> env * graph
-val equations: kvl Raw.equations -> env * (equation list) * equation
+val equations: kvl Raw.equations -> equations
 
 (* textual pretty printing *)
 val pp: pp_mode -> formatter -> graph -> unit
 val pp_env: pp_mode -> formatter -> env -> unit
 val pp_envgraph: pp_mode -> formatter -> env*graph -> unit
+val pp_equations: pp_mode -> formatter -> equations -> unit
 
 (* sharing-free copy (by serialisation for now) *)
 val copy: env -> graph -> graph

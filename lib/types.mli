@@ -90,13 +90,19 @@ class type printable =
     method pp_infos: pp_mode -> formatter -> unit
   end
 
+class type paddable =
+  object
+    method width: float
+    method height: float
+    method shift: vector -> unit
+  end
+
 class type area =
   object
     inherit printable
+    inherit paddable
     method pos: point
     method size: size
-    method width: float
-    method height: float
     method box: box
     method safebox: box
     method color: color
@@ -104,9 +110,9 @@ class type area =
     method contains: point -> bool
 
     method move: point -> unit
-    method shift: vector -> unit
     method private on_shift: vector -> unit
     method scale: float -> unit
+    method rebox: box -> unit
 
     method draw_boundary: canvas -> unit
   end

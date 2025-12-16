@@ -82,6 +82,7 @@ class rectangle_area ?(pos=P2.o) size ?(name="") l =
     method shift d = self#on_shift d; pos <- V2.(pos + d); placed <- true
     method move p = self#shift V2.(p-pos)
     method scale s = size <- V2.smul s size; sized <- true
+    method rebox b = pos <- Box2.mid b; size <- Box2.size b
     method draw_boundary (draw: canvas) = draw#box self#box
     method private on_shift _ = ()
     method private update_kvl =
@@ -126,5 +127,6 @@ class proxy (a: area): area =
     method private on_shift _ = ()
     method move = a#move
     method scale = a#scale
+    method rebox = a#rebox
     method draw_boundary = a#draw_boundary
   end

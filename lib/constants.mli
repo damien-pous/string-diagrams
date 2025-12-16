@@ -12,6 +12,8 @@ val font: font
 
 val linewidth: float
 
+val spacing: float
+
 val empty_size: int -> int -> size2
 val var_size: int -> int -> size2
 val idm_size: size2

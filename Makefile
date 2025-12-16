@@ -1,4 +1,4 @@
-RUN=edit
+RUN=prove
 WWW=~/work/public_html/string-diagrams/
 
 all:: run

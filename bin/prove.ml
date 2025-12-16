@@ -10,8 +10,8 @@ let height = 600
 let file = ref
              (match Sys.argv with
               | [|_|] -> "default"
-              | [|_;file|] when File.SD.exists file -> file
-              | _ -> Format.eprintf "usage: edit [file]\n"; exit 1)
+              | [|_;file|] when File.SDP.exists file -> file
+              | _ -> Format.eprintf "usage: prove [file]\n"; exit 1)
 
 let _ = GtkMain.Main.init ()
 let window = GWindow.window ~title:!file ~position:`CENTER ()
@@ -24,17 +24,9 @@ let file_factory = new GMenu.factory (factory#add_submenu "File") ~accel_group
 let edit_factory = new GMenu.factory (factory#add_submenu "Edit") ~accel_group
 let view_factory = new GMenu.factory (factory#add_submenu "View") ~accel_group
 
-let paned = GPack.paned `HORIZONTAL ~packing:(vbox#pack ~expand:true) ()
-let vbox1 = GPack.vbox ~homogeneous:false ~packing:paned#pack1 ()
-let vbox2 = GPack.vbox ~homogeneous:false ~packing:paned#pack2 ()
-
-
-let da = GMisc.drawing_area ~width ~height ~packing:(vbox1#pack ~expand:true) ()
+let da = GMisc.drawing_area ~width ~height ~packing:(vbox#pack ~expand:true) ()
 let arena = GArena.create ~width ~height ~window da ()
-let general_msg = GText.view ~editable:false ~cursor_visible:false ~packing:(vbox1#pack) ()
-
-let entry = GText.view ~editable:true ~accepts_tab:false ~packing:(vbox2#pack ~expand:true) ()
-let entry_msg = GMisc.label ~packing:(vbox2#pack) ()
+let general_msg = GText.view ~editable:false ~cursor_visible:false ~packing:(vbox#pack) ()
 
 let dialog title action stock stock' filter =
   let dlg = GWindow.file_chooser_dialog
@@ -58,30 +50,19 @@ let dialog title action stock stock' filter =
     | None -> ()
   ); dlg#misc#hide()
 
-class geditor =
+class gprover =
   object
-    inherit Editor.mk arena as parent
-    val mutable blocked_entry = false
-    method entry = entry#buffer#get_text()
-    method set_entry s =
-      blocked_entry <- true;
-      Messages.debug_msg "entry" "set_entry to `%s'" s;
-      entry#buffer#set_text s;
-      blocked_entry <- false;
-    method! on_entry_changed =
-      if not blocked_entry then parent#on_entry_changed
-    method entry_warning = entry_msg#set_text
+    inherit Prover.mk arena
     method help = print_endline
-    method private read = File.SD.read
-    method private write = File.SD.write
-    method private export = File.SD.export
+    method private read = File.SDP.read
+    method private write = File.SDP.write
   end
-let self = new geditor
+let self = new gprover
 
 
 let load =
   dialog "Open graph file" `OPEN `OPEN `OPEN 
-    (GFile.filter ~name: "SD file" ~patterns:["*.sd"] ())
+    (GFile.filter ~name: "SDP file" ~patterns:["*.sdp"] ())
     self#load_from
 
 let save () =
@@ -95,7 +76,7 @@ let save_as =
 let on_button_press ev =
   let state = GdkEvent.Button.state ev in
   not (Gdk.Convert.test_modifier `CONTROL state) &&
-    (self#on_button_press; true)
+    (self#on_button_press (Gdk.Convert.test_modifier `SHIFT state); true)
 
 let on_motion _ =
   self#on_motion; true
@@ -103,23 +84,17 @@ let on_motion _ =
 let on_button_release _ =
   self#on_button_release; true
 
-let on_entry_changed _ =
-  self#on_entry_changed
-
 let on_key_press ev =
-  (if List.mem (GdkEvent.Key.keyval ev) [GdkKeysyms._Tab]
-   then entry#misc#grab_focus()
-   else if not (List.mem (GdkEvent.Key.keyval ev) [GdkKeysyms._Control_L; GdkKeysyms._Control_R]) then
-     let s =
-       let kv = GdkEvent.Key.keyval ev in
-       if kv = GdkKeysyms._Left then "ArrowLeft"
-       else if kv = GdkKeysyms._Right then "ArrowRight"
-       else if kv = GdkKeysyms._Escape then "Escape"
-       else GdkEvent.Key.string ev
-     in
-     self#on_key_press s
-  );
-  true
+  (if not (List.mem (GdkEvent.Key.keyval ev) [GdkKeysyms._Control_L; GdkKeysyms._Control_R]) then
+    let s =
+      let kv = GdkEvent.Key.keyval ev in
+      if kv = GdkKeysyms._Left then "ArrowLeft"
+      else if kv = GdkKeysyms._Right then "ArrowRight"
+      else if kv = GdkKeysyms._Escape then "Escape"
+      else GdkEvent.Key.string ev
+    in
+    self#on_key_press s
+  ); true
 
 let fullscreen =
   let fs = ref false in
@@ -150,7 +125,6 @@ let _ = da#event#connect#motion_notify ~callback:(atomic_true on_motion)
 let _ = da#event#connect#button_press ~callback:(atomic_true on_button_press)
 let _ = da#event#connect#button_release ~callback:(atomic_true on_button_release)
 let _ = da#event#connect#key_press ~callback:(atomic_true on_key_press)
-let _ = entry#buffer#connect#changed ~callback:(atomic_unit on_entry_changed)
 let _ = window#connect#destroy ~callback:Main.quit
 let _ = window#add_accel_group accel_group
 let _ = atomic_unit self#load_from !file

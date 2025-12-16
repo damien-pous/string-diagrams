@@ -97,6 +97,12 @@ let read f =
   close_in i;
   equations t
 
+let write f l =
+  let o = open_out (f^".sdp") in
+  let f = Format.formatter_of_out_channel o in
+  Format.fprintf f "%a" (pp_equations Full) l;
+  close_out o
+
 let exists f = Sys.file_exists (f ^ ".sdp")
   
 end

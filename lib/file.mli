@@ -37,7 +37,8 @@ end
 
 module SDP: sig
 
-val read: string -> env * (equation list) * equation
+val read: string -> equations
+val write: string -> equations -> unit
 
 (* does the given SDP file already exists *)
 val exists: string -> bool

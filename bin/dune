@@ -5,6 +5,12 @@
  (libraries diagrams diagrams_cairo diagrams_gtk))
 
 (executable
+ (public_name sd-prove)
+ (name prove)
+ (modules prove)
+ (libraries diagrams diagrams_cairo diagrams_gtk))
+
+(executable
  (public_name sd)
  (name text)
  (modules text)

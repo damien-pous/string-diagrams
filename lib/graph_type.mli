@@ -73,4 +73,13 @@ type oport = node Types.oport
 
 type env = graph Info.env
 
+(* class type equation = *)
+(*   object *)
+(*     inherit area *)
+(*     method lhs: graph *)
+(*     method rhs: graph *)
+(*     method pp: pp_mode -> formatter -> unit *)
+(*     method draw: canvas -> unit *)
+(*   end *)
 type equation = graph * graph
+type equations = env * equation list * equation
