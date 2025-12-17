@@ -125,6 +125,7 @@ let _ = da#event#connect#motion_notify ~callback:(atomic_true on_motion)
 let _ = da#event#connect#button_press ~callback:(atomic_true on_button_press)
 let _ = da#event#connect#button_release ~callback:(atomic_true on_button_release)
 let _ = da#event#connect#key_press ~callback:(atomic_true on_key_press)
+let _ = Glib.Timeout.add ~ms:25 ~callback:(fun _ -> self#on_tic; true)
 let _ = window#connect#destroy ~callback:Main.quit
 let _ = window#add_accel_group accel_group
 let _ = fullscreen()

@@ -83,7 +83,8 @@ class rectangle_area ?(pos=P2.o) size ?(name="") l =
     method move p = self#shift V2.(p-pos)
     method scale s = size <- V2.smul s size; sized <- true
     method rebox b = pos <- Box2.mid b; size <- Box2.size b; sized <- true
-    method draw_boundary (draw: canvas) = draw#box self#box
+    method private fill = Option.map Constants.color (self#get "fill") 
+    method draw_boundary (draw: canvas) = draw#box ?fill:self#fill self#box
     method private on_shift _ = ()
     method private update_kvl =
       if placed then self#add "pos" (string_of_p2 pos);
@@ -106,7 +107,8 @@ class polygon_area poly ?name l =
       parent#on_shift d;
       poly <- Polygon.map (V2.add d) poly
     method! scale _ = failwith "TODO: scale polygon"
-    method! draw_boundary (draw: canvas) = draw#polygon poly
+    method! draw_boundary (draw: canvas) =
+      draw#polygon ?fill:parent#fill poly
   end
 
 class proxy (a: area): area =

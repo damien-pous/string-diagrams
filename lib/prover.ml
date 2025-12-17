@@ -23,23 +23,25 @@ class virtual mk (arena: arena) =
     method private state = state    
     method private env = let (e,_,_) = state in e
     method private hyps = let (_,h,_) = state in h
-    method private left = let (_,_,(l,_)) = state in l
-    method private right = let (_,_,(_,r)) = state in r
+    method private lhs = let (_,_,(l,_)) = state in l
+    method private rhs = let (_,_,(_,r)) = state in r
     method private iter_graphs f =
       List.iter (fun (l,r) -> f l; f r) self#hyps;
-      f self#left; f self#right
-    method private fold_graphs f a =
+      f self#lhs; f self#rhs
+    method private fold_graphs: 'a. (graph -> 'a -> 'a) -> 'a -> 'a = fun f a ->
       List.fold_right (fun (l,r) a -> f l (f r a)) self#hyps
-      (f self#left (f self#right a))
+      (f self#lhs (f self#rhs a))
       
     method private box =
       Gg.Box2.(
           List.fold_right (fun (l,r) -> union (union l#box r#box)) self#hyps
-            (union self#left#box self#right#box))
+            (union self#lhs#box self#rhs#box))
 
     method private redraw =
       arena#canvas#clear;
       self#iter_graphs (fun g -> g#draw arena#canvas);
+      List.iter (fun (l,r) -> arena#canvas#text (Gg.P2.mid l#pos r#pos) "=") self#hyps;
+      arena#canvas#text (Gg.P2.mid self#lhs#pos self#rhs#pos) "=?=";
       self#refresh
 
     method !load f =
@@ -82,7 +84,8 @@ class virtual mk (arena: arena) =
 
     method private changed =
       self#checkpoint;
-      self#redraw
+      self#perturbate
+    (* note that #perturbate always calls #redraw *)
     
     method private catch_graph =
       self#fold_graphs (fun g -> function
@@ -115,22 +118,28 @@ class virtual mk (arena: arena) =
       | `G g -> g#scale s; self#changed
       | _ -> temporary#msg "nothing to scale here"
 
-    method private improve_placement s =
-      self#iter_graphs (Place.improve_placement_depth s); self#changed
-
-    method private block b =
-      let f = if b then Place.fix else Place.unfix in
+    method private improve_placement force =
+      if force || not (self#fold_graphs (fun g s -> s && g#stable) true) then        
+        (self#iter_graphs (Place.improve_placement_depth ~force 0.05);
+         self#redraw)
+    method private perturbate = self#improve_placement true
+    
+    method private release =
       match self#catch with
-      | `N(_,n) -> f n; self#checkpoint
-      | `G _ -> temporary#msg "graphs are always fixed"
-      | _ -> temporary#msg "no node to %s here" (if b then "fix" else "release")
+      | `N(_,n) -> Place.unfix n; self#perturbate
+      | _ -> temporary#msg "no node to release here"
+
+    method on_tic =
+      match mode with
+      | `Normal | `Move_node _ -> self#improve_placement false
+      | _ -> ()
 
     method on_button_press ctrl =
       match mode with 
       | `Normal ->
          (match self#catch with
-          | `N(_,x) -> mode <- `Move_node ((x:>area),Gg.V2.sub arena#pointer x#pos)
-          | `G g when ctrl -> mode <- `Move_node ((g:>area),Gg.V2.sub arena#pointer g#pos)
+          | `N(g,x) -> Place.fix x; mode <- `Move_node (g,(x:>area),Gg.V2.sub arena#pointer x#pos)
+          | `G g when ctrl -> mode <- `Move_node (g,(g:>area),Gg.V2.sub arena#pointer g#pos)
           | `G g -> mode <- let p = arena#pointer in `Select(g,Polygon.start p)
           | `None -> ()
          )
@@ -147,9 +156,9 @@ class virtual mk (arena: arena) =
 
     method on_motion =
       match mode with
-      | `Move_node (n,u) ->
+      | `Move_node (_,n,u) ->
          n#move (Gg.V2.sub arena#pointer u);
-         self#redraw
+         self#perturbate
       | `Select (g,p) ->
          let q = arena#pointer in
          mode <-`Select(g,Polygon.extend p q);
@@ -164,18 +173,14 @@ class virtual mk (arena: arena) =
           | "h" -> self#help 
                      "** keys **
 u       unbox or unfold node
-i/I     improve placement
 -/+     shrink/enlarge element
-=       fit screen
-f/F     fix/Free element (for later placement optimisations)
+f       release fixed element
 ->/<-    undo/redo
 ESC     abort current action
+=       fit screen
 r       refresh picture
 h       print this help message"
-          | "i" -> self#improve_placement 0.05
-          | "I" -> self#improve_placement 0.2
-          | "f" -> self#block true
-          | "F" -> self#block false
+          | "f" -> self#release
           | "u" -> self#unfold
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1

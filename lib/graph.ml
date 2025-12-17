@@ -499,6 +499,16 @@ class virtual gen_graph nodes edges =
       self#shift_boundary d;
       MSet.iter (fun n -> n#shift d) nodes
 
+    method inner_graphs =
+      MSet.fold (fun n a -> match n#kind with
+                            | Box g -> MSet.add g a
+                            | _ -> a) MSet.empty nodes
+
+    val mutable stable = false
+    method stable =
+      stable && MSet.forall (fun g -> g#stable) self#inner_graphs
+    method set_stable b = stable <- b
+
   end
 
 let polygon_graph spos tpos nodes edges poly l =
@@ -822,5 +832,6 @@ let create_box (g: graph) p =
   debug_msg "%i edges in" (MSet.size edges_in);
   let h = polygon_graph (List.map snd src) (List.map snd tgt) nodes_in edges_in p [] in
   let b = box_node h [] in
+  b#set "fill" "gray";
   debug_msg "%t" (b#pp Full);
   g#update (MSet.add b nodes_out) (edges_out b)

@@ -49,7 +49,8 @@ let improve_placement s (g: graph) =
       if x#get "fixed" <> Some "true" then
         x#shift (V2.smul s u)) t
 
-let rec improve_placement_depth s (g: graph) =
+let rec improve_placement_depth ?(force=false) s (g: graph) =
+  if force || not g#stable then
   let repulse = 0.0 in
   let attract_link = -0.5 in
   let attract_depth = -5.0 in
@@ -114,13 +115,17 @@ let rec improve_placement_depth s (g: graph) =
        | InnerSource(n,_) -> add n (attract_link/.((* sqrt *) (* (V2.norm xy) *. *) float_of_int n#sources)) xy
        | _ -> ())
     ) g#edges;
-  Hashtbl.iter (fun x u ->
-      if x#get "fixed" <> Some "true" then
-        x#shift (V2.smul s u)) t;
+  (* apply forces *)
+  let b =
+    Hashtbl.fold (fun x u b ->
+        if x#get "fixed" <> Some "true" && V2.norm2 u > 10. then
+          (x#shift (V2.smul s u); false)
+        else b
+      ) t true
+  in
+  g#set_stable b;
   (* recursively place inner boxes *)
-  MSet.iter (fun n -> match n#kind with
-                      | Box g -> improve_placement_depth s g
-                      | _ -> ()) g#nodes
+  MSet.iter (improve_placement_depth ~force s) g#inner_graphs
 
 let fix x = x#set "fixed" "true"
 let unfix x = x#unset "fixed"

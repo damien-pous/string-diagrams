@@ -34,6 +34,8 @@ and graph =
     method edges: (node iport*node oport) mset    
     method update: node mset -> (node iport*node oport) mset -> unit
 
+    method inner_graphs: graph mset
+
     (* positions relative to the interior of the graph:
        outer sources and targets of inner nodes are input ports,
        outer targets and sources of inner nodes are output ports,
@@ -67,6 +69,10 @@ and graph =
     method pp: pp_mode -> formatter -> unit
     method draw: canvas -> unit
     method term: term
+
+    (* is the graph stable (elastic dynamic) *)
+    method stable: bool
+    method set_stable: bool -> unit
   end
 type iport = node Types.iport
 type oport = node Types.oport

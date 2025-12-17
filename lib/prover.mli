@@ -13,6 +13,7 @@ class virtual mk: arena ->
     method on_button_release: unit
     method on_motion: unit
     method on_key_press: string -> unit
+    method on_tic: unit
 
     method undo: unit -> unit
     method redo: unit -> unit
