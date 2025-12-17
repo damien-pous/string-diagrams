@@ -42,6 +42,9 @@ let xcolor = function
   | "cacadoie" -> Color.v 0.3 0.6 0.0 1.
   | "black"  -> Color.black
   | "gray"   -> gray
+  | "lhs"    -> Color.v 1.0 1.0 0. 0.5
+  | "rhs"    -> Color.v 1.0 0.5 0. 0.6
+  | "done"   -> Color.v 0.0 1.0 0.3 0.4
   | _        -> gray
 
 let color' ?color name =

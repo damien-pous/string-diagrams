@@ -83,6 +83,10 @@ class virtual mk (arena: arena) =
       self#redraw
 
     method private changed =
+      if Graph.iso self#lhs self#rhs then
+        (self#lhs#set "fill" "done"; self#rhs#set "fill" "done")
+      else
+        (self#lhs#unset "fill"; self#rhs#unset "fill");        
       self#checkpoint;
       self#perturbate
     (* note that #perturbate always calls #redraw *)
@@ -104,7 +108,10 @@ class virtual mk (arena: arena) =
       match self#catch with
       | `N (g,n) ->
          (match n#kind with
-          | Box _ -> g#unbox n; self#changed
+          | Box _ ->
+             g#unbox n;
+             List.iter (fun (l,r) -> l#unset "fill"; r#unset "fill") self#hyps;
+             self#changed
           | Var(_,_,f) ->
              match List.assoc f self#env with
              | (_,_,_,Some g) -> g#subst n (Graph.copy self#env g); self#changed
@@ -120,7 +127,7 @@ class virtual mk (arena: arena) =
 
     method private improve_placement force =
       if force || not (self#fold_graphs (fun g s -> s && g#stable) true) then        
-        (self#iter_graphs (Place.improve_placement_depth ~force 0.05);
+        (self#iter_graphs (Place.improve_placement_depth ~force 0.01);
          self#redraw)
     method private perturbate = self#improve_placement true
     
@@ -128,6 +135,32 @@ class virtual mk (arena: arena) =
       match self#catch with
       | `N(_,n) -> Place.unfix n; self#perturbate
       | _ -> temporary#msg "no node to release here"
+
+    method private create_box g p =
+      let h = Graph.create_box g p in
+      List.iter (fun (l,r) ->
+          if Graph.iso h l then
+            (h#set "fill" "lhs"; l#set "fill" "lhs"; r#set "fill" "rhs")
+          else if Graph.iso h r then
+            (h#set "fill" "rhs"; l#set "fill" "lhs"; r#set "fill" "rhs")
+        ) self#hyps;
+      self#changed
+
+    method private rewrite =
+      match self#catch with
+      | `N(_,n) ->
+         (match n#kind with
+          | Box h -> 
+             if h#get "fill" = None then error "no match so far";
+             List.iter (fun (l,r) ->
+                 if Graph.iso h l then
+                   (h#replace (Graph.copy self#env r); h#set "fill" "rhs")
+                 else if Graph.iso h r then
+                   (h#replace (Graph.copy self#env l); h#set "fill" "lhs")
+               ) self#hyps;
+             self#changed
+          | _ -> temporary#msg "no box to rewrite here")
+      | _ -> temporary#msg "no box to rewrite here"
 
     method on_tic =
       match mode with
@@ -150,8 +183,7 @@ class virtual mk (arena: arena) =
       | `Move_node _ ->
          mode <- `Normal; self#checkpoint
       | `Select (g,p) ->
-         mode <- `Normal;
-         Graph.create_box g p; self#changed
+         mode <- `Normal; self#create_box g p
       | `Normal -> ()
 
     method on_motion =
@@ -172,20 +204,20 @@ class virtual mk (arena: arena) =
          (match s with
           | "h" -> self#help 
                      "** keys **
+r       rewrite box
 u       unbox or unfold node
 -/+     shrink/enlarge element
 f       release fixed element
 ->/<-    undo/redo
 ESC     abort current action
 =       fit screen
-r       refresh picture
 h       print this help message"
           | "f" -> self#release
           | "u" -> self#unfold
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1
           | "=" -> arena#fit self#box; self#redraw
-          | "r" -> self#redraw
+          | "r" -> self#rewrite
           | "ArrowLeft" -> self#undo()
           | "ArrowRight" -> self#redo()
           | "" -> ()

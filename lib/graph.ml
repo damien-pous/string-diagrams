@@ -325,6 +325,7 @@ class virtual gen_graph nodes edges =
     method virtual pp_infos: pp_mode -> formatter -> unit
     method virtual sources: int
     method virtual targets: int
+    method virtual pos: point
     method virtual spos: int -> point
     method virtual tpos: int -> point
     method virtual draw_boundary: canvas -> unit
@@ -440,7 +441,11 @@ class virtual gen_graph nodes edges =
       nodes <- MSet.union nodes h#nodes;
       edges <- MSet.union edges new_edges;
       self#reset_depth;
-    
+
+    method replace g =
+      g#move self#pos; (* TODO: resize h, or create it to fit the current box? *)
+      self#update g#nodes g#edges
+      
     method unbox n =
       match n#kind with
       | Var(_,_,_) -> assert false
@@ -832,6 +837,6 @@ let create_box (g: graph) p =
   debug_msg "%i edges in" (MSet.size edges_in);
   let h = polygon_graph (List.map snd src) (List.map snd tgt) nodes_in edges_in p [] in
   let b = box_node h [] in
-  b#set "fill" "gray";
   debug_msg "%t" (b#pp Full);
-  g#update (MSet.add b nodes_out) (edges_out b)
+  g#update (MSet.add b nodes_out) (edges_out b);
+  h

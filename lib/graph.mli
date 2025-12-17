@@ -33,7 +33,7 @@ val iso_env: env -> env -> bool
 val iso_envgraph: env*graph -> env*graph -> bool
 
 (* capturing a subgraph inside a box *)
-val create_box: graph -> polygon -> unit
+val create_box: graph -> polygon -> graph
 
 (* finding elements by their position *)
 val find: graph -> point -> [ `I of iport | `O of oport | `N of node | `None ]

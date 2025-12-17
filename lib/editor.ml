@@ -221,7 +221,7 @@ class virtual mk (arena: arena) =
          mode <- `Normal; self#checkpoint
       | `Select p ->
          mode <- `Normal;
-         Graph.create_box graph p; self#graph_changed
+         ignore(Graph.create_box graph p); self#graph_changed
       | `New_edge_i i ->
          (match self#catch with
           | `I i' when i=i' -> mode <- `Normal; self#graph_changed
