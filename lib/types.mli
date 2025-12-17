@@ -47,6 +47,7 @@ class type arena =
     method canvas: canvas
     method view: box
     method ensure: box -> unit
+    method fit: box -> unit
     method zoom: float -> unit
     method move: float*float -> unit
     method resize: float*float -> unit
@@ -79,7 +80,7 @@ module Raw: sig
   (* environments *)
   type 'a env = (name*('a*(int*int) option*'a term option)) list
   type 'a envterm = 'a env * 'a term
-  type 'a equations = 'a env * ('a term * 'a term) list 
+  type 'a equations = 'a env * ('a term * 'a term) list * bool
 end
 
 class type printable =

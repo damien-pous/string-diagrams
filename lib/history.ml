@@ -20,3 +20,51 @@ let redo h =
   match future h with
   | [] -> None
   | x::future -> h := (present h::past h, x, future); Some x
+
+
+open Messages
+
+class virtual mk serialize deserialize =
+  object(self)
+
+    method private virtual state: 'a
+    method private virtual set_state: 'a -> unit
+
+    method private virtual read: string -> 'a
+    method private virtual write: string -> 'a -> unit
+    
+    val hist = create ""
+
+    method private set_sstate s =
+      self#set_state (deserialize s)
+
+    method private checkpoint =
+      save hist (serialize self#state) 
+
+    method private abort =
+      let s = present hist in
+      self#set_sstate s
+    
+    method undo () =
+      match undo hist with
+      | Some s -> self#set_sstate s
+      | None -> temporary#msg "no more undos"
+
+    method redo () =
+      match redo hist with
+      | Some s -> self#set_sstate s
+      | None -> temporary#msg "no more redos"
+
+    method load f =
+      self#set_state (self#read f);
+      self#checkpoint;
+      clear hist
+
+    method save f =
+      self#write f self#state;
+
+    initializer
+      self#checkpoint;
+      clear hist
+      
+  end

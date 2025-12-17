@@ -165,11 +165,11 @@ let of_equation e (u,v) =
     failwith "arity mismatch in an equation";
   (u,v)
 
-let equations (e,l) =
+let equations (e,l,placed) =
   let h,g = match List.rev l with
     | [] -> assert false
     | g::h -> h,g
   in
   let e = env e in
-  e, List.rev_map (of_equation e) h, of_equation e g
+  e, List.rev_map (of_equation e) h, of_equation e g, placed
   

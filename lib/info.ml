@@ -72,7 +72,7 @@ class rectangle_area ?(pos=P2.o) size ?(name="") l =
     val mutable sized = false
     val mutable color = Constants.gray
     method pos = pos    
-    method size = size
+    method size = size    
     method width = Size2.w size 
     method height = Size2.h size
     method box = Box2.v_mid pos size
@@ -82,7 +82,7 @@ class rectangle_area ?(pos=P2.o) size ?(name="") l =
     method shift d = self#on_shift d; pos <- V2.(pos + d); placed <- true
     method move p = self#shift V2.(p-pos)
     method scale s = size <- V2.smul s size; sized <- true
-    method rebox b = pos <- Box2.mid b; size <- Box2.size b
+    method rebox b = pos <- Box2.mid b; size <- Box2.size b; sized <- true
     method draw_boundary (draw: canvas) = draw#box self#box
     method private on_shift _ = ()
     method private update_kvl =

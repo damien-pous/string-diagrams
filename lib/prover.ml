@@ -14,19 +14,13 @@ let string_of_state =
 class virtual mk (arena: arena) =
   object(self)
 
-    method virtual help: string -> unit
-    
-    method private virtual read: string -> equations
-    method private virtual write: string -> equations -> unit
+    inherit History.mk string_of_state state_of_string as parent
+    method private virtual help: string -> unit
         
-    val hist = History.create ""
     val mutable state = env [], [], (Graph.emp,Graph.emp)
     val mutable mode = `Normal
 
-    method private checkpoint =
-      debug_msg "checkpoint" "%a" (pp_equations TermIfPossible) state;
-      History.save hist (string_of_state state)      
-
+    method private state = state    
     method private env = let (e,_,_) = state in e
     method private hyps = let (_,h,_) = state in h
     method private left = let (_,_,(l,_)) = state in l
@@ -43,11 +37,16 @@ class virtual mk (arena: arena) =
           List.fold_right (fun (l,r) -> union (union l#box r#box)) self#hyps
             (union self#left#box self#right#box))
 
-    method private redraw ?(rebox=false) () =
+    method private redraw =
       arena#canvas#clear;
       self#iter_graphs (fun g -> g#draw arena#canvas);
-      if rebox then arena#ensure self#box;
       self#refresh
+
+    method !load f =
+      (* not optimal: parent#load already calls #redraw, via #set_state *)
+      parent#load f;
+      arena#fit self#box;
+      self#redraw
     
     method private refresh =
       (match mode with
@@ -76,28 +75,14 @@ class virtual mk (arena: arena) =
       );
       arena#refresh
     
-    method private set_state ?rebox s =
+    method private set_state s =
       state <- s;
       mode <- `Normal;
-      self#redraw ?rebox ()
-
-    method private abort =
-      let s = History.present hist in
-      self#set_state (state_of_string s)
-    
-    method undo () =
-      match History.undo hist with
-      | Some s -> self#set_state (state_of_string s)
-      | None -> temporary#msg "no more undos"
-
-    method redo () =
-      match History.redo hist with
-      | Some s -> self#set_state (state_of_string s)
-      | None -> temporary#msg "no more redos"
+      self#redraw
 
     method private changed =
       self#checkpoint;
-      self#redraw()
+      self#redraw
     
     method private catch_graph =
       self#fold_graphs (fun g -> function
@@ -164,7 +149,7 @@ class virtual mk (arena: arena) =
       match mode with
       | `Move_node (n,u) ->
          n#move (Gg.V2.sub arena#pointer u);
-         self#redraw()
+         self#redraw
       | `Select (g,p) ->
          let q = arena#pointer in
          mode <-`Select(g,Polygon.extend p q);
@@ -178,14 +163,15 @@ class virtual mk (arena: arena) =
          (match s with
           | "h" -> self#help 
                      "** keys **
-u:      unbox or unfold node
-i/I:    improve placement
--/+:    shrink/enlarge element
-f/F:    fix/Free element (for later placement optimisations)
-->/<-:    undo/redo
-ESC:    abort current action
-r:      refresh picture
-h:      print this help message"
+u       unbox or unfold node
+i/I     improve placement
+-/+     shrink/enlarge element
+=       fit screen
+f/F     fix/Free element (for later placement optimisations)
+->/<-    undo/redo
+ESC     abort current action
+r       refresh picture
+h       print this help message"
           | "i" -> self#improve_placement 0.05
           | "I" -> self#improve_placement 0.2
           | "f" -> self#block true
@@ -193,24 +179,12 @@ h:      print this help message"
           | "u" -> self#unfold
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1
-          | "r" -> self#redraw()
+          | "=" -> arena#fit self#box; self#redraw
+          | "r" -> self#redraw
           | "ArrowLeft" -> self#undo()
           | "ArrowRight" -> self#redo()
           | "" -> ()
           | s -> temporary#msg "skipping key '%s'" s)
       | _ -> temporary#msg "ignored key `%s' during ongoing action" s
-
-    method init s =
-      self#set_state ~rebox:true (state_of_string s);
-      self#checkpoint;
-      History.clear hist
-
-    method load_from file =
-      self#set_state ~rebox:true (self#read file);
-      self#checkpoint;
-      History.clear hist
-
-    method save_to file =
-      self#write file state
     
   end

@@ -74,5 +74,6 @@ envterm:
 | e=env u=term EOF { (e,u) }
 
 equations:
-| e=env l=separated_nonempty_list(TO,equation) EOF { (e,l) }
+| e=env l=separated_nonempty_list(TO,equation) EOF { (e,l,false) }
+| e=env LSQR l=separated_nonempty_list(TO,equation) RSQR EOF { (e,l,true) }
 

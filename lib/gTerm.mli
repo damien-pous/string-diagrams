@@ -21,5 +21,5 @@ and kind =
 val env: kvl Raw.env -> term env
 val of_raw: 'a env -> kvl Raw.term -> term
 val envterm: kvl Raw.envterm -> term env * term
-val equations: kvl Raw.equations -> term env * (term*term) list * (term*term)
+val equations: kvl Raw.equations -> term env * (term*term) list * (term*term) * bool
 

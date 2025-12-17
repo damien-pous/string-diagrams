@@ -4,8 +4,8 @@ open Diagrams_gtk
 
 open GMain
 
-let width = 600
-let height = 600
+let width = 1800
+let height = 950
 
 let file = ref
              (match Sys.argv with
@@ -63,15 +63,15 @@ let self = new gprover
 let load =
   dialog "Open graph file" `OPEN `OPEN `OPEN 
     (GFile.filter ~name: "SDP file" ~patterns:["*.sdp"] ())
-    self#load_from
+    self#load
 
 let save () =
-  self#save_to !file
+  self#save !file
 
 let save_as =
   dialog "Save graphs as" `SAVE `SAVE `SAVE 
     (GFile.filter ~name: "SD file" ~patterns:["*.sd"] ())
-    self#save_to
+    self#save
 
 let on_button_press ev =
   let state = GdkEvent.Button.state ev in
@@ -116,7 +116,7 @@ let _ = file_factory#add_item "Save as" ~key:GdkKeysyms._E ~callback:(atomic_uni
 let _ = file_factory#add_item "Quit" ~key:GdkKeysyms._Q ~callback:Main.quit
 let _ = edit_factory#add_item "Undo" ~key:GdkKeysyms._Z ~callback:(atomic_unit self#undo)
 let _ = edit_factory#add_item "Redo" ~key:GdkKeysyms._R ~callback:(atomic_unit self#redo)
-let _ = view_factory#add_item "Fullscreen" ~key:GdkKeysyms._F ~callback:fullscreen
+let _ = view_factory#add_item "Toggle fullscreen" ~key:GdkKeysyms._F ~callback:fullscreen
 
 let _ = GtkBase.Widget.add_events da#as_widget
           [ `KEY_PRESS; `POINTER_MOTION; `BUTTON_PRESS; `BUTTON_RELEASE ]
@@ -127,8 +127,8 @@ let _ = da#event#connect#button_release ~callback:(atomic_true on_button_release
 let _ = da#event#connect#key_press ~callback:(atomic_true on_key_press)
 let _ = window#connect#destroy ~callback:Main.quit
 let _ = window#add_accel_group accel_group
-let _ = atomic_unit self#load_from !file
-
+let _ = fullscreen()
 let _ = window#show ()
+let _ = atomic_unit self#load !file
 let _ = Main.main ()
 

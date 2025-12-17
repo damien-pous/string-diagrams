@@ -49,7 +49,7 @@ let improve_placement s (g: graph) =
       if x#get "fixed" <> Some "true" then
         x#shift (V2.smul s u)) t
 
-let improve_placement_depth s (g: graph) =
+let rec improve_placement_depth s (g: graph) =
   let repulse = 0.0 in
   let attract_link = -0.5 in
   let attract_depth = -5.0 in
@@ -116,7 +116,11 @@ let improve_placement_depth s (g: graph) =
     ) g#edges;
   Hashtbl.iter (fun x u ->
       if x#get "fixed" <> Some "true" then
-        x#shift (V2.smul s u)) t
+        x#shift (V2.smul s u)) t;
+  (* recursively place inner boxes *)
+  MSet.iter (fun n -> match n#kind with
+                      | Box g -> improve_placement_depth s g
+                      | _ -> ()) g#nodes
 
 let fix x = x#set "fixed" "true"
 let unfix x = x#unset "fixed"

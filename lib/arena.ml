@@ -33,15 +33,18 @@ class virtual generic =
     
     method pointer = self#point_of_dpoint self#dpointer
 
+    method fit b =
+      let bw,bh = Box2.w b, Box2.h b in
+      let w,h = self#dsize in
+      if bw*.h <= bh*.w
+      then view <- Box2.v_mid (Box2.mid b) (V2.smul 1.1 (V2.v (bh*.w/.h) bh))
+      else view <- Box2.v_mid (Box2.mid b) (V2.smul 1.1 (V2.v bw (bw*.h/.w)));
+      self#refresh
+
     method ensure b =
       if not (Box2.subset b self#view) then
-        let bw,bh = Box2.w b, Box2.h b in
-        let w,h = self#dsize in
-        if bw*.h <= bh*.w
-        then view <- Box2.v_mid (Box2.mid b) (V2.smul 1.1 (V2.v (bh*.w/.h) bh))
-        else view <- Box2.v_mid (Box2.mid b) (V2.smul 1.1 (V2.v bw (bw*.h/.w)));
-        self#refresh
-        
+        self#fit b
+    
     method move v =
       view <- Box2.move (self#vector_of_dvector v) view;
       self#refresh

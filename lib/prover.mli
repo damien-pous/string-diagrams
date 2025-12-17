@@ -3,7 +3,7 @@ open Graph_type
 
 class virtual mk: arena ->
   object
-    method virtual help: string -> unit
+    method private virtual help: string -> unit
 
     method private virtual read: string -> equations
     method private virtual write: string -> equations -> unit
@@ -17,8 +17,6 @@ class virtual mk: arena ->
     method undo: unit -> unit
     method redo: unit -> unit
 
-    method load_from: string -> unit
-    method save_to: string -> unit
-
-    method init: string -> unit
+    method load: string -> unit
+    method save: string -> unit
   end

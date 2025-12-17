@@ -235,8 +235,9 @@ let pp_envgraph mode f (e,g) = pp_env mode f e; pp mode f g
 let pp_equation mode f (u,v) = 
   Format.fprintf f "%a = %a" (pp mode) u (pp mode) v
 let pp_equations mode f (e,h,g) =
-  pp_env mode f e;
-  pp_print_list " -> \n" (pp_equation mode) f (h@[g])
+  Format.fprintf f "%a[%a]" 
+  (pp_env mode) e
+  (pp_print_list " -> \n" (pp_equation mode)) (h@[g])
 
 (** * generic graph/node constructors *)
 
@@ -663,25 +664,27 @@ let envgraph et =
   Info.envmap of_gterm e, of_gterm t
 
 
-let of_equation (u,v) =
+let of_equation ~placed (u,v) =
   let g = of_gterm u in
   let h = of_gterm v in
-  let b = Box2.union g#box h#box in
-  g#rebox b; h#rebox b;
+  if not placed then (
+    let b = Box2.union g#box h#box in
+    g#rebox b; h#rebox b);
   g,h
 
 let equations ehg =
-  let (e,h,g) = GTerm.equations ehg in
-  let h = List.map of_equation h in
-  let l,r = of_equation g in
-  l#scale 2.0; r#scale 2.0; 
-  let ph = List.map (fun (l,r) -> Pad.hpad Constants.spacing [l;r]) h in
-  let ph = Pad.hpad (3.*.Constants.spacing) ph in
-  let plr = Pad.hpad Constants.spacing [l;r] in
-  ignore (Pad.vpad (2.*.Constants.spacing) [plr;ph]);
+  let (e,h,g,placed) = GTerm.equations ehg in
+  let h = List.map (of_equation ~placed) h in
+  let l,r = of_equation ~placed g in
+  if not placed then (
+    l#scale 2.0; r#scale 2.0;
+    let ph = List.map (fun (l,r) -> Pad.hpad Constants.spacing [l;r]) h in
+    let ph = Pad.hpad (3.*.Constants.spacing) ph in
+    let plr = Pad.hpad Constants.spacing [l;r] in
+    ignore (Pad.vpad (2.*.Constants.spacing) [plr;ph]));
   Info.envmap of_gterm e, h, (l,r)
 
-(* copy a graph by serialisation, is there a nicer way? *)
+(* copy a graph by serialisation (is there a nicer way?) *)
 let copy e g =
   let s = Format.kasprintf (fun s -> s) "%a" (pp Full) g in
   try
