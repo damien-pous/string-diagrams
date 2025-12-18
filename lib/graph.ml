@@ -277,6 +277,17 @@ class rectangle_boundary n m ?pos size ?name kvl =
     method tpos i = bot_pos self#box i m 
   end
 
+(* circular boundary *)
+class circular_boundary n m ?pos radius ?name kvl =
+  object(self)
+    inherit iface n m 
+    inherit Info.circular_area ?pos radius ?name kvl
+    method spos i =
+      V2.add self#pos (V2.polar self#radius (Float.pi *. float_of_int (n-i+1) /. float_of_int (n+1)))
+    method tpos i =
+      V2.add self#pos (V2.polar self#radius (-. Float.pi *. float_of_int (m-i+1) /. float_of_int (m+1)))
+  end
+
 (* polygonial boundary *)
 class polygon_boundary poly spos tpos ?name kvl =
   let n = List.length spos in
@@ -294,18 +305,33 @@ class polygon_boundary poly spos tpos ?name kvl =
       tpos <- List.map (V2.add d) tpos;
   end
 
-(* variable node *)
-let var_node n m f l =
+class virtual var_node_ n m f =
   object(self)
-    inherit rectangle_boundary n m (Constants.var_size n m) ~name:f l
-    method draw (draw: canvas) =
-      draw#box ~fill:self#color self#box;
+    method virtual draw_boundary: canvas -> unit
+    method virtual pos: point
+    method virtual pp_infos: pp_mode -> formatter -> unit
+    method draw draw =
+      self#draw_boundary draw;
       draw#text self#pos f
-    method kind = Var(n,m,f)
+    method kind: graph nkind = Var(n,m,f)
     method pp mode ff =
       Format.fprintf ff "%s%t" f (self#pp_infos mode)
     method term = Term.var n m f
   end
+
+(* variable node *)
+let var_node n m f l =
+  match Info.radius l with
+  | Some radius -> 
+     object
+       inherit circular_boundary n m radius ~name:f l
+       inherit var_node_ n m f
+     end
+  | None -> 
+     object
+       inherit rectangle_boundary n m (Constants.var_size n m) ~name:f l
+       inherit var_node_ n m f
+     end
 
 (* box node *)
 let box_node g (_: Info.kvl) =

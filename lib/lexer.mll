@@ -74,6 +74,7 @@ rule token = parse
   | "shift=" (pos as v)
   | "shift=(" (pos as v) ')'               { keyval "shift" v }
   | "scale=" (float as x)                  { keyval "scale" x }
+  | "radius=" (float as x)                 { keyval "radius" x }
   | (key as k) '=' (word as v)             { keyval k v }
   | (key as k) "=\"" ([^'"']* as v) '"'    { keyval k v }
   | (key as k) "='" ([^''']* as v) '''     { keyval k v }

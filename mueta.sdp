@@ -2,7 +2,7 @@ let m<color=red>: 2 -> 1 in
 let e<color=red>: 0 -> 1 in
 let n<color=blue>: 2 -> 1 in
 let f<color=blue>: 0 -> 1 in
-let x<color=orange>: 2 -> 2 in
+let x<color=orange;radius=5>: 2 -> 2 in
 let mn<color=violet> := id*x*id;m*n in
 let ef<color=violet> := e*f in
 // m*id;m = id*m;m ->

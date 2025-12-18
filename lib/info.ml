@@ -38,6 +38,8 @@ let merge h k =
 
 let pos p = merge ["pos",string_of_p2 p]
 
+let radius l = Option.map float_of_string (List.assoc_opt "radius" l)
+
 let pp_kvl f l =
   if l<>[] then
     Format.fprintf f "<%a>"
@@ -75,6 +77,7 @@ class rectangle_area ?(pos=P2.o) size ?(name="") l =
     method size = size    
     method width = Size2.w size 
     method height = Size2.h size
+    method radius = sqrt (self#width *. self#height /. 2.)
     method box = Box2.v_mid pos size
     method contains p = Box2.mem p self#box
     method safebox = Box2.v_mid pos (V2.smul 1.1 size)
@@ -83,8 +86,10 @@ class rectangle_area ?(pos=P2.o) size ?(name="") l =
     method move p = self#shift V2.(p-pos)
     method scale s = size <- V2.smul s size; sized <- true
     method rebox b = pos <- Box2.mid b; size <- Box2.size b; sized <- true
-    method private fill = Option.map Constants.color (self#get "fill") 
-    method draw_boundary (draw: canvas) = draw#box ?fill:self#fill self#box
+    method private fill =
+      match self#get "fill" with Some c -> Constants.color c | None -> color    
+    method draw_boundary (draw: canvas) =
+      draw#box ~fill:self#fill self#box
     method private on_shift _ = ()
     method private update_kvl =
       if placed then self#add "pos" (string_of_p2 pos);
@@ -95,11 +100,46 @@ class rectangle_area ?(pos=P2.o) size ?(name="") l =
       color <- Constants.color' ?color:(self#get "color") name  
   end
 
+class circular_area ?(pos=P2.o) radius ?(name="") l =
+  object(self)
+    inherit printer l
+    val mutable pos = pos
+    val mutable placed = false
+    val mutable radius = radius
+    val mutable sized = false
+    val mutable color = Constants.gray
+    method pos = pos    
+    method size = V2.v (2.*.radius) (2.*.radius)
+    method radius = radius
+    method width = 2.*.radius
+    method height = 2.*.radius
+    method box = Box2.v_mid pos self#size
+    method contains p = Geometry.dist p self#pos <= radius
+    method safebox = Box2.v_mid pos (V2.smul 1.1 self#size)
+    method color = color
+    method shift d = self#on_shift d; pos <- V2.(pos + d); placed <- true
+    method move p = self#shift V2.(p-pos)
+    method scale s = radius <- s *. radius; sized <- true
+    method rebox (_: box): unit = failwith "cannot rebox a circular area"
+    method private fill =
+      match self#get "fill" with Some c -> Constants.color c | None -> color    
+    method draw_boundary (draw: canvas) =
+      draw#circle ~fill:self#fill {center = self#pos; radius }
+    method private on_shift _ = ()
+    method private update_kvl =
+      if placed then self#add "pos" (string_of_p2 pos);
+      if sized then self#add "radius" (string_of_float radius)
+    initializer
+      (match self#get "pos" with Some p -> pos <- p2_of_string p; placed <- true | None -> ());
+      (match self#get "radius" with Some s -> radius <- float_of_string s; sized <- true | None -> ());
+      color <- Constants.color' ?color:(self#get "color") name  
+  end
+
 class polygon_area poly ?name l =
   let box = Geometry.poly_box poly in
   let pos = Box2.mid box in
   let size = Box2.size box in
-  object
+  object(self)
     inherit rectangle_area ~pos size ?name l as parent
     val mutable poly = poly
     method! contains p = Geometry.mem_poly p poly
@@ -108,7 +148,7 @@ class polygon_area poly ?name l =
       poly <- Polygon.map (V2.add d) poly
     method! scale _ = failwith "TODO: scale polygon"
     method! draw_boundary (draw: canvas) =
-      draw#polygon ?fill:parent#fill poly
+      draw#polygon ~fill:self#fill poly
   end
 
 class proxy (a: area): area =
@@ -119,6 +159,7 @@ class proxy (a: area): area =
     method pp_infos = a#pp_infos
     method pos = a#pos    
     method size = a#size
+    method radius = a#radius
     method width = a#width 
     method height = a#height
     method box = a#box

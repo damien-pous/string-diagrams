@@ -40,6 +40,8 @@ let xcolor = function
   | "purple" -> Color.v 0.8 0.0 0.4 1.
   | "brown"  -> Color.v 0.7 0.3 0.0 1.
   | "cacadoie" -> Color.v 0.3 0.6 0.0 1.
+  | "white"  -> Color.white
+  | "void"  -> Color.void
   | "black"  -> Color.black
   | "gray"   -> gray
   | "lhs"    -> Color.v 1.0 1.0 0. 0.5
@@ -51,7 +53,7 @@ let color' ?color name =
   match color with
   | Some c -> xcolor c 
   | None -> xcolor
-              (if name = "" then ""
+              (if name = "" then "void"
                else match name.[0] with
                | 'a' -> "yellow"
                | 'b' -> "orange"

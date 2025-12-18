@@ -104,6 +104,7 @@ class type area =
     inherit paddable
     method pos: point
     method size: size
+    method radius: float
     method box: box
     method safebox: box
     method color: color
