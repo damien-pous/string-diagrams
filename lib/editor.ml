@@ -30,7 +30,7 @@ class virtual mk (arena: arena) =
         
     val hist = History.create ("","")
     val mutable env = env []
-    val mutable graph = Graph.emp
+    val mutable graph = Graph.emp()
     val mutable mode = `Normal
 
     method private checkpoint =

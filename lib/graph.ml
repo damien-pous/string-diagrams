@@ -541,10 +541,10 @@ let empty n m =
     MSet.empty
     (Constants.empty_size n m)
     []
-let emp = empty 0 0
+let emp () = empty 0 0
 
 (* identity graph (of type 1->1) *)
-let idm =
+let idm () =
   rectangle_graph
     1 1
     MSet.empty
@@ -621,8 +621,8 @@ let box g l = gen_box_graph (box_node g l) g#sources g#targets
 
 let of_gterm u =
   let rec build = function
-    | GTerm.Emp -> emp
-    | GTerm.Idm -> idm
+    | GTerm.Emp -> emp()
+    | GTerm.Idm -> idm()
     | GTerm.Var(n,m,f,l) -> var n m f l
     | GTerm.Seq(u,v) -> seq (build u) (build v)
     | GTerm.Tns(u,v) -> tns (build u) (build v)

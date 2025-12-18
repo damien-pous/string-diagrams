@@ -17,7 +17,7 @@ class virtual mk (arena: arena) =
     inherit History.mk string_of_state state_of_string as parent
     method private virtual help: string -> unit
         
-    val mutable state = env [], [], (Graph.emp,Graph.emp)
+    val mutable state = env [], [], (Graph.emp(),Graph.emp())
     val mutable mode = `Normal
 
     method private state = state    
@@ -41,7 +41,8 @@ class virtual mk (arena: arena) =
       arena#canvas#clear;
       self#iter_graphs (fun g -> g#draw arena#canvas);
       List.iter (fun (l,r) -> arena#canvas#text (Gg.P2.mid l#pos r#pos) "=") self#hyps;
-      arena#canvas#text (Gg.P2.mid self#lhs#pos self#rhs#pos) "=?=";
+      arena#canvas#text (Gg.P2.mid self#lhs#pos self#rhs#pos)
+        (if self#lhs#get "fill" = None then "=?=" else "=");
       self#refresh
 
     method !load f =
@@ -114,7 +115,7 @@ class virtual mk (arena: arena) =
              self#changed
           | Var(_,_,f) ->
              match List.assoc f self#env with
-             | (_,_,_,Some g) -> g#subst n (Graph.copy self#env g); self#changed
+             | (_,_,_,Some h) -> g#subst n (Graph.copy self#env h); self#changed
              | _ -> temporary#msg "this box is atomic"
          )
       | _ -> temporary#msg "no node to unfold/unbox here"
@@ -127,7 +128,7 @@ class virtual mk (arena: arena) =
 
     method private improve_placement force =
       if force || not (self#fold_graphs (fun g s -> s && g#stable) true) then        
-        (self#iter_graphs (Place.improve_placement_depth ~force 0.01);
+        (self#iter_graphs (Place.improve_placement_depth' ~force 0.01);
          self#redraw)
     method private perturbate = self#improve_placement true
     
@@ -146,18 +147,28 @@ class virtual mk (arena: arena) =
         ) self#hyps;
       self#changed
 
-    method private rewrite =
+    method private rewrite unbox =
       match self#catch with
-      | `N(_,n) ->
+      | `N(g,n) ->
          (match n#kind with
           | Box h -> 
              if h#get "fill" = None then error "no match so far";
+             (try
              List.iter (fun (l,r) ->
                  if Graph.iso h l then
-                   (h#replace (Graph.copy self#env r); h#set "fill" "rhs")
+                   (if unbox then
+                      (g#subst n (Graph.copy self#env r); l#unset "fill"; r#unset "fill")
+                    else
+                      (h#replace (Graph.copy self#env r); h#set "fill" "rhs");
+                    raise Not_found)
                  else if Graph.iso h r then
-                   (h#replace (Graph.copy self#env l); h#set "fill" "lhs")
-               ) self#hyps;
+                   (if unbox then
+                      (g#subst n (Graph.copy self#env l); l#unset "fill"; r#unset "fill")
+                    else
+                      (h#replace (Graph.copy self#env l); h#set "fill" "lhs");
+                    raise Not_found)
+               ) self#hyps
+             with Not_found -> ());
              self#changed
           | _ -> temporary#msg "no box to rewrite here")
       | _ -> temporary#msg "no box to rewrite here"
@@ -195,7 +206,9 @@ class virtual mk (arena: arena) =
          let q = arena#pointer in
          mode <-`Select(g,Polygon.extend p q);
          self#refresh         
-      | _ -> self#refresh
+      | _ ->
+         (* (match self#catch with `N(g,n) -> temporary#msg "depth %i" (g#depth n) | _ -> ()); *)
+         self#refresh
 
     method on_key_press s =
       if s = "Escape" then self#abort
@@ -204,7 +217,7 @@ class virtual mk (arena: arena) =
          (match s with
           | "h" -> self#help 
                      "** keys **
-r       rewrite box
+r/R     rewrite box
 u       unbox or unfold node
 -/+     shrink/enlarge element
 f       release fixed element
@@ -217,7 +230,8 @@ h       print this help message"
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1
           | "=" -> arena#fit self#box; self#redraw
-          | "r" -> self#rewrite
+          | "r" -> self#rewrite false
+          | "R" -> self#rewrite true
           | "ArrowLeft" -> self#undo()
           | "ArrowRight" -> self#redo()
           | "" -> ()

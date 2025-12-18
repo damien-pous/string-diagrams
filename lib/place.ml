@@ -127,5 +127,91 @@ let rec improve_placement_depth ?(force=false) s (g: graph) =
   (* recursively place inner boxes *)
   MSet.iter (improve_placement_depth ~force s) g#inner_graphs
 
+let rec improve_placement_depth' ?(force=false) s (g: graph) =
+  if force || not g#stable then
+  let repulse = 0.0 in
+  let attract_x = 5.0 in
+  let attract_y = 5.0 in
+  let t = Hashtbl.create (MSet.size g#nodes) in
+  let add x s v =
+    let v = V2.smul s v in
+    match Hashtbl.find t x with
+    | u -> Hashtbl.replace t x (V2.add u v)
+    | exception Not_found -> Hashtbl.add t x v
+  in
+  let mdepth = MSet.fold (fun n -> max (g#depth n)) 0 g#nodes in    
+  (* repulse *)
+  MSet.iter (fun x ->
+      MSet.iter (fun y ->
+          if x<>y then
+            let xy = V2.sub y#pos x#pos in
+            let d = V2.norm xy in
+            if d = 0.0 then
+              add x 1.0 (V2.ltr (M2.rot2 (Random.float (2.*.Float.pi))) V2.ox)
+            else
+              let d' = d -. sqrt (Box2.area x#safebox /. 2.) -. sqrt (Box2.area y#safebox /. 2.) in
+              add x (repulse/.(d'*.d'*.d)) xy
+        ) g#nodes
+    ) g#nodes;
+  (* horizontal attraction *)
+  MSet.iter (fun (i,o) ->
+      let x,y = g#ipos i, g#opos o in
+      let xy = V2.sub y x in
+      let xy = V2.ltr (M2.scale2 (V2.v 1. 0.)) xy in
+      (match i with
+       | InnerTarget(n,_) -> add n (attract_x/.(float_of_int n#targets)) xy
+       | _ -> ());
+      (match o with
+       | InnerSource(n,_) -> add n (-.attract_x/.(float_of_int n#sources)) xy
+       | _ -> ())
+    ) g#edges;
+  (* vertical attraction *)
+  MSet.iter (fun n ->
+      let _,prevs =
+        Misc.fold (fun i (d,l) ->
+            let p = g#prev (InnerSource(n,i)) in
+            let dp = match p with
+              | InnerTarget(m,_) -> g#depth m
+              | _ -> mdepth+1
+            in
+            if dp < d then dp,[g#ipos p]
+            else if dp = d then d,(g#ipos p::l)
+            else d,l 
+          ) n#sources (mdepth+2,[Box2.tm_pt g#box]) (* TOFIX: default value might be wrong (plafonds) *)
+      in
+      let _,nexts =
+        Misc.fold (fun i (d,l) ->
+            let p = g#next (InnerTarget(n,i)) in
+            let dp = match p with
+              | InnerSource(m,_) -> g#depth m
+              | _ -> 0
+            in
+            if dp > d then dp,[g#opos p]
+            else if dp = d then d,(g#opos p::l)
+            else d,l 
+          ) n#targets (-1,[Box2.bm_pt g#box]) (* TOFIX: default value might be wrong (planchers) *)
+      in
+      let y = P2.y n#pos in
+      let v = (List.fold_right (fun p -> (+.) (V2.y p -. y)) prevs 0.)
+              /. float_of_int (List.length prevs)
+      in
+      add n (attract_y *. v) V2.oy;
+      let v = (List.fold_right (fun p -> (+.) (V2.y p -. y)) nexts 0.)
+              /. float_of_int (List.length nexts)
+      in
+      add n (attract_y *. v) V2.oy
+    ) g#nodes;
+  (* apply forces *)
+  let b =
+    Hashtbl.fold (fun x u b ->
+        if x#get "fixed" <> Some "true" && V2.norm2 u > 10. then
+          (x#shift (V2.smul s u); false)
+        else b
+      ) t true
+  in
+  g#set_stable b;
+  (* recursively place inner boxes *)
+  MSet.iter (improve_placement_depth' ~force s) g#inner_graphs
+
 let fix x = x#set "fixed" "true"
 let unfix x = x#unset "fixed"

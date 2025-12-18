@@ -1,0 +1,20 @@
+let m<color=red>: 2 -> 1 in
+let e<color=red>: 0 -> 1 in
+let n<color=blue>: 2 -> 1 in
+let f<color=blue>: 0 -> 1 in
+let x<color=orange>: 2 -> 2 in
+let mn<color=violet> := id*x*id;m*n in
+let ef<color=violet> := e*f in
+// m*id;m = id*m;m ->
+(id*e);m = id ->
+// (e*id);m = id ->
+// n*id;n = id*n;n ->
+(id*f);n = id ->
+// (f*id);n = id ->
+// id*m;x = x*id;id*x;m*id ->
+id*e;x = e*id ->
+f*id;x = id*f ->
+// n*id;x = id*x;x*id;id*n ->
+// mn*id*id;mn = id*id*mn;mn
+(id*id*ef);mn = id*id
+// (ef*id*id);mn = id*id

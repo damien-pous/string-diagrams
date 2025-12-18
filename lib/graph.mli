@@ -4,8 +4,8 @@ open Graph_type
 
 (* graph algebra *)
 val empty: int -> int -> graph
-val emp: graph
-val idm: graph
+val emp: unit -> graph
+val idm: unit -> graph
 val seq: graph -> graph -> graph
 val tns: graph -> graph -> graph
 val var: int -> int -> name -> kvl -> graph
