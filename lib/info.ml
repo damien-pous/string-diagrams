@@ -89,7 +89,7 @@ class rectangle_area ?(pos=P2.o) size ?(name="") l =
     method private fill =
       match self#get "fill" with Some c -> Constants.color c | None -> color    
     method draw_boundary (draw: canvas) =
-      draw#box ~fill:self#fill self#box
+      draw#box ~fill:self#fill ~color:self#fill self#box
     method private on_shift _ = ()
     method private update_kvl =
       if placed then self#add "pos" (string_of_p2 pos);
@@ -124,7 +124,7 @@ class circular_area ?(pos=P2.o) radius ?(name="") l =
     method private fill =
       match self#get "fill" with Some c -> Constants.color c | None -> color    
     method draw_boundary (draw: canvas) =
-      draw#circle ~fill:self#fill {center = self#pos; radius }
+      draw#circle ~fill:self#fill ~color:self#fill {center = self#pos; radius }
     method private on_shift _ = ()
     method private update_kvl =
       if placed then self#add "pos" (string_of_p2 pos);
@@ -148,7 +148,7 @@ class polygon_area poly ?name l =
       poly <- Polygon.map (V2.add d) poly
     method! scale _ = failwith "TODO: scale polygon"
     method! draw_boundary (draw: canvas) =
-      draw#polygon ~fill:self#fill poly
+      draw#polygon ~fill:self#fill ~color:self#fill poly
   end
 
 class proxy (a: area): area =

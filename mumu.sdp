@@ -1,8 +1,8 @@
 // let A<color=red>: * in
 // let B<color=blue>: * in
-let m<color=red>: _*_ -> A in
-let n<color=blue>: _*_ -> B in
-let x<color=violet;radius=5>: _*_ -> _*_ in
+let m<color=red;size=20,20>: _*_ -> A in
+let n<color=blue;size=20,20>: _*_ -> B in
+let x<color=cacadoie;radius=5>: _*_ -> _*_ in
 let mn := id.x.id;m.n in
 m.id;m = id.m;m ->
 n.id;n = id.n;n ->

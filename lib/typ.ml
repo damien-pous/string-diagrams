@@ -8,7 +8,7 @@ type ts = t list
 let rec repr x = match !x with
   | R n -> Some n,x
   | F -> None,x
-  | L r -> let r' = repr r in x := L (snd r'); r'
+  | L r -> let r' = repr r in x := L(snd r'); r'
 
 let unify1 ~msg x y =
   match repr x, repr y with

@@ -31,6 +31,7 @@ class type canvas =
     method polygon: ?color:color -> ?fill:color -> polygon -> unit
     method point: ?color:color -> point -> unit
     method segment: ?color:color -> point -> point -> unit 
+    method curve: ?color:color -> point -> point -> unit 
     method line: ?color:color -> line -> unit 
     method text: point -> string -> unit 
   end

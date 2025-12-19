@@ -219,7 +219,7 @@ class virtual var_node_ n m f =
     method virtual pp_infos: pp_mode -> formatter -> unit
     method draw draw =
       self#draw_boundary draw;
-      draw#text self#pos f
+      (* draw#text self#pos f *)
     method kind: graph nkind = Var(n,m,f)
     method pp mode ff =
       Format.fprintf ff "%s%t" f (self#pp_infos mode)
@@ -441,7 +441,7 @@ class virtual gen_graph nodes edges =
       in
       let draw_edge (i,o) =
         let color = Option.map Constants.color' (Typ.get (self#ityp i)) in
-        draw#segment ?color (self#ipos i) (self#opos o) in
+        draw#curve ?color (self#ipos i) (self#opos o) in
       self#draw_boundary draw;
       MSet.iter draw_edge edges;
       MSet.iter draw_node nodes

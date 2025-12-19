@@ -5,7 +5,8 @@ let mm = inch /. 25.4
 
 (* in points *)
 let fontsize = 11.
-let font = Vg.Font.{name="Latin Modern Roman"; slant=`Italic; weight=`W100; size=fontsize }
+(* let font = Vg.Font.{name="Latin Modern Roman"; slant=`Italic; weight=`W100; size=fontsize } *)
+let font = Vg.Font.{name="Helvetica"; slant=`Normal; weight=`W100; size=fontsize }
 
 (* in inches *)
 let linewidth = 1.0
