@@ -1,12 +1,16 @@
 open Types
 open Term
 
-type 'graph nkind = Var of int*int*name | Box of 'graph
+type 'graph nkind = Var of typs*typs*name | Box of 'graph
 
 class type interface =
   object
-    method sources: int         (* number of sources *)
-    method targets: int         (* number of targets *)
+    method sources: typs
+    method targets: typs
+    method nsources: int
+    method ntargets: int
+    method styp: int -> typ
+    method ttyp: int -> typ
   end
 
 class type boundary =
@@ -43,6 +47,9 @@ and graph =
     method ipos: node iport -> point
     method opos: node oport -> point
 
+    method ityp: node iport -> typ
+    method otyp: node oport -> typ
+    
     method ifree: node iport -> bool
     method next: node iport -> node oport
     method next_opt: node iport -> node oport option
@@ -59,7 +66,7 @@ and graph =
     method rem_edge: node iport*node oport -> unit
     method add_edge: node iport*node oport -> unit
     method rem_node: node -> unit
-    method add_node: int -> int -> name -> Info.kvl -> unit
+    method add_node: typs -> typs -> name -> Info.kvl -> unit
 
     (* the graph in argument to [subst/replace] should be copied beforehand
        (to avoid aliasing problems) *)
@@ -80,13 +87,5 @@ type oport = node Types.oport
 
 type env = graph Info.env
 
-(* class type equation = *)
-(*   object *)
-(*     inherit area *)
-(*     method lhs: graph *)
-(*     method rhs: graph *)
-(*     method pp: pp_mode -> formatter -> unit *)
-(*     method draw: canvas -> unit *)
-(*   end *)
 type equation = graph * graph
 type equations = env * equation list * equation

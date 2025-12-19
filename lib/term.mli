@@ -2,16 +2,14 @@ open Types
 
 type term =
   private
-  | Emp
-  | Idm
-  | Var of int * int * name
+  | Idm of typs
+  | Var of typs * typs * name
   | Seq of term * term
   | Tns of term * term
   | Box of term
 
-val emp: term
-val idm: term
-val var: int -> int -> name -> term
+val idm: typs -> term
+val var: typs -> typs -> name -> term
 val seq: term -> term -> term
 val tns: term -> term -> term
 val box: term -> term

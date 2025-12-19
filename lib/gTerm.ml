@@ -6,33 +6,31 @@ type iport = string Types.iport
 type oport = string Types.oport
 
 type term =
-  | Emp
-  | Idm
-  | Var of int * int * name * kvl
+  | Idm of typs
+  | Var of typs * typs * name * kvl
   | Seq of term * term
   | Tns of term * term
   | Box of term * kvl
-  | Gph of int * int * (string*(kind*kvl)) list * (iport*oport) list * kvl
+  | Gph of typs * typs * (string*(kind*kvl)) list * (iport*oport) list * kvl
 and kind =
-  | VNode of int * int * name
+  | VNode of typs * typs * name
   | GNode of term
 
+
 let rec sources = function
-  | Emp -> 0
-  | Idm -> 1
+  | Idm n 
   | Var(n,_,_,_) 
   | Gph(n,_,_,_,_) -> n
   | Box(u,_) 
   | Seq(u,_) -> sources u
-  | Tns(u,v) -> sources u + sources v
+  | Tns(u,v) -> sources u @ sources v
 let rec targets = function
-  | Emp -> 0
-  | Idm -> 1
-  | Var(_,m,_,_) -> m
+  | Idm m 
+  | Var(_,m,_,_)
   | Gph(_,m,_,_,_) -> m
   | Box(v,_) 
   | Seq(_,v) -> targets v
-  | Tns(u,v) -> targets u + targets v
+  | Tns(u,v) -> targets u @ targets v
 
 let ksources = function
   | VNode(n,_,_) -> n
@@ -42,15 +40,13 @@ let ktargets = function
   | GNode t -> targets t
 
 let seq u v =
-  if targets u <> sources v
-  then failwith "arity mismatch (sequential composition)";
+  Typ.unify ~msg:"(sequential composition)" (targets u) (sources v);
   Seq(u,v)
 
 let typ u n m =
-  if (sources u,targets u) <> (n,m)
-  then failwith "arity mismatch (type cast)";
+  Typ.unify ~msg:"(type cast: sources)" (sources u) n;
+  Typ.unify ~msg:"(type cast: targets)" (targets u) m;
   u
-
 
 let of_raw (e: 'a Info.env) u =
   let sym f l = 
@@ -59,8 +55,8 @@ let of_raw (e: 'a Info.env) u =
     with Not_found -> failwith "unknown symbol: %s" f
   in
   let rec build = function
-    | Raw.Emp -> Emp
-    | Raw.Idm -> Idm
+    | Raw.Emp -> Idm []
+    | Raw.Idm t -> Idm t
     | Raw.Var(f,l) -> let (l,n,m) = sym f l in Var(n,m,f,l)
     | Raw.Seq(u,v) -> seq (build u) (build v)
     | Raw.Tns(u,v) -> Tns(build u, build v)
@@ -84,11 +80,11 @@ let of_raw (e: 'a Info.env) u =
         ) 0 elems
     in
     let n,m = match t with
-      | None -> n,m
-      | Some(n',m') when n<=n' && m<=m' -> n',m'
+      | None -> Typ.flex n, Typ.flex m
+      | Some(n',m') when n<=List.length n' && m<=List.length m' -> n',m'
       | _ -> failwith "arity mismatch (explicit graph)"
     in
-    if m=0 then failwith "empty target graphs are not yet supported";
+    if m=[] then failwith "empty target graphs are not yet supported";
     let nodes =
       List.fold_left (fun nodes e ->
           match e with
@@ -112,9 +108,9 @@ let of_raw (e: 'a Info.env) u =
          else failwith "invalid outer source: %i" i
       | InnerTarget(j,i) ->
          try 
-           if 1<=i && i<=ktargets (kind j) then InnerTarget(j,i)
+           if 1<=i && i<=List.length (ktargets (kind j)) then InnerTarget(j,i)
            else failwith "invalid inner source: %s.%i" j i
-         with Not_found -> failwith "unknown source node: %i" n
+         with Not_found -> failwith "unknown source node: %i" (List.length n)
     in
     let oport = function
       | Target i as p ->
@@ -122,9 +118,9 @@ let of_raw (e: 'a Info.env) u =
          else failwith "invalid outer target: %i" i
       | InnerSource(j,i) ->
          try 
-           if 1<=i && i<=ksources (kind j) then InnerSource(j,i)
+           if 1<=i && i<=List.length (ksources (kind j)) then InnerSource(j,i)
            else failwith "invalid inner target: %s.%i" j i
-         with Not_found -> failwith "unknown target node: %i" n
+         with Not_found -> failwith "unknown target node: %i" (List.length n)
     in
     let edges =
       List.fold_left (fun edges e ->
@@ -161,8 +157,8 @@ let envterm (e,t) = let e = env e in e,of_raw e t
 let of_equation e (u,v) =
   let u = of_raw e u in
   let v = of_raw e v in
-  if (sources u,targets u) <> (sources v,targets v) then
-    failwith "arity mismatch in an equation";
+  Typ.unify ~msg:"equation sources" (sources u) (sources v);
+  Typ.unify ~msg:"equation targets" (targets u) (targets v);
   (u,v)
 
 let equations (e,l,placed) =

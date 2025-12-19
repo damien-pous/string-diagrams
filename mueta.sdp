@@ -1,20 +1,22 @@
-let m<color=red>: 2 -> 1 in
-let e<color=red>: 0 -> 1 in
-let n<color=blue>: 2 -> 1 in
-let f<color=blue>: 0 -> 1 in
-let x<color=orange;radius=5>: 2 -> 2 in
-let mn<color=violet> := id*x*id;m*n in
-let ef<color=violet> := e*f in
-// m*id;m = id*m;m ->
-(id*e);m = id ->
-// (e*id);m = id ->
-// n*id;n = id*n;n ->
-(id*f);n = id ->
-// (f*id);n = id ->
-// id*m;x = x*id;id*x;m*id ->
-id*e;x = e*id ->
-f*id;x = id*f ->
-// n*id;x = id*x;x*id;id*n ->
-// mn*id*id;mn = id*id*mn;mn
-(id*id*ef);mn = id*id
-// (ef*id*id);mn = id*id
+// let A<color=red>: * in
+// let B<color=blue>: * in
+let m<color=red;radius=6>: A*A -> A in
+let e<color=red;radius=6>: 1 -> A in
+let n<color=blue;radius=6>: B*B -> B in
+let f<color=blue;radius=6>: 1 -> B in
+let x<color=violet;radius=4>: B*A -> A*B in
+let mn<color=violet;radius=12> := id.x.id;m.n in
+let ef<color=violet;radius=12> := e.f in
+// m.id;m = id.m;m ->
+(id.e);m = id ->
+// (e.id);m = id ->
+// n.id;n = id.n;n ->
+(id.f);n = id ->
+// (f.id);n = id ->
+// id.m;x = x.id;id.x;m.id ->
+id.e;x = e.id ->
+f.id;x = id.f ->
+// n.id;x = id.x;x.id;id.n ->
+// mn.id.id;mn = id.id.mn;mn
+(id.id.ef);mn = id.id
+// (ef.id.id);mn = id.id

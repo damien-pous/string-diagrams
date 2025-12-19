@@ -18,7 +18,7 @@
 }
 
 let lstart = ['a'-'z' 'A'-'Z' '!' '?']
-let letter = ['a'-'z' 'A'-'Z' '0'-'9' '_' '-' '!' '?' '\'']
+let letter = ['a'-'z' 'A'-'Z' '0'-'9' '!' '?' '\'']
 let key = letter+
 let word = letter*
 let name = lstart word
@@ -52,6 +52,8 @@ rule token = parse
   | ';'                                    { SEMI }
   | ':'                                    { COLON }
   | '*'                                    { STAR }
+  | '.'                                    { DOT }
+  | '_'                                    { UNDER }
   | '='                                    { EQ }
   | ":="                                   { EQDEF }
   | "->"                                   { TO }

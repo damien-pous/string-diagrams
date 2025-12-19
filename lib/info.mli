@@ -12,7 +12,7 @@ val merge: kvl -> kvl -> kvl    (* gives precedence to the first argument *)
 
 val radius: kvl -> float option
 
-type 'a env = (name*(kvl*int*int*'a option)) list
+type 'a env = (name*(kvl*typs*typs*'a option)) list
 val envmap: ('a -> 'b) -> 'a env -> 'b env
 
 class rectangle_area: ?pos:point -> size -> ?name:string -> kvl -> area

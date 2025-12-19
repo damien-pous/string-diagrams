@@ -8,13 +8,13 @@ let fontsize = 11.
 let font = Vg.Font.{name="Latin Modern Roman"; slant=`Italic; weight=`W100; size=fontsize }
 
 (* in inches *)
-let linewidth = 0.5
+let linewidth = 1.0
 let pradius = 2.0
 
 let spacing = fontsize *. 3.
 let expand s = V2.(s + v spacing spacing)
 let size n = Size2.v (float_of_int n *. spacing) spacing
-let idm_size = size 1
+let idm_size = size
 let var_size n m = size (max n m)
 let empty_size n m =
   if n+m=0 then Size2.v (spacing /. 2.) spacing
@@ -57,11 +57,11 @@ let color' ?color name =
                else match name.[0] with
                | 'a' -> "yellow"
                | 'b' -> "orange"
-               | 'c' -> "red"
+               | 'c' | 'A' -> "red"
                | 'd' -> "violet"
                | 'e' -> "green"
                | 'f' -> "lblue"
-               | 'g' -> "blue"
+               | 'g' | 'B' -> "blue"
                | 'h' -> "turquoise"
                | 'i' -> "purple"
                | 'j' -> "rose"

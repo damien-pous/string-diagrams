@@ -10,7 +10,11 @@ let from_string s =
 let to_string = Format.kasprintf (fun s -> s) "%a" (Graph.pp_envgraph Full)
 let to_string' = Format.kasprintf (fun s -> s) "%a" (Graph.pp_envgraph Term)
 
-let same = Graph.iso_envgraph
+let same g h =
+  Typ.unify ~msg:"" (snd g)#sources (snd h)#sources;
+  Typ.unify ~msg:"" (snd g)#targets (snd h)#targets;
+  assert (Typ.eq (snd g)#sources (snd h)#sources);
+  Graph.iso_envgraph g h
 let pp = Graph.pp_envgraph Sparse
 
 let test_graph env s =
@@ -60,67 +64,77 @@ let test_niso = test_iso_ false
 
 let test = test_term
 
-(* let _ = test "let f: 1->1 in" "[f]" *)
-let _ = test "" "{ 1->1 }: 1->1"
-let _ = test "" "{ 1->1 }<size=2,2>"
+let _ = test "" "{1->1}"
+let _ = test "" "{1->1}: _->_"
+let _ = test "" "{1->1}: A->A"
+let _ = test "" "{1->1}<size=2,2>"
 let _ = test "" "id"
-let _ = test "" "id*id"
+let _ = test "" "id.id"
 let _ = test "" "id;id"
 let _ = test "" "[id]"
-let _ = test "" "[id]*id"
+let _ = test "" "[id].id"
 let _ = test "" "[id];id"
 
+let _ = test "let f: A->A in" "[f]"
+
 (* let _ = test "" "{}" *)
-(* let _ = test "" ": 0->0" *)
+(* let _ = test "" ": 1->1" *)
 (* let _ = test "" "" *)
 
 (* TODO: test ill-typed expressions *)
 
 let _ = test_iso "" "id" "id;id"
-let _ = test_niso "" "id" "id*id"
+(* let _ = test_niso "" "id" "id.id" *)
 let _ = test_niso "" "id" "[id]"
 
-let e = "let f: 2->1 in let g: 1->1 in let h: 1->1 in"
+let e = "let f: A*A->A in let g: A->A in let h: A->A in"
 let _ = test e "f"
-let _ = test e "f*id"
-let _ = test e "f*id;f"
-let _ = test e "(f*id;f)*id;f;g"
-let _ = test e "[f*id;f]*id;f"
+let _ = test e "f.id"
+let _ = test e "f.id;f"
+let _ = test e "(f.id;f).id;f;g"
+let _ = test e "[f.id;f].id;f"
 let _ = test_iso e "f" "f;id"
-let _ = test_iso e "f" "id*id;f"
-let _ = test_iso e "f" "f*"
-let _ = test_iso e "f" "*f"
+let _ = test_iso e "f" "id.id;f"
+let _ = test_iso e "f" "f."
+let _ = test_iso e "f" ".f"
 let _ = test_iso e "f;(g;h)" "(f;g);h"
-let _ = test_iso e "f*(g*h)" "(f*g)*h"
+let _ = test_iso e "f.(g.h)" "(f.g).h"
 let _ = test_iso e "f;(g;h);[g]" "(f;g);h;[g;id]"
 let _ = test_niso e "f;[g;h]" "[f;g];h"
 
-let e = "let m: 2->1 in let n: 0->1 in"
-let _ = test e "id * n ; m"
-let _ = test e "n * id ; m"
-let _ = test e "n * n ; m"
+let e = "let m: A*A->A in let n: 1->A in"
+let _ = test e "id . n ; m"
+let _ = test e "n . id ; m"
+let _ = test e "n . n ; m"
 
 let e =
-  "let g: 1 -> 1 in
-   let b: 2 -> 2 in"
-let _ = test e "g*id ; b"
-let _ = test e "id*g ; b"
+  "let g: A -> A in
+   let b: A*A -> A*A in"
+let _ = test e "g.id ; b"
+let _ = test e "id.g ; b"
 
-let _ = test e "b ; id*g"
-let _ = test e "b ; g*id"
-let _ = test e "id*g ; b ; g*id"
+let _ = test e "b ; id.g"
+let _ = test e "b ; g.id"
+let _ = test e "id.g ; b ; g.id"
 
 let e =
-  "let a: 2 -> 1 in
-   let d: 3 -> 1 in
-   let b: 2 -> 1 in
-   let c: 2 -> 2 in"
-let _ = test e "(id*c*id*id);(id*id*b*id);(id*id*a);d"
+  "let a: A*A -> A in
+   let d: A*A*A -> A in
+   let b: A*A -> A in
+   let c: A*A -> A*A in"
+let _ = test e "(id.c.id.id);(id.id.b.id);(id.id.a);d"
 
 let e = 
-  "let m<color=red>: 2 -> 1 in
-   let n<color=blue>: 2 -> 1 in
-   let x<color=violet>: 2 -> 2 in"
+  "let m<color=red>: A -> B in
+   let n<color=blue>: B -> C in"
+let _ = test e "m;n"
+
+let e = 
+  "let m<color=red>: A*A -> A in
+   let n<color=blue>: B*B -> B in
+   let x<color=violet>: B*A -> A*B in"
+let _ = test e "x.x"
+let _ = test e "id.x.id;m.n"
 let _ = test e
 "{n1: x,
  n2: m,
@@ -141,34 +155,34 @@ let _ = test e
  n5.1 -> n6.1,
  5 -> n6.2,
  n6.2 -> n4.1,
- n6.1 -> n3.2}: 6 -> 2"
+ n6.1 -> n3.2}: A*B*A*B*A*B -> A*B"
 
 
 (** should eventually go through [test_term]: empty target nodes *)
 
 let test = test_graph
 
-let e = "let m: 1->2 in let n: 1->0 in"
-let _ = test e "m ; id * n"
-let _ = test e "m ; n * id"
-(* let _ = test e "m ; n * n" *)
+let e = "let m: A->A*A in let n: A->1 in"
+let _ = test e "m ; id . n"
+let _ = test e "m ; n . id"
+(* let _ = test e "m ; n . n" *)
 
-let e = "let f: 0->1 in let g: 1->0 in let m: 1->2 in"
-let _ = test_iso e "g;f" "g*f"
-let _ = test_iso e "g;f" "f*g"
-let _ = test_iso e "f*(m;g*id)" "m;(g*f*id)"
-let _ = test_niso e "f*(m;g*id)" "m;(g*id*f)"
+let e = "let f: 1->A in let g: A->1 in let m: A->A*A in"
+let _ = test_iso e "g;f" "g.f"
+let _ = test_iso e "g;f" "f.g"
+let _ = test_iso e "f.(m;g.id)" "m;(g.f.id)"
+let _ = test_niso e "f.(m;g.id)" "m;(g.id.f)"
 
-let e = "let m: 2->0 in let n: 0->1 in let n': 0->1 in"
-(* let _ = test e "n*id; m" *)
-let _ = test_niso e "n*id; m" "n'*id; m"
+let e = "let m: A*A->1 in let n: 1->A in let n': 1->A in"
+(* let _ = test e "n.id; m" *)
+let _ = test_niso e "n.id; m" "n'.id; m"
 
-let e = "let n: 0->1 in let n': 0->1 in let m: 2->0 in let k: 0->2 in"
+let e = "let n: 1->A in let n': 1->A in let m: A*A->1 in let k: 1->A*A in"
 let _ = test e "n"
 let _ = test e "k"
-let _ = test e "n*k"
-let _ = test e "n*k*k;m*m*id"
-let _ = test_niso e "n*k*k;m*m*id" "n'*k*k;m*m*id"
+let _ = test e "n.k"
+let _ = test e "n.k.k;m.m.id"
+let _ = test_niso e "n.k.k;m.m.id" "n'.k.k;m.m.id"
 
-(* let e = "let m: 2->0 in let k: 0->2 in" *)
-(* let _ = test e "id*k*id ; m*m" *)
+(* let e = "let m: A*A->1 in let k: 1->A*A in" *)
+(* let _ = test e "id.k.id ; m.m" *)

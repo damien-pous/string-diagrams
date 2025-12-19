@@ -1,17 +1,17 @@
-// let g: 1 -> 1 in
+// let g: A -> A in
 // [g;g]
 
-// let g: 1->1 in
-// { n1: g;g, size=100,100 }: 1 -> 1
+// let g: A->A in
+// { n1: g;g, size=100,100 }: A -> A
 
-// let g: 1->1 in
-// { x: { i<pos=0,10>: g, j<pos=0,-10>: g, size=5,5}: 1->1, size=33,33 }: 1 -> 1
+// let g: A->A in
+// { x: { i<pos=0,10>: g, j<pos=0,-10>: g, size=5,5}: A->A, size=33,33 }: A -> A
 
-let a: 2->1 in
-let b: 1->1 in
-let c: 1->1 in
- (a*id ; [a ; b]) * c
+let a: A*A->A in
+let b: A->A in
+let c: A->A in
+ (a.id ; [a ; b]) . c
 
-// g * h
+// g . h
 // g ; h
 // [f] ; h

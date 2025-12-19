@@ -16,7 +16,7 @@ val spacing: float
 
 val empty_size: int -> int -> size2
 val var_size: int -> int -> size2
-val idm_size: size2
+val idm_size: int -> size2
 val estimate_size: int -> int -> int -> size2 (* sources, targets, number of nodes *)
 
 val expand: size2 -> size2

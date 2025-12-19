@@ -3,12 +3,12 @@ open Info
 open Graph_type
 
 (* graph algebra *)
-val empty: int -> int -> graph
+val empty: typs -> typs -> graph
 val emp: unit -> graph
-val idm: unit -> graph
+val idm: typs -> graph
 val seq: graph -> graph -> graph
 val tns: graph -> graph -> graph
-val var: int -> int -> name -> kvl -> graph
+val var: typs -> typs -> name -> kvl -> graph
 val box: graph -> kvl -> graph
 
 (* graphs from raw terms *)

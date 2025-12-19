@@ -59,26 +59,30 @@ type pp_mode = Full | Sparse | Term | TermIfPossible
 
 type name = string              (* box/variable names *)
 
+type typ = Typ.t                (* object types *)
+type typs = Typ.ts
+
 (* input/output ports *)
 type 'node iport = Source of int | InnerTarget of 'node * int
 type 'node oport = Target of int | InnerSource of 'node * int
+
 
 (* raw parsed terms/environments *)
 module Raw: sig
   type 'a term =
     | Emp
-    | Idm
+    | Idm of typs
     | Var of name * 'a
     | Seq of 'a term * 'a term
     | Tns of 'a term * 'a term
-    | Typ of 'a term * int * int
+    | Typ of 'a term * typs * typs
     | Box of 'a term * 'a
     | Gph of 'a elem list * 'a
   and 'a elem =
     | Node of string * 'a term * 'a
     | Edge of string iport * string oport
   (* environments *)
-  type 'a env = (name*('a*(int*int) option*'a term option)) list
+  type 'a env = (name*('a*(typs*typs) option*'a term option)) list
   type 'a envterm = 'a env * 'a term
   type 'a equations = 'a env * ('a term * 'a term) list * bool
 end

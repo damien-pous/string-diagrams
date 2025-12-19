@@ -1,5 +1,5 @@
 %token LPAR RPAR LBRK RBRK LSQR RSQR LT GT
-%token COMMA COLON SEMI STAR
+%token COMMA COLON SEMI STAR DOT UNDER
 %token ID LET EQ EQDEF IN TO EOF
 %token <Types.name> NAME
 %token <Types.perm> PRM
@@ -10,7 +10,7 @@
 
 %left COLON
 %left SEMI
-%left STAR
+%left DOT
 
 %type <Info.kvl Types.Raw.term> justterm
 %type <Info.kvl Types.Raw.envterm> envterm
@@ -27,11 +27,12 @@
 
 term:
 |                                               { Emp }
-| ID                                            { Idm }
+| ID                                            { Idm (Typ.flex 1)}
+| ID UNDER t=typs                               { Idm t }
 | f=NAME l=kvl                                  { Var(f,l) }
 | u=term SEMI v=term                            { Seq(u,v) }
-| u=term STAR v=term                            { Tns(u,v) }
-| u=term t=typ                                  { Typ(u,fst t, snd t) }
+| u=term DOT v=term                             { Tns(u,v) }
+| u=term t=mtyp                                 { Typ(u,fst t, snd t) }
 | LSQR u=term RSQR l=kvl                        { Box(u,l) }
 | LBRK g=separated_list(COMMA, elem) RBRK l=kvl { Gph(g,l) }
 | LPAR t=term RPAR                              { t }
@@ -52,10 +53,18 @@ env:
 | h=list(decl) { h }
 
 decl:
-| LET f=NAME l=kvl t=option(typ) b=option(body) IN { (f,(l,t,b)) }
+| LET f=NAME l=kvl t=option(mtyp) b=option(body) IN { (f,(l,t,b)) }
+
+mtyp:
+| COLON n=typs TO m=typs { (n,m) }
 
 typ:
-| COLON n=INT TO m=INT { (n,m) }
+| UNDER { Typ.flex1() }
+| a=NAME { Typ.name a }
+
+typs:
+| n=INT { if n=1 then [] else Misc.failwith "invalid type (%i)" n }
+| l=separated_nonempty_list(STAR,typ) { l }
 
 body:
 | EQDEF u=term { u }

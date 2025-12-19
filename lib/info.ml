@@ -5,7 +5,7 @@ open Misc
 type kv = string*string
 type kvl = kv list
 
-type 'a env = (name*(kvl*int*int*'a option)) list
+type 'a env = (name*(kvl*typs*typs*'a option)) list
 
 let envmap h =
   List.map (function

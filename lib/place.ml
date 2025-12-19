@@ -2,6 +2,9 @@ open Types
 open Graph_type
 open Gg
 
+let nsources n = float_of_int n#nsources
+let ntargets n = float_of_int n#ntargets
+
 let improve_placement s (g: graph) =
   let repulse = -10.0 in
   let attract = -10.0 in
@@ -39,10 +42,12 @@ let improve_placement s (g: graph) =
       let x,y = g#ipos i, g#opos o in
       let xy = V2.sub y x in
       (match i with
-       | InnerTarget(n,_) -> add n (-.attract/.(sqrt (V2.norm xy) *. float_of_int n#targets)) xy
+       | InnerTarget(n,_) ->
+          add n (-.attract/.(sqrt (V2.norm xy) *. ntargets n)) xy
        | _ -> ());
       (match o with
-       | InnerSource(n,_) -> add n (attract/.(sqrt (V2.norm xy) *. float_of_int n#sources)) xy
+       | InnerSource(n,_) ->
+          add n (attract/.(sqrt (V2.norm xy) *. nsources n)) xy
        | _ -> ())
     ) g#edges;
   Hashtbl.iter (fun x u ->
@@ -109,10 +114,10 @@ let rec improve_placement_depth ?(force=false) s (g: graph) =
       let xy = V2.sub y x in
       let xy = V2.ltr (M2.scale2 (V2.v 10. 1.)) xy in
       (match i with
-       | InnerTarget(n,_) -> add n (-.attract_link/.((* sqrt *) (* (V2.norm xy) *. *) float_of_int n#targets)) xy
+       | InnerTarget(n,_) -> add n (-.attract_link /. ntargets n) xy
        | _ -> ());
       (match o with
-       | InnerSource(n,_) -> add n (attract_link/.((* sqrt *) (* (V2.norm xy) *. *) float_of_int n#sources)) xy
+       | InnerSource(n,_) -> add n (attract_link /. nsources n) xy
        | _ -> ())
     ) g#edges;
   (* apply forces *)
@@ -159,10 +164,10 @@ let rec improve_placement_depth' ?(force=false) s (g: graph) =
       let xy = V2.sub y x in
       let xy = V2.ltr (M2.scale2 (V2.v 1. 0.)) xy in
       (match i with
-       | InnerTarget(n,_) -> add n (attract_x/.(float_of_int n#targets)) xy
+       | InnerTarget(n,_) -> add n (attract_x /. ntargets n) xy
        | _ -> ());
       (match o with
-       | InnerSource(n,_) -> add n (-.attract_x/.(float_of_int n#sources)) xy
+       | InnerSource(n,_) -> add n (-.attract_x /. nsources n) xy
        | _ -> ())
     ) g#edges;
   (* vertical attraction *)
@@ -177,7 +182,7 @@ let rec improve_placement_depth' ?(force=false) s (g: graph) =
             if dp < d then dp,[g#ipos p]
             else if dp = d then d,(g#ipos p::l)
             else d,l 
-          ) n#sources (mdepth+2,[Box2.tm_pt g#box]) (* TOFIX: default value might be wrong (plafonds) *)
+          ) n#nsources (mdepth+2,[Box2.tm_pt g#box]) (* TOFIX: default value might be wrong (plafonds) *)
       in
       let _,nexts =
         Misc.fold (fun i (d,l) ->
@@ -189,7 +194,7 @@ let rec improve_placement_depth' ?(force=false) s (g: graph) =
             if dp > d then dp,[g#opos p]
             else if dp = d then d,(g#opos p::l)
             else d,l 
-          ) n#targets (-1,[Box2.bm_pt g#box]) (* TOFIX: default value might be wrong (planchers) *)
+          ) n#ntargets (-1,[Box2.bm_pt g#box]) (* TOFIX: default value might be wrong (planchers) *)
       in
       let y = P2.y n#pos in
       let v = (List.fold_right (fun p -> (+.) (V2.y p -. y)) prevs 0.)
