@@ -4,12 +4,14 @@ open Graph_type
 open Messages
 
 let state_of_string s =
-  let l = Lexing.from_string s in
-  let x = Parser.equations Lexer.token l in
-  Graph.equations x
+  (Marshal.from_string s 0: equations)
+  (* let l = Lexing.from_string s in *)
+  (* let x = Parser.equations Lexer.token l in *)
+  (* Graph.equations x *)
 
-let string_of_state =
-  Format.asprintf "%a" (pp_equations Full)
+let string_of_state (s: equations) =
+  Marshal.to_string s [Marshal.Closures] 
+  (* Format.asprintf "%a" (pp_equations Full) *)
 
 class virtual mk (arena: arena) =
   object(self)
