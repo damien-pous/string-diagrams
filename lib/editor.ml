@@ -88,7 +88,7 @@ class virtual mk (arena: arena) =
                           self#highlight_oport o
                       )
             );
-          temporary#curve ~color q p;
+          temporary#segment ~color q p;
        | `New_edge_o o ->
           let p = arena#pointer in
           let q = graph#opos o in
@@ -103,7 +103,7 @@ class virtual mk (arena: arena) =
                           self#highlight_iport i
                       )
             );
-          temporary#curve ~color p q
+          temporary#segment ~color p q
        | `Move_node _ -> ()
        | `Normal -> ();
           match self#catch with

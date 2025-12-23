@@ -57,6 +57,8 @@ class proxy (e: #element): element =
     method ntargets = e#ntargets
     method spos = e#spos
     method tpos = e#tpos
+    method sdir = e#sdir
+    method tdir = e#tdir
     method styp = e#styp
     method ttyp = e#ttyp
 
@@ -142,6 +144,8 @@ class rectangular n m ?pos ~size ~name l =
     method rebox b = pos <- Box2.mid b; size <- Box2.size b; sized <- true
     method spos i = top_pos self#box i self#nsources 
     method tpos i = bot_pos self#box i self#ntargets 
+    method sdir (_: int) = V2.(zero-oy)
+    method tdir (_: int) = V2.(zero-oy)
     method private fill =
       match self#get "fill" with Some c -> Constants.color c | None -> color    
     method draw (draw: canvas) =
@@ -169,6 +173,8 @@ class circular n m ?pos ~radius ~name l =
       V2.add pos (V2.polar radius (Float.pi *. float_of_int (self#nsources-i+1) /. float_of_int (self#nsources+1)))
     method tpos i =
       V2.add pos (V2.polar radius (-. Float.pi *. float_of_int (self#ntargets-i+1) /. float_of_int (self#ntargets+1)))
+    method sdir i = V2.polar (-1.) (Float.pi *. float_of_int (self#nsources-i+1) /. float_of_int (self#nsources+1))
+    method tdir i = V2.polar 1. (-. Float.pi *. float_of_int (self#ntargets-i+1) /. float_of_int (self#ntargets+1))
     method private fill =
       match self#get "fill" with Some c -> Constants.color c | None -> color    
     method draw (draw: canvas) =
@@ -178,6 +184,24 @@ class circular n m ?pos ~radius ~name l =
       if sized then self#add "radius" (string_of_float radius)
     initializer
       (match self#get "radius" with Some s -> radius <- float_of_string s; sized <- true | None -> ())
+  end
+
+class point n m ?pos ~name l: element =
+  object(self)
+    inherit gen n m ?pos ~name l
+    method size = V2.v (2.*.Constants.pradius) (2.*.Constants.pradius)
+    method width = 2.*.Constants.pradius
+    method height = 2.*.Constants.pradius
+    method box = Box2.v_mid pos self#size
+    method contains p = Geometry.dist p pos <= Constants.pradius
+    method scale _ = ()
+    method rebox _ = failwith "cannot rebox a point area"
+    method spos _ = pos
+    method tpos _ = pos
+    method sdir i = V2.polar (-1.) (Float.pi *. float_of_int (self#nsources-i+1) /. float_of_int (self#nsources+1))
+    method tdir i = V2.polar 1. (-. Float.pi *. float_of_int (self#ntargets-i+1) /. float_of_int (self#ntargets+1))
+    method draw (draw: canvas) =
+      draw#point ~color pos
   end
 
 class polygonial n m poly =
@@ -216,4 +240,6 @@ let mk n m ~name l =
        new rectangular n m ~size ~name l
     | Some "circle" ->
        new circular n m ~radius:Constants.circle_size ~name l
+    | Some "point" ->
+       new point n m ~name l
     | Some s -> failwith "unknown shape: %s" s

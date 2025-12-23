@@ -19,6 +19,9 @@ class type graph =
     method ipos: node iport -> point
     method opos: node oport -> point
 
+    method idir: node iport -> vector
+    method odir: node oport -> vector
+    
     method ityp: node iport -> typ
     method otyp: node oport -> typ
     
@@ -48,6 +51,7 @@ class type graph =
 
     method pp: pp_mode -> formatter -> unit
     method draw: canvas -> unit
+    method draw_edge: canvas -> node iport*node oport -> unit
     method term: term
 
     (* is the graph stable (elastic dynamic) *)

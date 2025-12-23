@@ -40,9 +40,8 @@ class basic: canvas =
       self#shape ?color ?fill (P.empty |> P.circle p Constants.pradius)
     method segment ?color x y =
       self#path ?color (P.empty |> P.sub x |> P.line y)
-    method curve ?color x' y' =
-      let d = V2.(norm (x'-y')) /. 3. in
-      self#path ?color (P.empty |> P.sub x' |> P.ccurve V2.(x' - smul d oy) V2.(y' + smul d oy) y')
+    method curve ?color x p q y =
+      self#path ?color (P.empty |> P.sub x |> P.ccurve p q y)
     method line ?color l =
       let d = V2.smul 1000. l.dir in
       self#point ?color l.point;
@@ -66,7 +65,7 @@ class void: canvas =
     method box ?color ?fill _ = ignore (color,fill) 
     method point ?color _ = ignore color 
     method segment ?color _ _ = ignore color 
-    method curve ?color _ _ = ignore color 
+    method curve ?color _ _ _ _ = ignore color 
     method line ?color _ = ignore color 
     method text _ _ = ()
   end

@@ -32,7 +32,7 @@ class type canvas =
     method polygon: ?color:color -> ?fill:color -> polygon -> unit
     method point: ?color:color -> point -> unit
     method segment: ?color:color -> point -> point -> unit 
-    method curve: ?color:color -> point -> point -> unit 
+    method curve: ?color:color -> point -> point -> point -> point -> unit 
     method line: ?color:color -> line -> unit 
     method text: point -> string -> unit 
   end
@@ -115,6 +115,8 @@ class type element = object
   method pos: point
   method spos: int -> point
   method tpos: int -> point
+  method sdir: int -> vector
+  method tdir: int -> vector
   method size: size
   method color: color
   method box: box

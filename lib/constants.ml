@@ -9,8 +9,8 @@ let fontsize = 11.
 let font = Vg.Font.{name="Helvetica"; slant=`Normal; weight=`W100; size=fontsize }
 
 (* in inches *)
-let pathlinewidth = 1.0
-let shapelinewidth = 0.1
+let pathlinewidth = 2.0
+let shapelinewidth = 0.0
 let pradius = 2.0
 
 let spacing = fontsize *. 3.

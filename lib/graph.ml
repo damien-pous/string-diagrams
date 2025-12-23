@@ -180,6 +180,13 @@ class gen_graph nodes edges area =
       | Target i -> self#tpos i
       | InnerSource(n,i) -> n#spos i
 
+    method idir = function
+      | Source i -> self#sdir i
+      | InnerTarget(n,i) -> n#tdir i
+    method odir = function
+      | Target i -> self#tdir i
+      | InnerSource(n,i) -> n#sdir i
+
     method ityp = function
       | Source i -> self#styp i
       | InnerTarget(n,i) -> n#ttyp i
@@ -308,6 +315,13 @@ class gen_graph nodes edges area =
 
     method term = to_term (self:>graph)
 
+    method draw_edge (draw: canvas) (i,o) =
+      let p,ui = self#ipos i, self#idir i in
+      let q,uo = self#opos o, self#odir o in
+      let color = icolor self i in
+      let d = V2.(norm (q-p)) /. 3. in
+        draw#curve ~color p V2.(p+smul d ui) V2.(q-smul d uo) q      
+    
     method! draw (draw: canvas) =
       let draw_node n =
         n#draw draw;
@@ -320,10 +334,8 @@ class gen_graph nodes edges area =
               draw#point ~color:(ocolor self p) (self#opos p)
           )
       in
-      let draw_edge (i,o) =
-        draw#curve ~color:(icolor self i) (self#ipos i) (self#opos o) in
       area#draw draw;
-      MSet.iter draw_edge edges;
+      MSet.iter (self#draw_edge draw) edges;
       MSet.iter draw_node nodes
 
     (* careful: since we use a proxy rather than plain inheritance,
