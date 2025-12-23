@@ -593,8 +593,8 @@ let create_box (g: graph) p =
                  MSet.fold (fun e acc ->
                      let s,t = g#ipos (src e), g#opos (tgt e) in
                      match Geometry.intersection ij (s,t) with
-                     | Some(x,(L|E)) -> `S (e,x) :: acc
-                     | Some(x,R) -> `T (e,x) :: acc
+                     | Some(x,(L|E)) -> `S (e,(x,V2.(unit (t-s)))) :: acc
+                     | Some(x,R) -> `T (e,(x,V2.(unit (t-s)))) :: acc
                      | None -> acc
                    ) acc g#edges
                ) []

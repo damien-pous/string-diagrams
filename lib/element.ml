@@ -210,6 +210,8 @@ class polygonial n m poly =
   let size = Box2.size box in
   let n,spos = List.split n in
   let m,tpos = List.split m in
+  let spos,sdir = List.split spos in
+  let tpos,tdir = List.split tpos in
   object(self)
     inherit rectangular n m ~pos ~size ~name:"" [] as parent
     val mutable poly = poly
@@ -217,6 +219,8 @@ class polygonial n m poly =
     val mutable tpos = tpos
     method! spos i = List.nth spos (i-1)
     method! tpos i = List.nth tpos (i-1)
+    method! sdir i = List.nth sdir (i-1)
+    method! tdir i = List.nth tdir (i-1)
     method! contains p = Geometry.mem_poly p poly
     method! shift d =
       parent#shift d;
