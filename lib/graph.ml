@@ -560,14 +560,11 @@ let equations ehg =
   Element.envmap of_gterm e, h, (l,r)
 
 (* copy a graph by serialisation (is there a nicer way?) *)
-let copy e g =
-  let s = Format.kasprintf (fun s -> s) "%a" (pp Full) g in
-  try
-    let l = Lexing.from_string s in
-    let t = Parser.justterm Lexer.token l in
-    let t = GTerm.of_raw e t in
-    of_gterm t
-  with e -> Format.eprintf "error copying graph@."; raise e
+let copy _ (g: graph) =
+  let g': graph = Marshal.from_string (Marshal.to_string g [Marshal.Closures]) 0 in
+  Typ.unify ~msg:"Graph.copy" g#sources g'#sources;
+  Typ.unify ~msg:"Graph.copy" g#targets g'#targets;
+  g'
 
 
 exception Found_iport of iport
