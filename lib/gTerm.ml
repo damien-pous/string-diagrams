@@ -1,6 +1,6 @@
 open Types
 open Misc
-open Info
+open Element
 
 type iport = string Types.iport
 type oport = string Types.oport
@@ -48,10 +48,10 @@ let typ u n m =
   Typ.unify ~msg:"(type cast: targets)" (targets u) m;
   u
 
-let of_raw (e: 'a Info.env) u =
+let of_raw (e: 'a env) u =
   let sym f l = 
     try let (l',n,m,_) = List.assoc f e in
-        Info.merge l l',n,m
+        merge l l',n,m
     with Not_found -> failwith "unknown symbol: %s" f
   in
   let rec build = function

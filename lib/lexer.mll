@@ -12,7 +12,7 @@
            | None -> int_of_string (String.sub s i (n-i)) :: acc
            | Some j -> split (int_of_string (String.sub s i (j-i-1)) :: acc) (j+1)
     in List.rev (split [int_of_string x] 0)
-  let keyval k v = KEYVAL(Info.kv k v)
+  let keyval k v = KEYVAL(Element.kv k v)
   let p2_of_strings x y =
     Gg.P2.v (float_of_string x) (float_of_string y)
 }

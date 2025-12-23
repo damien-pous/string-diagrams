@@ -44,9 +44,11 @@ class virtual mk (arena: arena) =
       self#refresh
 
     method private highlight_iport i =
-      temporary#circle ~fill:Constants.iport_color {center=graph#ipos i;radius=Constants.pradius}      
+      temporary#circle ~fill:(Graph.icolor graph i)
+        {center = graph#ipos i; radius = 1.5*.Constants.pradius}
     method private highlight_oport o =
-      temporary#circle ~fill:Constants.oport_color {center=graph#opos o;radius=Constants.pradius}      
+      temporary#circle ~fill:(Graph.ocolor graph o)
+        {center = graph#opos o; radius = 1.5*.Constants.pradius}
     
     method private refresh =
       (match mode with
@@ -75,31 +77,33 @@ class virtual mk (arena: arena) =
        | `New_edge_i i ->
           let p = arena#pointer in
           let q = graph#ipos i in
+          let color = Graph.icolor graph i in
           if Geometry.mem_point p q then
-            temporary#circle ~fill:Constants.black {center=q;radius=Constants.pradius};
+            temporary#point q;
           Graph.iter_oports graph
-            (fun o -> if graph#ofree o then (
+            (fun o -> if graph#ofree o && Typ.eq1 (graph#ityp i) (graph#otyp o) then (
                         let q = graph#opos o in
-                        temporary#point ~color:Constants.oport_color q;
+                        temporary#point ~color q;
                         if Geometry.mem_point p q then
                           self#highlight_oport o
                       )
             );
-          temporary#segment ~color:Constants.red p q;
+          temporary#curve ~color q p;
        | `New_edge_o o ->
           let p = arena#pointer in
           let q = graph#opos o in
+          let color = Graph.ocolor graph o in
           if Geometry.mem_point p q then
-            temporary#circle ~fill:Constants.black {center=q;radius=Constants.pradius};
+            temporary#point q;
           Graph.iter_iports graph
-            (fun i -> if graph#ifree i then (
+            (fun i -> if graph#ifree i && Typ.eq1 (graph#ityp i) (graph#otyp o)  then (
                         let q = graph#ipos i in
-                        temporary#point ~color:Constants.iport_color q;
+                        temporary#point ~color q;
                         if Geometry.mem_point p q then
                           self#highlight_iport i
                       )
             );
-          temporary#segment ~color:Constants.red p q
+          temporary#curve ~color p q
        | `Move_node _ -> ()
        | `Normal -> ();
           match self#catch with
@@ -160,7 +164,7 @@ class virtual mk (arena: arena) =
       self#drawing_changed
     
     method private catch =
-      Graph.find graph arena#pointer
+      Graph.find_ports graph arena#pointer
 
     method private remove =
       match self#catch with
@@ -169,7 +173,7 @@ class virtual mk (arena: arena) =
 
     method private add_node f =
       try let l,n,m,_ = List.assoc f env in
-          graph#add_node n m f (Info.pos arena#pointer l); self#graph_changed
+          graph#add_node (Graph.var_node n m f (Element.pos arena#pointer l)); self#graph_changed
       with Not_found -> error "unknown node name: %s" f
     
     method private unfold =
@@ -177,7 +181,7 @@ class virtual mk (arena: arena) =
       | `N n ->
          (match n#kind with
           | Box _ -> graph#unbox n; self#graph_changed
-          | Var(_,_,f) ->
+          | Var f ->
              match List.assoc f env with
              | (_,_,_,Some g) -> graph#subst n (Graph.copy env g); self#graph_changed
              | _ -> temporary#msg "this box is atomic"
@@ -224,15 +228,14 @@ class virtual mk (arena: arena) =
          ignore(Graph.create_box graph p); self#graph_changed
       | `New_edge_i i ->
          (match self#catch with
-          | `I i' when i=i' -> mode <- `Normal; self#graph_changed
-          | `O o when graph#ofree o ->
+          | `O o when graph#ofree o && Typ.eq1 (graph#ityp i) (graph#otyp o) ->
              mode <- `Normal; graph#add_edge (i,o); self#graph_changed
-          | _ -> self#abort)
+          | _ -> mode <- `Normal; self#graph_changed)
       | `New_edge_o o ->
          (match self#catch with
-          | `O o' when o=o' -> mode <- `Normal; self#graph_changed
-          | `I i when graph#ifree i -> mode <- `Normal; graph#add_edge (i,o); self#graph_changed
-          | _ -> self#abort)
+          | `I i when graph#ifree i && Typ.eq1 (graph#ityp i) (graph#otyp o) ->
+             mode <- `Normal; graph#add_edge (i,o); self#graph_changed
+          | _ -> mode <- `Normal; self#graph_changed)
       | `Normal -> ()
       | `New_node -> ()
 

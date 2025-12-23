@@ -1,5 +1,5 @@
 open Types
-open Info
+open Element
 
 type iport = string Types.iport
 type oport = string Types.oport

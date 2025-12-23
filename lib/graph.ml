@@ -22,17 +22,22 @@ let iter_oports g f =
   fold (fun i () -> f (Target i)) g#ntargets ();  
   MSet.iter (fun n -> fold (fun i () -> f (InnerSource(n,i))) n#nsources ()) g#nodes
 
+
+let icolor g i = match Typ.get (g#ityp i) with Some a -> Constants.color' a | None -> Constants.black
+let ocolor g o = match Typ.get (g#otyp o) with Some a -> Constants.color' a | None -> Constants.black
+
+
 (** checking isomorphism
     !! for now, only correct on connected graphs *)
-let rec iso (g: graph) (h: graph) =
+let rec iso g h =
   Typ.eq g#sources h#sources &&
   Typ.eq g#targets h#targets &&
   MSet.size g#nodes = MSet.size h#nodes &&
   MSet.size g#edges = MSet.size h#edges &&
   let bisim = Hashtbl.create (2 * (MSet.size g#edges + MSet.size h#edges)) in
-  let same_kind h k = match h,k with
-    | Var(_,_,f), Var(_,_,g) -> f=g 
-    | Box g, Box h -> iso g h
+  let same_kind h k = match h#kind,k#kind with
+    | Var f, Var g -> f=g 
+    | Box h, Box k -> iso h k
     | _ -> false
   in      
   let rec iso_dn x y =
@@ -42,7 +47,7 @@ let rec iso (g: graph) (h: graph) =
     | Some (InnerSource(n,i)), Some (InnerSource(m,j)) when i=j ->
        Hashtbl.mem bisim (n,m) ||
          let _ = Hashtbl.add bisim (n,m) () in
-         same_kind n#kind m#kind &&
+         same_kind n m &&
          forall n#nsources (fun i -> iso_up (InnerSource(n,i)) (InnerSource(m,i))) &&
          forall n#ntargets (fun i -> iso_dn (InnerTarget(n,i)) (InnerTarget(m,i)))
     | _ -> false
@@ -53,7 +58,7 @@ let rec iso (g: graph) (h: graph) =
     | Some (InnerTarget(n,i)), Some (InnerTarget(m,j)) when i=j ->
        Hashtbl.mem bisim (n,m) ||
          let _ = Hashtbl.add bisim (n,m) () in
-         same_kind n#kind m#kind &&
+         same_kind n m &&
          forall n#nsources (fun i -> iso_up (InnerSource(n,i)) (InnerSource(m,i))) &&
          forall n#ntargets (fun i -> iso_dn (InnerTarget(n,i)) (InnerTarget(m,i)))
     | _ -> false
@@ -123,10 +128,10 @@ let pp_env mode f (e: env) =
     | [] -> ()
     | (x,(l,n,m,None))::q ->
        pp_env f q;
-       Format.fprintf f "let %s%a: %a -> %a in\n" x Info.pp_kvl l Typ.pp n Typ.pp m
+       Format.fprintf f "let %s%a: %a -> %a in\n" x Element.pp_kvl l Typ.pp n Typ.pp m
     | (x,(l,n,m,Some g))::q ->
        pp_env f q;
-       Format.fprintf f "let %s%a: %a -> %a := %t in\n" x Info.pp_kvl l Typ.pp n Typ.pp m (g#pp mode)
+       Format.fprintf f "let %s%a: %a -> %a := %t in\n" x Element.pp_kvl l Typ.pp n Typ.pp m (g#pp mode)
   in pp_env f e
 let pp_envgraph mode f (e,g) = pp_env mode f e; pp mode f g
 let pp_equation mode f (u,v) = 
@@ -136,136 +141,11 @@ let pp_equations mode f (e,h,g) =
   (pp_env mode) e
   (pp_print_list " -> \n" (pp_equation mode)) (h@[g])
 
-(** * generic graph/node constructors *)
-
-let top_pos b i n =
-  let p = Gg.Box2.tl_pt b in
-  let w = Gg.Box2.w b in
-  let d = w /. (2. *. float_of_int n) in
-  Gg.V2.add p (Gg.V2.v (d *. (float_of_int (2*i-1))) 0.)
-let bot_pos b i n =
-  let p = Gg.Box2.bl_pt b in
-  let w = Gg.Box2.w b in
-  let d = w /. (2. *. float_of_int n) in
-  Gg.V2.add p (Gg.V2.v (d *. (float_of_int (2*i-1))) 0.)
-
-class iface n m: interface =
-  let n' = List.length n in 
-  let m' = List.length m in 
-  object
-    method sources = n
-    method targets = m
-    method nsources = n'
-    method ntargets = m'
-    method styp i = List.nth n (i-1)
-    method ttyp i = List.nth m (i-1)
-  end
-
-(* shared boundary *)
-class proxy (b: boundary) =
-  object
-    inherit Info.proxy (b:>area)
-    method sources = b#sources
-    method targets = b#targets
-    method nsources = b#nsources
-    method ntargets = b#ntargets
-    method spos = b#spos
-    method tpos = b#tpos
-    method styp = b#styp
-    method ttyp = b#ttyp
-  end
-
-(* rectangular boundary *)
-class rectangle_boundary n m ?pos size ?name kvl =
-  object(self)
-    inherit iface n m 
-    inherit Info.rectangle_area ?pos size ?name kvl
-    method spos i = top_pos self#box i self#nsources 
-    method tpos i = bot_pos self#box i self#ntargets 
-  end
-
-(* circular boundary *)
-class circular_boundary n m ?pos radius ?name kvl =
-  object(self)
-    inherit iface n m 
-    inherit Info.circular_area ?pos radius ?name kvl
-    method spos i =
-      V2.add self#pos (V2.polar self#radius (Float.pi *. float_of_int (self#nsources-i+1) /. float_of_int (self#nsources+1)))
-    method tpos i =
-      V2.add self#pos (V2.polar self#radius (-. Float.pi *. float_of_int (self#ntargets-i+1) /. float_of_int (self#ntargets+1)))
-  end
-
-(* polygonial boundary *)
-class polygon_boundary poly spos tpos ?name kvl =
-  let n,spos = List.split spos in
-  let m,tpos = List.split tpos in
-  object
-    inherit iface n m
-    inherit Info.polygon_area poly ?name kvl as area
-    val mutable spos = spos
-    val mutable tpos = tpos
-    method spos i = List.nth spos (i-1)
-    method tpos i = List.nth tpos (i-1)
-    method! private on_shift d =
-      area#on_shift d;
-      spos <- List.map (V2.add d) spos;
-      tpos <- List.map (V2.add d) tpos;
-  end
-
-class virtual var_node_ n m f =
-  object(self)
-    method virtual draw_boundary: canvas -> unit
-    method virtual pos: point
-    method virtual pp_infos: pp_mode -> formatter -> unit
-    method draw draw =
-      self#draw_boundary draw;
-      (* draw#text self#pos f *)
-    method kind: graph nkind = Var(n,m,f)
-    method pp mode ff =
-      Format.fprintf ff "%s%t" f (self#pp_infos mode)
-    method term = Term.var n m f
-  end
-
-(* variable node *)
-let var_node n m f l =
-  match Info.radius l with
-  | Some radius -> 
-     object
-       inherit circular_boundary n m radius ~name:f l
-       inherit var_node_ n m f
-     end
-  | None ->
-     let n',m' = List.length n, List.length m in
-     object
-       inherit rectangle_boundary n m (Constants.var_size n' m') ~name:f l
-       inherit var_node_ n m f
-     end
-
-(* box node *)
-let box_node g (_: Info.kvl) =
-  (* TODO: use infos, via proxy? *)
-  object
-    inherit proxy (g:>boundary)
-    method kind = Box g
-    method pp mode = g#pp mode 
-    method draw c = g#draw c
-    method term = Term.box g#term
-  end    
 
 (* generic pregraph *)
-class virtual gen_graph nodes edges =
+class gen_graph nodes edges area =
   object(self)
-
-    method virtual pp_infos: pp_mode -> formatter -> unit
-    method virtual sources: typs
-    method virtual targets: typs
-    method virtual pos: point
-    method virtual spos: int -> point
-    method virtual tpos: int -> point
-    method virtual styp: int -> typ
-    method virtual ttyp: int -> typ
-    method virtual draw_boundary: canvas -> unit
-    method private virtual shift_boundary: vector -> unit
+    inherit Element.proxy area
 
     val mutable depth = Hashtbl.create (MSet.size nodes)
     val mutable edges: (iport*oport) mset = edges
@@ -359,9 +239,13 @@ class virtual gen_graph nodes edges =
       edges <- MSet.add (src,tgt) edges;
       self#reset_depth;      
 
-    method add_node n m f l =
-      nodes <- MSet.add (var_node n m f l) nodes;
+    method add_node n =
+      nodes <- MSet.add n nodes;
       (* self#reset_depth;       *)
+
+    method replace g =
+      g#move self#pos; (* TODO: resize h, or create it to fit the current box? *)
+      self#update g#nodes g#edges
     
     method subst n h =
       assert (Typ.eq n#sources h#sources && Typ.eq n#targets h#targets);
@@ -385,14 +269,10 @@ class virtual gen_graph nodes edges =
       nodes <- MSet.union nodes h#nodes;
       edges <- MSet.union edges new_edges;
       self#reset_depth;
-
-    method replace g =
-      g#move self#pos; (* TODO: resize h, or create it to fit the current box? *)
-      self#update g#nodes g#edges
       
     method unbox n =
       match n#kind with
-      | Var(_,_,_) -> assert false
+      | Var _ -> assert false
       | Box g -> self#subst n g
 
     (* textual pretty printing *)
@@ -402,21 +282,22 @@ class virtual gen_graph nodes edges =
     method private pp_oport f = function
       | Target i -> Format.fprintf f "%i" i
       | InnerSource(n,i) -> Format.fprintf f "n%i.%i" (MSet.index n self#nodes) i
-    method private pp_kind mode f = function
-      | Var(_,_,x) -> Format.fprintf f "%s" x
+    method private pp_node mode f n =
+      match n#kind with
+      | Var x -> Format.fprintf f "%s" x
       | Box g -> g#pp mode f
     method private pp_ mode f =
       let first = ref true in
       Format.fprintf f "{";
       MSet.iteri (fun i n ->
           if not !first then Format.fprintf f ",\n "; first := false;
-          Format.fprintf f "n%i%t: %a" i (n#pp_infos mode) (self#pp_kind mode) n#kind;
+          Format.fprintf f "n%i%t: %a" i (n#pp_kvl mode) (self#pp_node mode) n;
         ) self#nodes;
       MSet.iter (fun (s,t) ->
           if not !first then Format.fprintf f ",\n "; first := false;
           Format.fprintf f "%a -> %a" self#pp_iport s self#pp_oport t;
         ) self#edges;
-      Format.fprintf f "}%t: %a -> %a" (self#pp_infos mode) Typ.pp self#sources Typ.pp self#targets
+      Format.fprintf f "}%t: %a -> %a" (self#pp_kvl mode) Typ.pp self#sources Typ.pp self#targets
     method pp mode f =
       match mode with
       | Term -> Term.pp f self#term
@@ -427,27 +308,29 @@ class virtual gen_graph nodes edges =
 
     method term = to_term (self:>graph)
 
-    method draw (draw: canvas) =
+    method! draw (draw: canvas) =
       let draw_node n =
         n#draw draw;
-        iter_iports (self:>graph) (fun p ->
+        iter_iports self (fun p ->
             if self#ifree p then
-              draw#point ~color:Constants.gray(* iport_color *) (self#ipos p)
+              draw#point ~color:(icolor self p) (self#ipos p)
           );
-        iter_oports (self:>graph) (fun p ->
+        iter_oports self (fun p ->
             if self#ofree p then
-              draw#point ~color:Constants.gray(* oport_color *) (self#opos p)
+              draw#point ~color:(ocolor self p) (self#opos p)
           )
       in
       let draw_edge (i,o) =
-        let color = Option.map Constants.color' (Typ.get (self#ityp i)) in
-        draw#curve ?color (self#ipos i) (self#opos o) in
-      self#draw_boundary draw;
+        draw#curve ~color:(icolor self i) (self#ipos i) (self#opos o) in
+      area#draw draw;
       MSet.iter draw_edge edges;
       MSet.iter draw_node nodes
 
-    method shift d =
-      self#shift_boundary d;
+    (* careful: since we use a proxy rather than plain inheritance,
+       we need to redefine #move so that it calls the overriden #shift *)
+    method! move p = self#shift V2.(p-self#pos)
+    method! shift d =
+      area#shift d;
       MSet.iter (fun n -> n#shift d) nodes
 
     method inner_graphs =
@@ -462,19 +345,15 @@ class virtual gen_graph nodes edges =
 
   end
 
-let polygon_graph spos tpos nodes edges poly l =
-  object
-    inherit polygon_boundary poly spos tpos l as boundary
-    method private shift_boundary = boundary#shift
-    inherit! gen_graph nodes edges
-  end
 
 let rectangle_graph n m nodes edges ?pos size l =
-  object 
-    inherit rectangle_boundary n m ?pos size l as boundary
-    method private shift_boundary = boundary#shift
-    inherit! gen_graph nodes edges
-  end 
+  new gen_graph nodes edges
+    (new Element.rectangular n m ?pos ~size ~name:"" l)
+
+
+let polygon_graph n m nodes edges poly =
+  new gen_graph nodes edges
+    (new Element.polygonial n m poly)
 
 
 (** * algebra of graphs *)
@@ -511,7 +390,7 @@ let shift_edges n m =
   MSet.map (fun (s,t) -> shift_iport s, shift_oport t)
 
 (* tensor product *)
-let tns (g: graph) (h: graph) =
+let tns g h =
   let size = Size2.v (g#width +. h#width) (max g#height h#height) in
   g#move (P2.v (-. h#width /. 2.) 0.);
   h#move (P2.v (g#width /. 2.) 0.);
@@ -523,7 +402,7 @@ let tns (g: graph) (h: graph) =
     [] 
 
 (* sequential composition *)
-let seq (g: graph) (h: graph) =
+let seq g h =
   assert (Typ.eq g#targets h#sources);
   let size = Size2.v (max g#width h#width) (g#height +. h#height) in
   g#move (P2.v 0. (h#height /. 2.));
@@ -545,25 +424,42 @@ let seq (g: graph) (h: graph) =
     size
     []
 
-(* generic box graph *)
-let gen_box_graph b n m =
-  rectangle_graph
-    n m
-    (MSet.single b)
+(* variable node *)
+let var_node n m name l =
+  object(self)
+    inherit Element.proxy (Element.mk n m ~name l) as parent
+    method kind = Var name
+    method! draw canvas =
+      parent#draw canvas;
+      if false then canvas#text self#pos name
+    method term = Term.var n m name
+  end
+
+(* graph node *)
+let graph_node g =
+  object
+    inherit Element.proxy g
+    method kind = Box g
+    method term = Term.box g#term
+  end
+
+(* graph with a single node *)
+let node_graph n =
+  new gen_graph
+    (MSet.single n)
     (MSet.union
-       (MSet.init (List.length n) (fun i -> (Source i, InnerSource(b,i))))
-       (MSet.init (List.length m) (fun j -> (InnerTarget(b,j), Target j))))
-    (Constants.expand b#size)
-    [] 
+       (MSet.init n#nsources (fun i -> (Source i, InnerSource(n,i))))
+       (MSet.init n#ntargets (fun j -> (InnerTarget(n,j), Target j))))
+    (new Element.rectangular n#sources n#targets
+       ~pos:n#pos ~size:(Constants.expand n#size) ~name:"" [])
 
 (* graph reduced to a variable node *)
-let var n m f l = gen_box_graph (var_node n m f l) n m
+let var n m name l = node_graph (var_node n m name l)
 
-(* graph reduced to a box node *)
-let box g l = gen_box_graph (box_node g l) g#sources g#targets
+(* boxed graph *)
+let box g = node_graph (graph_node g)
 
-
-
+  
 (** * graphs from generalised terms *)
 
 let of_gterm u =
@@ -572,7 +468,7 @@ let of_gterm u =
     | GTerm.Var(n,m,f,l) -> var n m f l
     | GTerm.Seq(u,v) -> seq (build u) (build v)
     | GTerm.Tns(u,v) -> tns (build u) (build v)
-    | GTerm.Box(u,l) -> box (build u) l
+    | GTerm.Box(u,_) -> box (build u) (* l *)
     | GTerm.Gph(n,m,nodes,edges,l) -> gph n m nodes edges l
   and gph n m nodes edges l =
     let n',m' = List.length n, List.length m in
@@ -581,7 +477,7 @@ let of_gterm u =
       MSet.mapl (fun (n,(k,l)) ->
           let node = match k with
             | GTerm.VNode(n,m,f) -> var_node n m f l
-            | GTerm.GNode(t) -> box_node (build t) l
+            | GTerm.GNode(t) -> graph_node (build t) (* l *)
           in
           Hashtbl.add t n node;
           node
@@ -624,11 +520,11 @@ let of_gterm u =
   in build u
   
 
-let env e = Info.envmap of_gterm (GTerm.env e)
+let env e = Element.envmap of_gterm (GTerm.env e)
 let of_raw e t = of_gterm (GTerm.of_raw e t)
 let envgraph et =
   let (e,t) = GTerm.envterm et in
-  Info.envmap of_gterm e, of_gterm t
+  Element.envmap of_gterm e, of_gterm t
 
 
 let of_equation ~placed (u,v) =
@@ -649,7 +545,7 @@ let equations ehg =
     let ph = Pad.hpad (3.*.Constants.spacing) ph in
     let plr = Pad.hpad Constants.spacing [l;r] in
     ignore (Pad.vpad (2.*.Constants.spacing) [plr;ph]));
-  Info.envmap of_gterm e, h, (l,r)
+  Element.envmap of_gterm e, h, (l,r)
 
 (* copy a graph by serialisation (is there a nicer way?) *)
 let copy e g =
@@ -665,12 +561,14 @@ let copy e g =
 exception Found_iport of iport
 exception Found_oport of oport
 let find g p =
+  match MSet.find (fun n -> n#contains p) g#nodes with
+  | Some x -> `N x
+  | None -> `None
+let find_ports g p =
   try
     iter_iports g (fun i -> if Geometry.mem_point p (g#ipos i) then raise (Found_iport i));
     iter_oports g (fun o -> if Geometry.mem_point p (g#opos o) then raise (Found_oport o));
-    match MSet.find (fun n -> Box2.mem p n#box) g#nodes with
-    | Some x -> `N x
-    | None -> `None
+    find g p
   with
   | Found_iport i -> `I i
   | Found_oport o -> `O o
@@ -790,8 +688,8 @@ let create_box (g: graph) p =
   let f ((i,_),p) = (g#ityp i,p) in
   let src = List.map f src in
   let tgt = List.map f tgt in
-  let h = polygon_graph src tgt nodes_in edges_in p [] in
-  let b = box_node h [] in
-  debug_msg "%t" (b#pp Full);
+  let h = polygon_graph src tgt nodes_in edges_in p in
+  let b = graph_node h (* [] *) in
+  debug_msg "%t" (h#pp Full);
   g#update (MSet.add b nodes_out) (edges_out b);
   h

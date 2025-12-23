@@ -5,16 +5,16 @@
 %token <Types.perm> PRM
 %token <int> INT
 %token <float> FLOAT
-%token <Info.kv> KEYVAL
+%token <Element.kv> KEYVAL
 %token <Types.name*int> IPORT
 
 %left COLON
 %left SEMI
 %left DOT
 
-%type <Info.kvl Types.Raw.term> justterm
-%type <Info.kvl Types.Raw.envterm> envterm
-%type <Info.kvl Types.Raw.equations> equations
+%type <Element.kvl Types.Raw.term> justterm
+%type <Element.kvl Types.Raw.envterm> envterm
+%type <Element.kvl Types.Raw.equations> equations
 %start justterm envterm equations
 
 

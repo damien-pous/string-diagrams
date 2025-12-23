@@ -24,7 +24,8 @@ class type canvas =
   object
     method clear: unit
     method get: image
-    method path: ?color:color -> ?fill:color -> path -> unit
+    method path: ?color:color -> path -> unit
+    method shape: ?color:color -> ?fill:color -> path -> unit
     method box: ?color:color -> ?fill:color -> box -> unit 
     method circle: ?color:color -> ?fill:color -> circle -> unit
     method pentagon: ?color:color -> ?fill:color -> circle -> unit
@@ -67,6 +68,8 @@ type typs = Typ.ts
 type 'node iport = Source of int | InnerTarget of 'node * int
 type 'node oport = Target of int | InnerSource of 'node * int
 
+type 'graph kind = Box of 'graph | Var of name
+
 
 (* raw parsed terms/environments *)
 module Raw: sig
@@ -88,14 +91,6 @@ module Raw: sig
   type 'a equations = 'a env * ('a term * 'a term) list * bool
 end
 
-class type printable =
-  object
-    method get: string -> string option
-    method set: string -> string -> unit
-    method unset: string -> unit
-    method pp_infos: pp_mode -> formatter -> unit
-  end
-
 class type paddable =
   object
     method width: float
@@ -103,23 +98,30 @@ class type paddable =
     method shift: vector -> unit
   end
 
-class type area =
-  object
-    inherit printable
-    inherit paddable
-    method pos: point
-    method size: size
-    method radius: float
-    method box: box
-    method safebox: box
-    method color: color
-    
-    method contains: point -> bool
+class type element = object
+  method get: string -> string option
+  method set: string -> string -> unit
+  method unset: string -> unit
+  method pp_kvl: pp_mode -> formatter -> unit
 
-    method move: point -> unit
-    method private on_shift: vector -> unit
-    method scale: float -> unit
-    method rebox: box -> unit
-
-    method draw_boundary: canvas -> unit
-  end
+  method sources: typs
+  method targets: typs
+  method nsources: int
+  method ntargets: int
+  method styp: int -> typ
+  method ttyp: int -> typ  
+  
+  inherit paddable
+  method pos: point
+  method spos: int -> point
+  method tpos: int -> point
+  method size: size
+  method color: color
+  method box: box
+  method safebox: box  
+  method contains: point -> bool  
+  method move: point -> unit
+  method scale: float -> unit
+  method rebox: box -> unit  
+  method draw: canvas -> unit
+end

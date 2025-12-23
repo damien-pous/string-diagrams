@@ -1,5 +1,5 @@
 open Types
-open Info
+open Element
 open Graph_type
 
 (* graph algebra *)
@@ -9,7 +9,9 @@ val idm: typs -> graph
 val seq: graph -> graph -> graph
 val tns: graph -> graph -> graph
 val var: typs -> typs -> name -> kvl -> graph
-val box: graph -> kvl -> graph
+val box: graph -> (* kvl ->  *)graph
+
+val var_node: typs -> typs -> name -> kvl -> node
 
 (* graphs from raw terms *)
 val env: kvl Raw.env -> env
@@ -36,9 +38,13 @@ val iso_envgraph: env*graph -> env*graph -> bool
 val create_box: graph -> polygon -> graph
 
 (* finding elements by their position *)
-val find: graph -> point -> [ `I of iport | `O of oport | `N of node | `None ]
+val find: graph -> point -> [ `N of node | `None ]
+val find_ports: graph -> point -> [ `I of iport | `O of oport | `N of node | `None ]
 
 
 val iter_positionned_edges: graph -> (iport*point -> oport*point -> unit) -> unit
 val iter_iports: graph -> (iport -> unit) -> unit
 val iter_oports: graph -> (oport -> unit) -> unit
+
+val icolor: graph -> iport -> color
+val ocolor: graph -> oport -> color

@@ -93,17 +93,18 @@ class virtual mk (arena: arena) =
       self#checkpoint;
       self#perturbate
     (* note that #perturbate always calls #redraw *)
-    
-    method private catch_graph =
-      self#fold_graphs (fun g -> function
-          | None -> if Gg.Box2.mem arena#pointer g#box then Some g else None
-          | x -> x) None      
       
     method private catch =
-      match self#catch_graph with
+      let p = arena#pointer in
+      let g =
+        self#fold_graphs (fun g -> function
+            | None -> if g#contains p then Some g else None
+            | x -> x) None
+      in
+      match g with
       | None -> `None
       | Some g ->
-         match Graph.find g arena#pointer with
+         match Graph.find g p with
          | `N n -> `N(g,n)
          | _ -> `G g
     
@@ -115,7 +116,7 @@ class virtual mk (arena: arena) =
              g#unbox n;
              List.iter (fun (l,r) -> l#unset "fill"; r#unset "fill") self#hyps;
              self#changed
-          | Var(_,_,f) ->
+          | Var f ->
              match List.assoc f self#env with
              | (_,_,_,Some h) -> g#subst n (Graph.copy self#env h); self#changed
              | _ -> temporary#msg "this box is atomic"
@@ -184,8 +185,8 @@ class virtual mk (arena: arena) =
       match mode with 
       | `Normal ->
          (match self#catch with
-          | `N(g,x) -> Place.fix x; mode <- `Move_node (g,(x:>area),Gg.V2.sub arena#pointer x#pos)
-          | `G g when ctrl -> mode <- `Move_node (g,(g:>area),Gg.V2.sub arena#pointer g#pos)
+          | `N(g,x) -> Place.fix x; mode <- `Move_node (g,(x:>element),Gg.V2.sub arena#pointer x#pos)
+          | `G g when ctrl -> mode <- `Move_node (g,(g:>element),Gg.V2.sub arena#pointer g#pos)
           | `G g -> mode <- let p = arena#pointer in `Select(g,Polygon.start p)
           | `None -> ()
          )
@@ -208,9 +209,9 @@ class virtual mk (arena: arena) =
          let q = arena#pointer in
          mode <-`Select(g,Polygon.extend p q);
          self#refresh         
-      | _ ->
+      | _ -> ();
          (* (match self#catch with `N(g,n) -> temporary#msg "depth %i" (g#depth n) | _ -> ()); *)
-         self#refresh
+         (* self#refresh *)
 
     method on_key_press s =
       if s = "Escape" then self#abort

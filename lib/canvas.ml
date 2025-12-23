@@ -2,7 +2,8 @@ open Types
 open Gg
 open Vg
 
-let area = `O { P.o with P.width = Constants.linewidth }
+let path_area = `O { P.o with P.width = Constants.pathlinewidth }
+let shape_area = `O { P.o with P.width = Constants.shapelinewidth }
 
 let pentagon c r =
   let r = V2.smul r V2.oy in
@@ -21,20 +22,22 @@ class basic: canvas =
     method clear = image <- I.void
     method get = image
     method private blend i = image <- (image |> I.blend i)
-    method path ?(color=Color.black) ?fill p =
+    method path ?(color=Color.black) p =
+      self#blend (I.const color |> I.cut ~area:path_area p)
+    method shape ?(color=Color.black) ?fill p =
       Option.iter (fun fill -> self#blend (I.const fill |> I.cut p)) fill;
-      self#blend (I.const color |> I.cut ~area p)
+      self#blend (I.const color |> I.cut ~area:shape_area p)
     method circle ?color ?fill c =
-      self#path ?color ?fill (P.empty |> P.circle c.center c.radius)
+      self#shape ?color ?fill (P.empty |> P.circle c.center c.radius)
     method pentagon ?color ?fill c =
-      self#path ?color ?fill (pentagon c.center c.radius)
+      self#shape ?color ?fill (pentagon c.center c.radius)
     method polygon ?color ?fill p =
-      self#path ?color ?fill (Polygon.to_path p)
+      self#shape ?color ?fill (Polygon.to_path p)
     method box ?color ?fill b =
-      self#path ?color ?fill (P.empty |> P.rect b)
+      self#shape ?color ?fill (P.empty |> P.rect b)
     method point ?color p =
       let fill = color in
-      self#path ?color ?fill (P.empty |> P.circle p Constants.pradius)
+      self#shape ?color ?fill (P.empty |> P.circle p Constants.pradius)
     method segment ?color x y =
       self#path ?color (P.empty |> P.sub x |> P.line y)
     method curve ?color x' y' =
@@ -55,7 +58,8 @@ class void: canvas =
   object
     method clear = ()
     method get = I.void
-    method path ?color ?fill _ = ignore (color,fill) 
+    method path ?color _ = ignore (color) 
+    method shape ?color ?fill _ = ignore (color,fill) 
     method circle ?color ?fill _ = ignore (color,fill) 
     method pentagon ?color ?fill _ = ignore (color,fill) 
     method polygon ?color ?fill _ = ignore (color,fill) 

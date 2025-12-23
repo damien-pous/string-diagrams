@@ -29,7 +29,7 @@ let test_graph env s =
     (* Format.eprintf "Sanity: reparsed as\n%a@." (Graph.pp_envgraph Full) t'; *)
     let _ =
       same t t' ||
-        (Format.eprintf "Sanity: graph reparsing mismatch\n%s\n%a\n%s\n%a@." s pp t s' pp t'; failwith "iso") in
+        (Format.eprintf "Sanity: graph reparsing mismatch\n%s\n\n%a\n\n%s\n\n%a@." s pp t s' pp t'; failwith "iso") in
     ()
   with e -> Format.eprintf "Sanity: error on %s@." s; raise e
 
@@ -44,7 +44,7 @@ let test_term env s =
     let t' = from_string s' in
     let _ =
       same t t' ||
-        (Format.eprintf "Sanity: term reparsing mismatch\n%s\n%a\n%s\n%a@." s pp t s' pp t'; failwith "iso (via terms)") in
+        (Format.eprintf "Sanity: term reparsing mismatch\n%s\n\n%a\n\n%s\n\n%a@." s pp t s' pp t'; failwith "iso (via terms)") in
     ()
   with e -> Format.eprintf "Sanity: error on %s@." s; raise e
 
@@ -57,7 +57,7 @@ let test_iso_ b env u u' =
     same t t' = b ||
       (Format.eprintf "Sanity: failed iso:\nt = %a\nt'= %a@." pp t pp t';
        if not b then Format.eprintf "should be different@.";
-       failwith "iso")
+       failwith "iso (directly)")
   with e -> Format.eprintf "Sanity: error on %s %s ~ %s@." env u u'; raise e
 let test_iso = test_iso_ true
 let test_niso = test_iso_ false
@@ -75,7 +75,12 @@ let _ = test "" "[id]"
 let _ = test "" "[id].id"
 let _ = test "" "[id];id"
 
+let _ = test "let f: A->A in" "f"
+let _ = test "let f: A->A in" "f;f"
+let _ = test "let f: A->A in" "f.f"
 let _ = test "let f: A->A in" "[f]"
+let _ = test "let f: A->A in" "f.id"
+let _ = test "let f: A->A in" "[f].id"
 
 (* let _ = test "" "{}" *)
 (* let _ = test "" ": 1->1" *)
