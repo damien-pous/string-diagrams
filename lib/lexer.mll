@@ -58,6 +58,7 @@ rule token = parse
   | '*'
   | (* ⊗ *) "\226\138\151" | "\\otimes"    { STAR }
   | '_'                                    { UNDER }
+  | '^'                                    { HAT }
   | '='                                    { EQ }
   | ":="                                   { EQDEF }
   | "->"                                   { TO }

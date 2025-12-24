@@ -1,5 +1,5 @@
 %token LPAR RPAR LBRK RBRK LSQR RSQR LT GT
-%token COMMA COLON SEMI CIRC STAR DOT UNDER
+%token COMMA COLON SEMI CIRC STAR DOT UNDER HAT
 %token ID LET EQ EQDEF IN TO EOF
 %token <Types.name> NAME
 %token <Types.perm> PRM
@@ -12,6 +12,8 @@
 %left SEMI
 %right CIRC
 %left DOT
+%left STAR
+%left HAT
 
 %type <Element.kvl Types.Raw.term> justterm
 %type <Element.kvl Types.Raw.envterm> envterm
@@ -60,13 +62,13 @@ decl:
 mtyp:
 | COLON n=typs TO m=typs { (n,m) }
 
-typ:
-| UNDER { Typ.flex1() }
-| a=NAME { Typ.name a }
-
 typs:
-| n=INT { if n=1 then [] else Misc.failwith "invalid type (%i)" n }
-| l=separated_nonempty_list(STAR,typ) { l }
+| UNDER { Typ.flex 1 }
+| a=NAME { [Typ.name a] }
+| n=INT { if n<>1 then Misc.failwith "invalid type (%i)" n; [] }
+| s=typs STAR t=typs { s @ t }
+| t=typs HAT n=INT { if n<0 then Misc.failwith "invalid exponent (%i)" n; Typ.exp t n }
+| LPAR t=typs RPAR { t }
 
 body:
 | EQDEF u=term { u }

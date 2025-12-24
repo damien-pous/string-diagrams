@@ -4,6 +4,7 @@ type ts = t list
 val name: string -> t
 val flex1: unit -> t
 val flex: int -> ts
+val exp: ts -> int -> ts
 
 val unify1: msg:string -> t -> t -> unit
 val unify: msg:string -> ts -> ts -> unit

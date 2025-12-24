@@ -35,6 +35,9 @@ let rec eq h k =
 let name n = ref (R n)
 let flex1 () = ref F
 let flex n = List.init n (fun _ -> flex1())
+let rec exp t = function
+  | 0 -> []
+  | n -> t @ exp t (n-1)
 
 let get x = fst (repr x)
 
