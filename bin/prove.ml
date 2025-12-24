@@ -104,11 +104,11 @@ let fullscreen =
 
 (* TODO: capture this in editor *)
 let refresh() = arena#refresh; general_msg#buffer#set_text Messages.temporary#messages
-let atomic f x d =
-  Messages.temporary#clear;  
+let atomic ?(clearall=true) f x d =
+  if clearall then Messages.temporary#clear_all else Messages.temporary#clear;  
   Messages.catch f x d refresh
-let atomic_unit f x = atomic f x ()
-let atomic_true f x = atomic f x true
+let atomic_unit ?clearall f x = atomic ?clearall f x ()
+let atomic_true ?clearall f x = atomic ?clearall f x true
 
 let _ = file_factory#add_item "Open" ~key:GdkKeysyms._O ~callback:(atomic_unit load)
 let _ = file_factory#add_item "Save" ~key:GdkKeysyms._S ~callback:(atomic_unit save)
@@ -121,7 +121,7 @@ let _ = view_factory#add_item "Toggle fullscreen" ~key:GdkKeysyms._F ~callback:f
 let _ = GtkBase.Widget.add_events da#as_widget
           [ `KEY_PRESS; `POINTER_MOTION; `BUTTON_PRESS; `BUTTON_RELEASE ]
 let _ = da#misc#set_can_focus true
-let _ = da#event#connect#motion_notify ~callback:(atomic_true on_motion)
+let _ = da#event#connect#motion_notify ~callback:(atomic_true ~clearall:false on_motion)
 let _ = da#event#connect#button_press ~callback:(atomic_true on_button_press)
 let _ = da#event#connect#button_release ~callback:(atomic_true on_button_release)
 let _ = da#event#connect#key_press ~callback:(atomic_true on_key_press)

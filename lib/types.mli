@@ -42,6 +42,7 @@ class type msg_canvas =
     inherit canvas
     method msg: 'a. ('a, formatter, unit) format -> 'a
     method messages: string
+    method clear_all: unit
   end
     
 class type arena =

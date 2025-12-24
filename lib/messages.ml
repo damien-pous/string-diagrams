@@ -13,11 +13,12 @@ let debug_msg k fmt =
   else Format.ifprintf Format.err_formatter fmt
 
 let temporary =
-  object
+  object(self)
     inherit Canvas.basic as parent
     val mutable messages = []
     method messages = String.concat "\n" (List.rev messages)
-    method! clear = parent#clear; debug1#clear; messages <- []
+    method! clear = parent#clear; debug1#clear
+    method clear_all = self#clear; messages <- []
     method! get = I.blend parent#get debug1#get 
     method msg: 'a. ('a, formatter, unit) format -> 'a
       = Format.kasprintf (fun s -> messages <- s::messages)
