@@ -195,7 +195,7 @@ class virtual mk (arena: arena) =
       | _ -> temporary#msg "nothing to scale here"
 
     method private improve_placement s =
-      Place.improve_placement_depth s graph; self#drawing_changed
+      Place.improve_placement_depth' ~force:true s graph; self#drawing_changed
 
     method private block b =
       let f = if b then Place.fix else Place.unfix in
@@ -265,6 +265,7 @@ i/I:    improve placement
 f/F:    fix/Free element (for later placement optimisations)
 ->/<-:    undo/redo
 ESC:    abort current action
+=       fit screen
 r:      refresh picture
 h:      print this help message"
           | "i" -> self#improve_placement 0.05
@@ -276,6 +277,7 @@ h:      print this help message"
           | "u" -> self#unfold
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1
+          | "=" -> arena#fit graph#box; self#refresh
           | "r" -> self#redraw()
           | "ArrowLeft" -> self#undo()
           | "ArrowRight" -> self#redo()
