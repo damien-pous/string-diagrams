@@ -58,7 +58,7 @@ class virtual mk (arena: arena) =
        | `Select (g,p) ->
           temporary#polygon ~fill:(Gg.Color.gray ~a:0.2 0.) p;
           let p = Geometry.clockwise p in
-          MSet.iter (fun (i,o) ->              
+          if false then MSet.iter (fun (i,o) ->              
               let s,t = g#ipos i, g#opos o in
               Polygon.fold2 p (fun ij () ->
                   match Geometry.intersection ij (s,t) with
