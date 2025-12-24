@@ -130,7 +130,7 @@ let bot_pos b i n =
   Gg.V2.add p (Gg.V2.v (d *. (float_of_int (2*i-1))) 0.)
 
 
-class rectangular n m ?pos ~size ~name l =
+class rectangle n m ?pos ~size ~name l =
   object(self)
     inherit gen n m ?pos ~name l as parent
     val mutable size = size
@@ -157,7 +157,7 @@ class rectangular n m ?pos ~size ~name l =
       (match self#get "size" with Some s -> size <- p2_of_string s; sized <- true | None -> ())
   end
 
-class circular n m ?pos ~radius ~name l =
+class circle n m ?pos ~radius ~name l =
   object(self)
     inherit gen n m ?pos ~name l as parent
     val mutable radius = radius
@@ -204,7 +204,7 @@ class point n m ?pos ~name l: element =
       draw#point ~color pos
   end
 
-class polygonial n m poly =
+class polygon n m poly =
   let box = Geometry.poly_box poly in
   let pos = Box2.mid box in
   let size = Box2.size box in
@@ -213,7 +213,7 @@ class polygonial n m poly =
   let spos,sdir = List.split spos in
   let tpos,tdir = List.split tpos in
   object(self)
-    inherit rectangular n m ~pos ~size ~name:"" [] as parent
+    inherit rectangle n m ~pos ~size ~name:"" [] as parent
     val mutable poly = poly
     val mutable spos = spos
     val mutable tpos = tpos
@@ -234,16 +234,16 @@ class polygonial n m poly =
 
 let mk n m ~name l =
   if List.mem_assoc "radius" l then
-    new circular n m ~radius:Constants.circle_size ~name l
+    new circle n m ~radius:Constants.circle_size ~name l
   else
     match List.assoc_opt "shape" l with
     | None | Some "rect" ->
        let n' = List.length n in 
        let m' = List.length m in
        let size = Constants.var_size n' m' in
-       new rectangular n m ~size ~name l
+       new rectangle n m ~size ~name l
     | Some "circle" ->
-       new circular n m ~radius:Constants.circle_size ~name l
+       new circle n m ~radius:Constants.circle_size ~name l
     | Some "point" ->
        new point n m ~name l
     | Some s -> failwith "unknown shape: %s" s

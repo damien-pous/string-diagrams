@@ -360,12 +360,12 @@ class gen_graph nodes edges area =
 
 let rectangle_graph n m nodes edges ?pos size l =
   new gen_graph nodes edges
-    (new Element.rectangular n m ?pos ~size ~name:"" l)
+    (new Element.rectangle n m ?pos ~size ~name:"" l)
 
 
 let polygon_graph n m nodes edges poly =
   new gen_graph nodes edges
-    (new Element.polygonial n m poly)
+    (new Element.polygon n m poly)
 
 
 (** * algebra of graphs *)
@@ -462,7 +462,7 @@ let node_graph n =
     (MSet.union
        (MSet.init n#nsources (fun i -> (Source i, InnerSource(n,i))))
        (MSet.init n#ntargets (fun j -> (InnerTarget(n,j), Target j))))
-    (new Element.rectangular n#sources n#targets
+    (new Element.rectangle n#sources n#targets
        ~pos:n#pos ~size:(Constants.expand n#size) ~name:"" [])
 
 (* graph reduced to a variable node *)

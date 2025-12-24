@@ -15,7 +15,7 @@ val envmap: ('a -> 'b) -> 'a env -> 'b env
 
 class proxy: #element -> element
 
-class rectangular: typs -> typs -> ?pos:point -> size:size -> name:name -> kvl -> element
-class polygonial: (typ*(point*vector)) list -> (typ*(point*vector)) list -> polygon -> element
+class rectangle: typs -> typs -> ?pos:point -> size:size -> name:name -> kvl -> element
+class polygon: (typ*(point*vector)) list -> (typ*(point*vector)) list -> Types.polygon -> element
 
 val mk: typs -> typs -> name:name -> kvl -> element

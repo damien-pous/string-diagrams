@@ -1,5 +1,5 @@
-open Types
 open Element
+open Types
 open Graph_type
 
 (* graph algebra *)
