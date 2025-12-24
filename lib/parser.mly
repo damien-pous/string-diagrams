@@ -1,5 +1,5 @@
 %token LPAR RPAR LBRK RBRK LSQR RSQR LT GT
-%token COMMA COLON SEMI STAR DOT UNDER
+%token COMMA COLON SEMI CIRC STAR DOT UNDER
 %token ID LET EQ EQDEF IN TO EOF
 %token <Types.name> NAME
 %token <Types.perm> PRM
@@ -10,6 +10,7 @@
 
 %left COLON
 %left SEMI
+%right CIRC
 %left DOT
 
 %type <Element.kvl Types.Raw.term> justterm
@@ -31,6 +32,7 @@ term:
 | ID UNDER t=typs                               { Idm t }
 | f=NAME l=kvl                                  { Var(f,l) }
 | u=term SEMI v=term                            { Seq(u,v) }
+| u=term CIRC v=term                            { Seq(v,u) }
 | u=term DOT v=term                             { Tns(u,v) }
 | u=term t=mtyp                                 { Typ(u,fst t, snd t) }
 | LSQR u=term RSQR l=kvl                        { Box(u,l) }

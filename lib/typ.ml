@@ -44,6 +44,4 @@ let pp1 f x =
   | Some n -> Format.pp_print_string f n
 let pp f = function
   | [] -> Format.pp_print_char f '1'
-  | l -> pp_print_list "*" pp1 f l
-  
-      
+  | l -> pp_print_list "⊗" pp1 f l

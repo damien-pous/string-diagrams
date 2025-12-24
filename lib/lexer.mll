@@ -49,10 +49,14 @@ rule token = parse
   | '{'                                    { LBRK }
   | '}'                                    { RBRK }
   | ','                                    { COMMA }
-  | ';'                                    { SEMI }
   | ':'                                    { COLON }
-  | '*'                                    { STAR }
-  | '.'                                    { DOT }
+  | ';'                                    { SEMI }
+  | (* ° *) "\xC2\xB0"
+  | (* ∘ *) "\xE2\x88\x98" | "\\circ"      { CIRC }
+  | '.'
+  | (* · *) "\194\183" | "\\cdotp"         { DOT }
+  | '*'
+  | (* ⊗ *) "\226\138\151" | "\\otimes"    { STAR }
   | '_'                                    { UNDER }
   | '='                                    { EQ }
   | ":="                                   { EQDEF }

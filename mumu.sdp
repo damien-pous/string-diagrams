@@ -1,11 +1,11 @@
-// let A<color=red>: * in
-// let B<color=blue>: * in
-let m<color=red;shape=point>: _*_ -> A in
-let n<color=blue;shape=point>: _*_ -> B in
-let x<color=violet;shape=point>: _*_ -> _*_ in
-let mn := id.x.id;m.n in
-m.id;m = id.m;m ->
-n.id;n = id.n;n ->
-id.m;x = x.id;id.x;m.id ->
-n.id;x = id.x;x.id;id.n ->
-(id.x.id;m.n).id.id;(id.x.id;m.n) = id.id.(id.x.id;m.n);(id.x.id;m.n)
+// let A<color=red>: ⊗ in
+// let B<color=blue>: ⊗ in
+let m<color=red;shape=point>: _⊗_ -> A in
+let n<color=blue;shape=point>: _⊗_ -> B in
+let x<color=cacadoie;shape=point>: _⊗_ -> _⊗_ in
+let mn := id·x·id ; m·n in
+m·id ; m = id·m ; m ->
+n·id ; n = id·n ; n ->
+id·m ; x = x·id ; id·x ; m·id ->
+n·id ; x = id·x ; x·id ; id·n ->
+(id·x·id ; m·n)·id·id ; (id·x·id ; m·n) = id·id·(id·x·id ; m·n) ; (id·x·id ; m·n)

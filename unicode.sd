@@ -1,0 +1,15 @@
+let f: A⊗A -> A in
+let g: A -> B in
+let h: B -> C in
+let i: C -> D in
+(f ∘ (f · f))
+.
+((f · f) ; f)
+.
+(f ° (f · f))
+·
+(g;h;i)
+·
+(i°h°g)
+·
+(h°g;i)

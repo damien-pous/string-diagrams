@@ -64,6 +64,6 @@ let pp =
     | Idm n      -> Format.fprintf f "id_%a" Typ.pp n
     | Var(_,_,n) -> Format.fprintf f "%s" n
     | Seq(u,v)   -> Format.fprintf f (paren "%a ; %a") pp u pp v
-    | Tns(u,v)   -> Format.fprintf f (paren "%a . %a") pp u pp v
+    | Tns(u,v)   -> Format.fprintf f (paren "%a·%a") pp u pp v
     | Box u      -> Format.fprintf f "[%a]" pp u
 in pp BOT

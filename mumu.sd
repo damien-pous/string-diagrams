@@ -1,5 +1,5 @@
-let m<color=red>: A*A -> A in
-let n<color=blue>: B*B -> B in
-let x<color=violet>: B*A -> A*B in
-let mn := id.x.id;m.n in
-mn.id.id;mn
+let m<color=red>: A⊗A -> A in
+let n<color=blue>: B⊗B -> B in
+let x<color=violet>: B⊗A -> A⊗B in
+let mn := id·x·id ; m·n in
+mn·id·id ; mn
