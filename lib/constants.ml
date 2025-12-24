@@ -50,6 +50,7 @@ let xcolor = function
   | "lhs"    -> Color.v 1.0 1.0 0. 0.5
   | "rhs"    -> Color.v 1.0 0.5 0. 0.6
   | "done"   -> Color.v 0.0 1.0 0.3 0.4
+  | "tgray"  -> Color.gray ~a:0.2 0.0
   | _        -> gray
 
 let color' ?color name =

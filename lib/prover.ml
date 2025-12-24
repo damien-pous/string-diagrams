@@ -56,10 +56,11 @@ class virtual mk (arena: arena) =
     method private refresh =
       (match mode with
        | `Select (g,p) ->
-          temporary#polygon ~fill:(Gg.Color.gray ~a:0.2 0.) p;
-          let p = Geometry.clockwise p in
-          if false then MSet.iter (fun (i,o) ->              
-              let s,t = g#ipos i, g#opos o in
+          temporary#polygon ~fill:(Constants.color "tgray") p;
+          if false then 
+            let p = Geometry.clockwise p in
+            MSet.iter (fun (i,o) ->              
+            let s,t = g#ipos i, g#opos o in
               Polygon.fold2 p (fun ij () ->
                   match Geometry.intersection ij (s,t) with
                   | Some(x,d) ->
@@ -71,7 +72,7 @@ class virtual mk (arena: arena) =
                   | None -> ()
                 ) ()
             ) g#edges;
-          MSet.iter (fun n ->
+            MSet.iter (fun n ->
               if Geometry.mem_poly n#pos p then
                 temporary#box ~fill:(Gg.Color.gray ~a:0.5 0.) n#box
             ) g#nodes

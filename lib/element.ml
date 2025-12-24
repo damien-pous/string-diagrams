@@ -230,6 +230,8 @@ class polygon n m poly =
     method! scale _ = failwith "TODO: scale polygon"
     method! draw (draw: canvas) =
       draw#polygon ~fill:self#fill poly
+    initializer
+      self#add "fill" "tgray"
   end
 
 let mk n m ~name l =
