@@ -45,6 +45,8 @@ let rec tns u v =
   match u,v with
   | Idm h,Idm k -> Idm (h@k)
   | Idm [],w | w,Idm [] -> w
+  | Tns(u,Idm h),Idm k -> Tns(u,Idm (h@k))
+  | Idm h,Tns(Idm k,u) -> Tns(Idm (h@k),u)
   | Tns(u,v),w -> tns u (Tns(v,w))
   | _ -> Tns(u,v)
 
