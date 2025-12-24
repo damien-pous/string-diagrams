@@ -1,10 +1,17 @@
 open Graph_type
 
-(** improve the current placement, using elastic dynamics *)
-val improve_placement: float -> graph -> unit
-val improve_placement_depth: ?force:bool -> float -> graph -> unit
-val improve_placement_depth': ?force:bool -> float -> graph -> unit
+(** improve the current placement, using elastic dynamics
+    not recursive on inner graphs,
+    returns true if the graph is stable,
+ *)
+val improve_old: graph -> bool
+val improve_tmp: graph -> bool
+val improve: graph -> bool
+val contract: graph -> bool
 
 (** fix or unfix nodes for previous function *)
 val fix: node -> unit
 val unfix: node -> unit
+
+(** group all nodes of the graph to its center *)
+val group: graph -> unit

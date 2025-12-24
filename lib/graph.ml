@@ -351,9 +351,26 @@ class gen_graph nodes edges area =
                             | _ -> a) MSet.empty nodes
 
     val mutable stable = false
-    method stable =
-      stable && MSet.forall (fun g -> g#stable) self#inner_graphs
-    method set_stable b = stable <- b
+    val mutable on_stabilize = (fun () -> true)
+    method on_stabilize k = on_stabilize <- k
+    method improve ~force =
+      let b =
+        if (force || not stable) then (
+          let b = 
+            match self#get "place" with
+            | Some "locked" -> false
+            | Some "contract" -> Place.contract (self:>graph)
+            | _ -> Place.improve (self:>graph)
+          in
+          if not stable && b then (
+            let k = on_stabilize in
+            on_stabilize <- (fun () -> true);
+            stable <- k();
+          ) else stable <-false;
+          stable
+        ) else true
+      in
+      MSet.fold (fun g b -> g#improve ~force && b) b self#inner_graphs 
 
   end
 
@@ -560,7 +577,7 @@ let equations ehg =
   Element.envmap of_gterm e, h, (l,r)
 
 (* copy a graph by serialisation (is there a nicer way?) *)
-let copy _ (g: graph) =
+let copy (g: graph) =
   let g': graph = Marshal.from_string (Marshal.to_string g [Marshal.Closures]) 0 in
   Typ.unify ~msg:"Graph.copy" g#sources g'#sources;
   Typ.unify ~msg:"Graph.copy" g#targets g'#targets;
@@ -701,4 +718,4 @@ let create_box (g: graph) p =
   let b = graph_node h (* [] *) in
   debug_msg "%t" (h#pp Full);
   g#update (MSet.add b nodes_out) (edges_out b);
-  h
+  b,h

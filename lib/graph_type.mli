@@ -54,9 +54,12 @@ class type graph =
     method draw_edge: canvas -> node iport*node oport -> unit
     method term: term
 
-    (* is the graph stable (elastic dynamic) *)
-    method stable: bool
-    method set_stable: bool -> unit
+    (* improve placement of inner nodes (elastic dynamic)
+       if force is true, recheck for stability
+       returns true if the graph was stable (= needs not be redrawn)
+     *)
+    method improve: force:bool -> bool
+    method on_stabilize: (unit -> bool) -> unit
   end
 and node =
   object

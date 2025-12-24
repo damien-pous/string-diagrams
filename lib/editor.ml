@@ -183,7 +183,7 @@ class virtual mk (arena: arena) =
           | Box _ -> graph#unbox n; self#graph_changed
           | Var f ->
              match List.assoc f env with
-             | (_,_,_,Some g) -> graph#subst n (Graph.copy env g); self#graph_changed
+             | (_,_,_,Some g) -> graph#subst n (Graph.copy g); self#graph_changed
              | _ -> temporary#msg "this box is atomic"
          )
       | _ -> temporary#msg "no node to unfold/unbox here"
@@ -194,8 +194,8 @@ class virtual mk (arena: arena) =
       | `None -> graph#scale s; self#drawing_changed
       | _ -> temporary#msg "nothing to scale here"
 
-    method private improve_placement s =
-      Place.improve_placement_depth' ~force:true s graph; self#drawing_changed
+    method private improve_placement =
+      if not (graph#improve ~force:true) then self#drawing_changed
 
     method private block b =
       let f = if b then Place.fix else Place.unfix in
@@ -260,7 +260,7 @@ class virtual mk (arena: arena) =
 d:      remove node
 n:      create node (give name afterward)
 u:      unbox or unfold node
-i/I:    improve placement
+i:      improve placement
 -/+:    shrink/enlarge element
 f/F:    fix/Free element (for later placement optimisations)
 ->/<-:    undo/redo
@@ -268,8 +268,7 @@ ESC:    abort current action
 =       fit screen
 r:      refresh picture
 h:      print this help message"
-          | "i" -> self#improve_placement 0.05
-          | "I" -> self#improve_placement 0.2
+          | "i" -> self#improve_placement
           | "n" -> temporary#msg "type node name"; mode <- `New_node; self#refresh
           | "f" -> self#block true
           | "F" -> self#block false

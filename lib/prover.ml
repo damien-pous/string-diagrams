@@ -13,6 +13,8 @@ let string_of_state (s: equations) =
   Marshal.to_string s [Marshal.Closures] 
   (* Format.asprintf "%a" (pp_equations Full) *)
 
+let changed = ref false
+
 class virtual mk (arena: arena) =
   object(self)
 
@@ -86,14 +88,17 @@ class virtual mk (arena: arena) =
       mode <- `Normal;
       self#redraw
 
-    method private changed =
+    method private changed_nocheckpoint =
       if Graph.iso self#lhs self#rhs then
         (self#lhs#set "fill" "done"; self#rhs#set "fill" "done")
       else
         (self#lhs#unset "fill"; self#rhs#unset "fill");        
-      self#checkpoint;
-      self#perturbate
+      self#perturbate;
     (* note that #perturbate always calls #redraw *)
+      
+    method private changed =
+      self#changed_nocheckpoint;
+      self#checkpoint;
       
     method private catch =
       let p = arena#pointer in
@@ -119,7 +124,7 @@ class virtual mk (arena: arena) =
              self#changed
           | Var f ->
              match List.assoc f self#env with
-             | (_,_,_,Some h) -> g#subst n (Graph.copy self#env h); self#changed
+             | (_,_,_,Some h) -> g#subst n (Graph.copy h); self#changed
              | _ -> temporary#msg "this box is atomic"
          )
       | _ -> temporary#msg "no node to unfold/unbox here"
@@ -130,25 +135,71 @@ class virtual mk (arena: arena) =
       | `G g -> g#scale s; self#changed
       | _ -> temporary#msg "nothing to scale here"
 
-    method private improve_placement force =
-      if force || not (self#fold_graphs (fun g s -> s && g#stable) true) then        
-        (self#iter_graphs (Place.improve_placement_depth' ~force 0.01);
-         self#redraw)
-    method private perturbate = self#improve_placement true
+    method private improve_placement force =      
+      if not (self#fold_graphs (fun g s -> g#improve ~force && s) true) || force then        
+        self#redraw
+    method private perturbate =
+      self#improve_placement true
     
     method private release =
       match self#catch with
       | `N(_,n) -> Place.unfix n; self#perturbate
       | _ -> temporary#msg "no node to release here"
 
-    method private create_box g p =
-      let h = Graph.create_box g p in
+    method private create_box g p: unit =
+      let n,h = Graph.create_box g p in
+      g#set "place" "locked";
       List.iter (fun (l,r) ->
           if Graph.iso h l then
             (h#set "fill" "lhs"; l#set "fill" "lhs"; r#set "fill" "rhs")
           else if Graph.iso h r then
             (h#set "fill" "rhs"; l#set "fill" "lhs"; r#set "fill" "rhs")
         ) self#hyps;
+      if h#get "fill" = Some "tgray" then h#set "place" "locked"
+      else (
+        h#set "place" "contract";
+        let hyps = self#hyps in (* needed to leave [self] out of the closure below *)
+        h#on_stabilize
+          (fun () ->
+            (try
+               List.iter (fun (l,r) ->
+                   if Graph.iso h l then
+                     (h#replace (Graph.copy r);
+                      h#unset "place";
+                      h#on_stabilize (fun () ->
+                          g#unbox n;
+                          g#unset "place";
+                          l#unset "fill";
+                          r#unset "fill";
+                          (* here we would like to call
+                             self#changed_nocheckpoint;
+                             but Marshal cannot deal with references to self *)
+                          changed := true;
+                          false);
+                      h#set "fill" "rhs";
+                      Place.group h; 
+                      raise Not_found)
+                   else if Graph.iso h r then
+                     (h#replace (Graph.copy l);
+                      h#unset "place";
+                      h#on_stabilize (fun () ->
+                          g#unbox n;
+                          g#unset "place";
+                          l#unset "fill";
+                          r#unset "fill";
+                          (* here we would like to call
+                             self#changed_nocheckpoint;
+                             but Marshal cannot deal with references to self *)
+                          changed := true;
+                          false);
+                      h#set "fill" "lhs";
+                      Place.group h; 
+                      raise Not_found)
+                 ) hyps;
+               false
+             with Not_found -> false);
+        );
+      );
       self#changed
 
     method private rewrite unbox =
@@ -156,20 +207,20 @@ class virtual mk (arena: arena) =
       | `N(g,n) ->
          (match n#kind with
           | Box h -> 
-             if h#get "fill" = None then error "no match so far";
+             if h#get "fill" = Some "tgray" then error "no match so far";
              (try
              List.iter (fun (l,r) ->
                  if Graph.iso h l then
                    (if unbox then
-                      (g#subst n (Graph.copy self#env r); l#unset "fill"; r#unset "fill")
+                      (g#subst n (Graph.copy r); l#unset "fill"; r#unset "fill")
                     else
-                      (h#replace (Graph.copy self#env r); h#set "fill" "rhs");
+                      (h#replace (Graph.copy r); h#set "fill" "rhs");
                     raise Not_found)
                  else if Graph.iso h r then
                    (if unbox then
-                      (g#subst n (Graph.copy self#env l); l#unset "fill"; r#unset "fill")
+                      (g#subst n (Graph.copy l); l#unset "fill"; r#unset "fill")
                     else
-                      (h#replace (Graph.copy self#env l); h#set "fill" "lhs");
+                      (h#replace (Graph.copy l); h#set "fill" "lhs");
                     raise Not_found)
                ) self#hyps
              with Not_found -> ());
@@ -177,10 +228,14 @@ class virtual mk (arena: arena) =
           | _ -> temporary#msg "no box to rewrite here")
       | _ -> temporary#msg "no box to rewrite here"
 
+    val mutable play = true
     method on_tic =
-      match mode with
-      | `Normal | `Move_node _ -> self#improve_placement false
-      | _ -> ()
+      if play then
+        match mode with
+        | `Normal | `Move_node _ ->
+           self#improve_placement false;
+           if !changed then (changed := false; self#changed_nocheckpoint)           
+        | `Select _ -> ()
 
     method on_button_press ctrl =
       match mode with 
@@ -213,6 +268,7 @@ class virtual mk (arena: arena) =
       | _ -> ();
          (* (match self#catch with `N(g,n) -> temporary#msg "depth %i" (g#depth n) | _ -> ()); *)
          (* self#refresh *)
+             
 
     method on_key_press s =
       if s = "Escape" then self#abort
@@ -225,7 +281,8 @@ r/R     rewrite box
 u       unbox or unfold node
 -/+     shrink/enlarge element
 f       release fixed element
-->/<-    undo/redo
+->/<-   undo/redo
+SPACE   pause/start
 ESC     abort current action
 =       fit screen
 h       print this help message"
@@ -238,6 +295,9 @@ h       print this help message"
           | "R" -> self#rewrite true
           | "ArrowLeft" -> self#undo()
           | "ArrowRight" -> self#redo()
+          | " " -> play <- not play
+          | "!" -> self#redraw
+          | "?" -> self#refresh
           | "" -> ()
           | s -> temporary#msg "skipping key '%s'" s)
       | _ -> temporary#msg "ignored key `%s' during ongoing action" s

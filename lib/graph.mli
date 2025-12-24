@@ -26,7 +26,7 @@ val pp_envgraph: pp_mode -> formatter -> env*graph -> unit
 val pp_equations: pp_mode -> formatter -> equations -> unit
 
 (* sharing-free copy (by serialisation for now) *)
-val copy: env -> graph -> graph
+val copy: graph -> graph
 
 (* graph isomorphism
    !! for now, forgetting isolated components *)
@@ -35,7 +35,7 @@ val iso_env: env -> env -> bool
 val iso_envgraph: env*graph -> env*graph -> bool
 
 (* capturing a subgraph inside a box *)
-val create_box: graph -> polygon -> graph
+val create_box: graph -> polygon -> node*graph
 
 (* finding elements by their position *)
 val find: graph -> point -> [ `N of node | `None ]
