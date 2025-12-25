@@ -2,8 +2,8 @@ open Types
 open Misc
 open Element
 
-type iport = string Types.iport
-type oport = string Types.oport
+type iport = (string,int) Types.iport
+type oport = (string,int) Types.oport
 
 type term =
   | Idm of typs

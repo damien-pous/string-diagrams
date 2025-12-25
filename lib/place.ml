@@ -174,9 +174,17 @@ let improve =
        | InnerSource(n,_) -> add n (-.attract_x /. nsources n) xy
        | _ -> ())
     ) g#edges;
+  MSet.iter (fun n ->
+      if n#nsources=0 then
+      let x,y = n#pos, g#fakeipos (g#ceil n) in
+      let xy = V2.sub y x in
+      let xy = V2.ltr (M2.scale2 (V2.v 1. 0.)) xy in
+        add n attract_x xy
+    ) g#nodes;
   (* vertical attraction *)
   MSet.iter (fun n ->
       let _,prevs =
+        if n#nsources = 0 then 0,[g#fakeipos (g#ceil n)] else
         Misc.fold (fun i (d,l) ->
             let p = g#prev (InnerSource(n,i)) in
             let dp = match p with
@@ -186,7 +194,7 @@ let improve =
             if dp < d then dp,[g#ipos p]
             else if dp = d then d,(g#ipos p::l)
             else d,l 
-          ) n#nsources (mdepth+2,[Box2.tm_pt g#box]) (* TOFIX: default value might be wrong (plafonds) *)
+          ) n#nsources (mdepth+2,[Box2.tm_pt g#box]) 
       in
       let _,nexts =
         Misc.fold (fun i (d,l) ->

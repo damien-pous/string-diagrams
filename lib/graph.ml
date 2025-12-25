@@ -148,11 +148,15 @@ class gen_graph nodes edges area =
     inherit Element.proxy area
 
     val mutable depth = Hashtbl.create (MSet.size nodes)
+    val mutable ceilings = Hashtbl.create (MSet.size nodes)
+    
     val mutable edges: (iport*oport) mset = edges
     val mutable nodes = nodes
 
     (* warning: to be called whenever the graph changes *)
-    method private reset_depth = Hashtbl.clear depth
+    method private reset_tables =
+      Hashtbl.clear depth;
+      Hashtbl.clear ceilings;
     
     method edges = edges
     method nodes = nodes
@@ -160,7 +164,65 @@ class gen_graph nodes edges area =
       (* TODO: sanity checks *)
       nodes <- nodes';
       edges <- edges';
-      self#reset_depth;
+      self#reset_tables;
+
+    method ceil n: fakeiport =
+      assert (n#nsources = 0);
+      try Hashtbl.find ceilings n
+      with Not_found -> self#compute_ceilings; self#ceil n
+
+    method private compute_ceilings =
+      let next = function
+        | `Left -> [],
+           if self#nsources = 0 then `Right
+           else `LeftI (Source 1)
+        | `Right -> [],
+           if self#ntargets = 0 then `Left
+           else `RightO (Target self#ntargets)
+        | `LeftI i -> [], `LeftO (self#next i)
+        | `RightO o -> [],`RightI (self#prev o)
+        | `LeftO (Target i) -> [],
+           if i=1 then `Left
+           else `RightO (Target (i-1))
+        | `LeftO (InnerSource(n,i)) -> [],
+           if i=1 then 
+             if n#ntargets = 0 then `RightO(InnerSource(n,n#nsources)) (* out-dangling node *)
+             else `LeftI (InnerTarget(n,1))
+           else `RightO (InnerSource(n,i-1))
+        | `RightI (Source i) -> [],
+           if i=self#nsources then `Right
+           else `LeftI (Source (i+1))
+        | `RightI (InnerTarget(n,i)) -> 
+           if i=n#ntargets then 
+             if n#nsources = 0 then [n],`LeftI(InnerTarget(n,1)) (* in-dangling node *)
+             else [],`RightO (InnerSource(n,n#nsources))
+           else [],`LeftI (InnerTarget(n,i+1))
+      in
+      let collect s =
+        let rec collect l x =
+          if s=x then l else
+            let h,x' = next x in
+            collect (h@l) x'
+        in        
+        let l,x = next s in
+        collect l x
+      in
+      let add l k =
+        let n = float_of_int (List.length l+1) in
+        List.iteri (fun i x -> Hashtbl.add ceilings x (k (float_of_int (i+1)/.n))) l
+      in
+      add (collect `Left) (fun p -> Source (0.5+.p/.2.));
+      for i = 1 to self#nsources do
+        let i' = float_of_int i in
+        let d  = if i=self#nsources then 2. else 1. in
+        add (collect (`RightI (Source i))) (fun p -> Source (i'+.p/.d))
+      done;
+      MSet.iter (fun n ->
+          for i = 1 to n#ntargets-1 do
+            let i' = float_of_int i in
+            add (collect (`RightI (InnerTarget(n,i)))) (fun p -> InnerTarget(n,i'+.p))
+          done;          
+        ) nodes      
 
     (* distance to the targets of the graph (TODO: acyclicity check) *)
     method depth n =
@@ -179,6 +241,13 @@ class gen_graph nodes edges area =
     method opos = function
       | Target i -> self#tpos i
       | InnerSource(n,i) -> n#spos i
+
+    method fakeipos = function
+      | Source i -> self#fakespos i
+      | InnerTarget(n,i) -> n#faketpos i
+    method fakeopos = function
+      | Target i -> self#faketpos i
+      | InnerSource(n,i) -> n#fakespos i
 
     method idir = function
       | Source i -> self#sdir i
@@ -226,7 +295,7 @@ class gen_graph nodes edges area =
     method rem_edge e =      
       assert (MSet.mem e edges);
       edges <- MSet.rem e edges;
-      self#reset_depth;
+      self#reset_tables;
       
     method rem_node n =
       assert (MSet.mem n nodes);
@@ -236,7 +305,7 @@ class gen_graph nodes edges area =
                   | InnerTarget(m,_),InnerSource(m',_) -> m<>n && m'<>n
                   | InnerTarget(m,_),_ | _,InnerSource(m,_) -> m<>n
                   | _ -> true) edges;
-      self#reset_depth;
+      self#reset_tables;
       
     
     method add_edge (src,tgt) =
@@ -244,11 +313,11 @@ class gen_graph nodes edges area =
       Typ.unify1 ~msg:"src-tgt" (self#ityp src) (self#otyp tgt);
       (* assert (not (self#reaches tgt src));       *)
       edges <- MSet.add (src,tgt) edges;
-      self#reset_depth;      
+      self#reset_tables;      
 
     method add_node n =
       nodes <- MSet.add n nodes;
-      (* self#reset_depth;       *)
+      (* self#reset_tables;       *)
 
     method replace g =
       g#move self#pos; (* TODO: resize h, or create it to fit the current box? *)
@@ -275,7 +344,7 @@ class gen_graph nodes edges area =
       h#move n#pos;   (* TODO: resize h, or create it to fit the current box? *)
       nodes <- MSet.union nodes h#nodes;
       edges <- MSet.union edges new_edges;
-      self#reset_depth;
+      self#reset_tables;
       
     method unbox n =
       match n#kind with
@@ -285,10 +354,10 @@ class gen_graph nodes edges area =
     (* textual pretty printing *)
     method private pp_iport f = function
       | Source i -> Format.fprintf f "%i" i
-      | InnerTarget(n,i) -> Format.fprintf f "n%i.%i" (MSet.index n self#nodes) i
+      | InnerTarget(n,i) -> Format.fprintf f "n%i.%i" (MSet.index n nodes) i
     method private pp_oport f = function
       | Target i -> Format.fprintf f "%i" i
-      | InnerSource(n,i) -> Format.fprintf f "n%i.%i" (MSet.index n self#nodes) i
+      | InnerSource(n,i) -> Format.fprintf f "n%i.%i" (MSet.index n nodes) i
     method private pp_node mode f n =
       match n#kind with
       | Var x -> Format.fprintf f "%s" x
@@ -299,7 +368,7 @@ class gen_graph nodes edges area =
       MSet.iteri (fun i n ->
           if not !first then Format.fprintf f ",\n "; first := false;
           Format.fprintf f "n%i%t: %a" i (n#pp_kvl mode) (self#pp_node mode) n;
-        ) self#nodes;
+        ) nodes;
       MSet.iter (fun (s,t) ->
           if not !first then Format.fprintf f ",\n "; first := false;
           Format.fprintf f "%a -> %a" self#pp_iport s self#pp_oport t;
@@ -332,7 +401,9 @@ class gen_graph nodes edges area =
         iter_oports self (fun p ->
             if self#ofree p then
               draw#point ~color:(ocolor self p) (self#opos p)
-          )
+          );
+        if false && n#nsources=0 then
+          draw#segment n#pos (self#fakeipos (self#ceil n))
       in
       area#draw draw;
       MSet.iter (self#draw_edge draw) edges;
@@ -370,7 +441,7 @@ class gen_graph nodes edges area =
           stable
         ) else true
       in
-      MSet.fold (fun g b -> g#improve ~force && b) b self#inner_graphs 
+      MSet.fold (fun g b -> g#improve ~force && b) b self#inner_graphs
 
   end
 

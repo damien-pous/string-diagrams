@@ -65,9 +65,12 @@ type name = string              (* box/variable names *)
 type typ = Typ.t                (* object types *)
 type typs = Typ.ts
 
-(* input/output ports *)
-type 'node iport = Source of int | InnerTarget of 'node * int
-type 'node oport = Target of int | InnerSource of 'node * int
+(* input/output ports
+   'v is intended to be int for real ports
+      and float for intermediate fake ones
+ *)
+type ('node,'v) iport = Source of 'v | InnerTarget of 'node * 'v
+type ('node,'v) oport = Target of 'v | InnerSource of 'node * 'v
 
 type 'graph kind = Box of 'graph | Var of name
 
@@ -85,7 +88,7 @@ module Raw: sig
     | Gph of 'a elem list * 'a
   and 'a elem =
     | Node of string * 'a term * 'a
-    | Edge of string iport * string oport
+    | Edge of (string,int) iport * (string,int) oport
   (* environments *)
   type 'a env = (name*('a*(typs*typs) option*'a term option)) list
   type 'a envterm = 'a env * 'a term
@@ -109,6 +112,8 @@ class type element = object
   method targets: typs
   method nsources: int
   method ntargets: int
+  method fnsources: float
+  method fntargets: float
   method styp: int -> typ
   method ttyp: int -> typ  
   
@@ -116,6 +121,8 @@ class type element = object
   method pos: point
   method spos: int -> point
   method tpos: int -> point
+  method fakespos: float -> point
+  method faketpos: float -> point
   method sdir: int -> vector
   method tdir: int -> vector
   method size: size

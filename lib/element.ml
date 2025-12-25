@@ -55,7 +55,11 @@ class proxy (e: #element): element =
     method targets = e#targets
     method nsources = e#nsources
     method ntargets = e#ntargets
+    method fnsources = e#fnsources
+    method fntargets = e#fntargets
     method spos = e#spos
+    method faketpos = e#faketpos
+    method fakespos = e#fakespos
     method tpos = e#tpos
     method sdir = e#sdir
     method tdir = e#tdir
@@ -78,9 +82,12 @@ class proxy (e: #element): element =
   end
 
 class virtual gen n m ?(pos=P2.o) ~name (l: kvl) =
-  let n' = List.length n in 
-  let m' = List.length m in 
+  let nsources = List.length n in 
+  let ntargets = List.length m in 
   object(self)
+    val fnsources = float_of_int nsources 
+    val fntargets = float_of_int ntargets 
+        
     val mutable kvl = l
     method private kvl = kvl
     method private has k = List.mem_assoc k kvl 
@@ -100,6 +107,11 @@ class virtual gen n m ?(pos=P2.o) ~name (l: kvl) =
       if placed then self#add "pos" (string_of_p2 pos)
     method pp_kvl mode f = self#update_kvl; if mode=Full then pp_kvl f self#kvl
 
+    method virtual fakespos: float -> point
+    method virtual faketpos: float -> point
+    method spos i = self#fakespos (float_of_int i)
+    method tpos i = self#faketpos (float_of_int i)
+    
     method virtual private box: box
     method safebox = Box2.(v_mid pos (V2.smul 1.1 (size self#box)))
 
@@ -108,10 +120,14 @@ class virtual gen n m ?(pos=P2.o) ~name (l: kvl) =
     
     method sources: typs = n
     method targets: typs = m
-    method nsources = n'
-    method ntargets = m'
+    method nsources = nsources
+    method ntargets = ntargets
+    method fnsources = fnsources
+    method fntargets = fntargets
     method styp i = List.nth n (i-1)
     method ttyp i = List.nth m (i-1)
+    val nsources = nsources
+    val ntargets = ntargets
     initializer
       (match self#get "pos" with Some p -> pos <- p2_of_string p; placed <- true | None -> ());
       color <- Constants.color' ?color:(self#get "color") name
@@ -121,13 +137,13 @@ class virtual gen n m ?(pos=P2.o) ~name (l: kvl) =
 let top_pos b i n =
   let p = Gg.Box2.tl_pt b in
   let w = Gg.Box2.w b in
-  let d = w /. (2. *. float_of_int n) in
-  Gg.V2.add p (Gg.V2.v (d *. (float_of_int (2*i-1))) 0.)
+  let d = w /. (2. *. n) in
+  Gg.V2.add p (Gg.V2.v (d *. (2.*.i-.1.)) 0.)
 let bot_pos b i n =
   let p = Gg.Box2.bl_pt b in
   let w = Gg.Box2.w b in
-  let d = w /. (2. *. float_of_int n) in
-  Gg.V2.add p (Gg.V2.v (d *. (float_of_int (2*i-1))) 0.)
+  let d = w /. (2. *. n) in
+  Gg.V2.add p (Gg.V2.v (d *. (2.*.i-.1.)) 0.)
 
 
 class rectangle n m ?pos ~size ~name l =
@@ -142,8 +158,8 @@ class rectangle n m ?pos ~size ~name l =
     method contains p = Box2.mem p self#box
     method scale s = size <- V2.smul s size; sized <- true
     method rebox b = pos <- Box2.mid b; size <- Box2.size b; sized <- true
-    method spos i = top_pos self#box i self#nsources 
-    method tpos i = bot_pos self#box i self#ntargets 
+    method fakespos i = top_pos self#box i fnsources 
+    method faketpos i = bot_pos self#box i fntargets 
     method sdir (_: int) = V2.(zero-oy)
     method tdir (_: int) = V2.(zero-oy)
     method private fill =
@@ -169,12 +185,12 @@ class circle n m ?pos ~radius ~name l =
     method contains p = Geometry.dist p pos <= radius
     method scale s = radius <- s *. radius; sized <- true
     method rebox (_: box): unit = failwith "cannot rebox a circular area"
-    method spos i =
-      V2.add pos (V2.polar radius (Float.pi *. float_of_int (self#nsources-i+1) /. float_of_int (self#nsources+1)))
-    method tpos i =
-      V2.add pos (V2.polar radius (-. Float.pi *. float_of_int (self#ntargets-i+1) /. float_of_int (self#ntargets+1)))
-    method sdir i = V2.polar (-1.) (Float.pi *. float_of_int (self#nsources-i+1) /. float_of_int (self#nsources+1))
-    method tdir i = V2.polar 1. (-. Float.pi *. float_of_int (self#ntargets-i+1) /. float_of_int (self#ntargets+1))
+    method fakespos i =
+      V2.add pos (V2.polar radius (Float.pi *. (fnsources-.i+.1.) /. (fnsources+.1.)))
+    method faketpos i =
+      V2.add pos (V2.polar radius (-. Float.pi *. (fntargets-.i+.1.) /. (fntargets+.1.)))
+    method sdir i = V2.polar (-1.) (Float.pi *. float_of_int (nsources-i+1) /. float_of_int (nsources+1))
+    method tdir i = V2.polar 1. (-. Float.pi *. float_of_int (ntargets-i+1) /. float_of_int (ntargets+1))
     method private fill =
       match self#get "fill" with Some c -> Constants.color c | None -> color    
     method draw (draw: canvas) =
@@ -196,10 +212,12 @@ class point n m ?pos ~name l: element =
     method contains p = Geometry.dist p pos <= Constants.pradius
     method scale _ = ()
     method rebox _ = failwith "cannot rebox a point area"
-    method spos _ = pos
-    method tpos _ = pos
-    method sdir i = V2.polar (-1.) (Float.pi *. float_of_int (self#nsources-i+1) /. float_of_int (self#nsources+1))
-    method tdir i = V2.polar 1. (-. Float.pi *. float_of_int (self#ntargets-i+1) /. float_of_int (self#ntargets+1))
+    method! spos _ = pos
+    method! tpos _ = pos
+    method fakespos _ = pos
+    method faketpos _ = pos
+    method sdir i = V2.polar (-1.) (Float.pi *. float_of_int (nsources-i+1) /. float_of_int (nsources+1))
+    method tdir i = V2.polar 1. (-. Float.pi *. float_of_int (ntargets-i+1) /. float_of_int (ntargets+1))
     method draw (draw: canvas) =
       draw#point ~color pos
   end
@@ -219,6 +237,20 @@ class polygon n m poly =
     val mutable tpos = tpos
     method! spos i = List.nth spos (i-1)
     method! tpos i = List.nth tpos (i-1)
+    method! fakespos i =
+      if i<=1. then self#spos 1
+      else if i>=fnsources then self#spos nsources
+      else
+        let p = i-.floor i in
+        let i,j = parent#fakespos (floor i), parent#fakespos (ceil i) in
+        V2.(smul p i + smul (1.-.p) j)        
+    method! faketpos i =
+      if i<=1. then self#tpos 1
+      else if i>=fntargets then self#tpos ntargets
+      else
+        let p = i-.floor i in
+        let i,j = parent#faketpos (floor i), parent#faketpos (ceil i) in
+        V2.(smul p i + smul (1.-.p) j)
     method! sdir i = List.nth sdir (i-1)
     method! tdir i = List.nth tdir (i-1)
     method! contains p = Geometry.mem_poly p poly
