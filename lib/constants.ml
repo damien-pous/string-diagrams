@@ -62,7 +62,7 @@ let color' ?color name =
                | 'a' -> "yellow"
                | 'b' -> "orange"
                | 'c' | 'A' -> "red"
-               | 'd' -> "violet"
+               | 'd' | 'C' -> "violet"
                | 'e' -> "green"
                | 'f' -> "lblue"
                | 'g' | 'B' -> "blue"

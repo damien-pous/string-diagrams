@@ -1,0 +1,20 @@
+// let A<color=red>: ⊗ in
+// let B<color=blue>: ⊗ in
+let m<color=red;shape=point>: A^2 -> A in
+let n<color=blue;shape=point>: B^2-> B in
+let o<color=violet;shape=point>: C^2-> C in
+let x<color=cacadoie;shape=point>: B⊗A -> A⊗B in
+let y<color=cacadoie;shape=point>: C⊗B -> B⊗C in
+let z<color=cacadoie;shape=point>: C⊗A -> A⊗C in
+let mno := id·id·z·id·id ; id·x·y·id ; m·n·o in
+m·id ; m = id·m ; m ->
+n·id ; n = id·n ; n ->
+o·id ; o = id·o ; o ->
+id·m ; x = x·id ; id·x ; m·id ->
+n·id ; x = id·x ; x·id ; id·n ->
+id·n ; y = y·id ; id·y ; n·id ->
+o·id ; y = id·y ; y·id ; id·o ->
+id·m ; z = z·id ; id·z ; m·id ->
+o·id ; z = id·z ; z·id ; id·o ->
+y·id ; id·z ; x·id = id·x ; z·id ; id·y ->
+mno·id·id·id ; mno  = id·id·id·mno ; mno 
