@@ -229,7 +229,7 @@ class polygon n m poly =
       tpos <- List.map (V2.add d) tpos;
     method! scale _ = failwith "TODO: scale polygon"
     method! draw (draw: canvas) =
-      draw#polygon ~fill:self#fill poly
+      draw#polygon (* ~border:0.5 *) ~fill:self#fill poly
     initializer
       self#add "fill" "tgray"
   end

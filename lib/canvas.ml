@@ -2,8 +2,9 @@ open Types
 open Gg
 open Vg
 
-let path_area = `O { P.o with P.width = Constants.pathlinewidth }
-let shape_area = `O { P.o with P.width = Constants.shapelinewidth }
+let area w = `O { P.o with P.width = w }
+let path_area = area Constants.pathlinewidth
+(* let shape_area = area Constants.shapelinewidth *)
 
 let pentagon c r =
   let r = V2.smul r V2.oy in
@@ -24,15 +25,16 @@ class basic: canvas =
     method private blend i = image <- (image |> I.blend i)
     method path ?(color=Color.black) p =
       self#blend (I.const color |> I.cut ~area:path_area p)
-    method shape ?(color=Color.black) ?fill p =
+    method shape ?(border=Constants.shapelinewidth) ?(color=Color.black) ?fill p =
       Option.iter (fun fill -> self#blend (I.const fill |> I.cut p)) fill;
-      self#blend (I.const color |> I.cut ~area:shape_area p)
+      if border<>0.0 then
+        self#blend (I.const color |> I.cut ~area:(area border) p)
     method circle ?color ?fill c =
       self#shape ?color ?fill (P.empty |> P.circle c.center c.radius)
     method pentagon ?color ?fill c =
       self#shape ?color ?fill (pentagon c.center c.radius)
-    method polygon ?color ?fill p =
-      self#shape ?color ?fill (Polygon.to_path p)
+    method polygon ?border ?color ?fill p =
+      self#shape ?border ?color ?fill (Polygon.to_path p)
     method box ?color ?fill b =
       self#shape ?color ?fill (P.empty |> P.rect b)
     method point ?color p =
@@ -58,10 +60,10 @@ class void: canvas =
     method clear = ()
     method get = I.void
     method path ?color _ = ignore (color) 
-    method shape ?color ?fill _ = ignore (color,fill) 
+    method shape ?border ?color ?fill _ = ignore (border,color,fill) 
     method circle ?color ?fill _ = ignore (color,fill) 
     method pentagon ?color ?fill _ = ignore (color,fill) 
-    method polygon ?color ?fill _ = ignore (color,fill) 
+    method polygon ?border ?color ?fill _ = ignore (border,color,fill) 
     method box ?color ?fill _ = ignore (color,fill) 
     method point ?color _ = ignore color 
     method segment ?color _ _ = ignore color 

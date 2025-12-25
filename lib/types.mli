@@ -25,11 +25,11 @@ class type canvas =
     method clear: unit
     method get: image
     method path: ?color:color -> path -> unit
-    method shape: ?color:color -> ?fill:color -> path -> unit
+    method shape: ?border: float -> ?color:color -> ?fill:color -> path -> unit
     method box: ?color:color -> ?fill:color -> box -> unit 
     method circle: ?color:color -> ?fill:color -> circle -> unit
     method pentagon: ?color:color -> ?fill:color -> circle -> unit
-    method polygon: ?color:color -> ?fill:color -> polygon -> unit
+    method polygon: ?border: float -> ?color:color -> ?fill:color -> polygon -> unit
     method point: ?color:color -> point -> unit
     method segment: ?color:color -> point -> point -> unit 
     method curve: ?color:color -> point -> point -> point -> point -> unit 
