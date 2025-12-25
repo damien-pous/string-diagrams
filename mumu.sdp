@@ -8,4 +8,4 @@ m·id ; m = id·m ; m ->
 n·id ; n = id·n ; n ->
 id·m ; x = x·id ; id·x ; m·id ->
 n·id ; x = id·x ; x·id ; id·n ->
-(id·x·id ; m·n)·id·id ; (id·x·id ; m·n) = id·id·(id·x·id ; m·n) ; (id·x·id ; m·n)
+(id·x·id ; m·n)·id·id ; (id·x·id ; m·n) ≡ id·id·(id·x·id ; m·n) ; (id·x·id ; m·n)

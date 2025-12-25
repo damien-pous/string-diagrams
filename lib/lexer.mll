@@ -50,7 +50,7 @@ rule token = parse
   | '}'                                    { RBRK }
   | ','                                    { COMMA }
   | ':'                                    { COLON }
-  | ';'                                    { SEMI }
+  | ';' | "\\;"                            { SEMI }
   | (* ° *) "\xC2\xB0"
   | (* ∘ *) "\xE2\x88\x98" | "\\circ"      { CIRC }
   | '.'
@@ -59,7 +59,8 @@ rule token = parse
   | (* ⊗ *) "\226\138\151" | "\\otimes"    { STAR }
   | '_'                                    { UNDER }
   | '^'                                    { HAT }
-  | '='                                    { EQ }
+  | '='
+  | (* ≡ *) "\226\137\161"                 { EQ }
   | ":="                                   { EQDEF }
   | "->"                                   { TO }
   | "id"                                   { ID }
