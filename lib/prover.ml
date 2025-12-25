@@ -13,6 +13,8 @@ let string_of_state (s: equations) =
   Marshal.to_string s [Marshal.Closures] 
   (* Format.asprintf "%a" (pp_equations Full) *)
 
+exception Found3 of graph*node*graph
+
 let changed = ref false
 
 class virtual mk (arena: arena) =
@@ -120,6 +122,7 @@ class virtual mk (arena: arena) =
          (match n#kind with
           | Box _ ->
              g#unbox n;
+             g#unset "place";
              List.iter (fun (l,r) -> l#unset "fill"; r#unset "fill") self#hyps;
              self#changed
           | Var f ->
@@ -145,88 +148,68 @@ class virtual mk (arena: arena) =
       match self#catch with
       | `N(_,n) -> Place.unfix n; self#perturbate
       | _ -> temporary#msg "no node to release here"
-
-    method private create_box g p: unit =
-      let n,h = Graph.create_box g p in
+    
+    method private create_box g p =
+      let _,h = Graph.create_box g p in
       g#set "place" "locked";
+      h#set "place" "locked";
       List.iter (fun (l,r) ->
           if Graph.iso h l then
             (h#set "fill" "lhs"; l#set "fill" "lhs"; r#set "fill" "rhs")
           else if Graph.iso h r then
-            (h#set "fill" "rhs"; l#set "fill" "lhs"; r#set "fill" "rhs")
+            (h#set "fill" "lhs"; r#set "fill" "lhs"; l#set "fill" "rhs")
         ) self#hyps;
-      if h#get "fill" = Some "tgray" then h#set "place" "locked"
-      else (
-        h#set "place" "contract";
-        let hyps = self#hyps in (* needed to leave [self] out of the closure below *)
-        h#on_stabilize
-          (fun () ->
-            (try
-               List.iter (fun (l,r) ->
-                   if Graph.iso h l then
-                     (h#replace (Graph.copy r);
-                      h#unset "place";
-                      h#on_stabilize (fun () ->
-                          g#unbox n;
-                          g#unset "place";
-                          l#unset "fill";
-                          r#unset "fill";
-                          (* here we would like to call
-                             self#changed_nocheckpoint;
-                             but Marshal cannot deal with references to self *)
-                          changed := true;
-                          false);
-                      h#set "fill" "rhs";
-                      Place.group h; 
-                      raise Not_found)
-                   else if Graph.iso h r then
-                     (h#replace (Graph.copy l);
-                      h#unset "place";
-                      h#on_stabilize (fun () ->
-                          g#unbox n;
-                          g#unset "place";
-                          l#unset "fill";
-                          r#unset "fill";
-                          (* here we would like to call
-                             self#changed_nocheckpoint;
-                             but Marshal cannot deal with references to self *)
-                          changed := true;
-                          false);
-                      h#set "fill" "lhs";
-                      Place.group h; 
-                      raise Not_found)
-                 ) hyps;
-               false
-             with Not_found -> false);
-        );
-      );
       self#changed
 
-    method private rewrite unbox =
-      match self#catch with
-      | `N(g,n) ->
-         (match n#kind with
-          | Box h -> 
-             if h#get "fill" = Some "tgray" then error "no match so far";
-             (try
-             List.iter (fun (l,r) ->
-                 if Graph.iso h l then
-                   (if unbox then
-                      (g#subst n (Graph.copy r); l#unset "fill"; r#unset "fill")
-                    else
-                      (h#replace (Graph.copy r); h#set "fill" "rhs");
-                    raise Not_found)
-                 else if Graph.iso h r then
-                   (if unbox then
-                      (g#subst n (Graph.copy l); l#unset "fill"; r#unset "fill")
-                    else
-                      (h#replace (Graph.copy l); h#set "fill" "lhs");
-                    raise Not_found)
-               ) self#hyps
-             with Not_found -> ());
-             self#changed
-          | _ -> temporary#msg "no box to rewrite here")
-      | _ -> temporary#msg "no box to rewrite here"
+    method private rewrite i =
+      let l,r =
+        let j = ref i in
+        match List.fold_left (fun acc (l,r) ->
+                  if l#get "fill" = Some "lhs" then (
+                    decr j;                  
+                    if !j=0 then Some (l,r) else
+                      (l#unset "fill"; r#unset "fill"; acc)
+                  ) else if r#get "fill" = Some "lhs" then (
+                    decr j;                  
+                    if !j=0 then Some (r,l) else
+                      (l#unset "fill"; r#unset "fill"; acc)
+                  ) else acc
+              ) None self#hyps
+        with
+        | Some(l,r) -> l,r
+        | None -> error "no such matching hypothesis (%i)" i
+      in
+      let g,n,h =
+        try self#iter_graphs (fun g ->
+                if g#get "place" = Some "locked" then
+                  MSet.iter (fun n ->
+                      match n#kind with
+                      | Box h -> if h#get "fill" = Some "lhs" then
+                                   raise (Found3(g,n,h))
+                      | _ -> ()) g#nodes
+              );
+            error "could not find the pattern to rewrite"
+        with Found3(g,n,h) -> g,n,h
+      in
+      h#set "place" "contract";
+      h#on_stabilize
+        (fun () ->
+          h#replace (Graph.copy r);
+          h#unset "place";
+          h#on_stabilize (fun () ->
+              g#unbox n;
+              g#unset "place";
+              l#unset "fill";
+              r#unset "fill";
+              (* here we would like to call
+                 self#changed_nocheckpoint;
+                 but Marshal cannot deal with references to self *)
+              changed := true;
+              false);
+          h#set "fill" "rhs";
+          Place.group h;
+          false);
+      self#changed      
 
     val mutable play = true
     method on_tic =
@@ -289,7 +272,7 @@ class virtual mk (arena: arena) =
          (match s with
           | "h" -> self#help 
                      "** keys **
-r/R     rewrite box
+1..n    rewrite box using matching hypothesis
 u       unbox or unfold node
 -/+     shrink/enlarge element
 f       release fixed element
@@ -299,6 +282,7 @@ e       export graph term to clipboard
 SPACE   pause/start
 ESC     abort current action
 =       fit screen
+r       redraw picture
 h       print this help message"
           | "f" -> self#release
           | "u" -> self#unfold
@@ -307,13 +291,20 @@ h       print this help message"
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1
           | "=" -> arena#fit self#box; self#redraw
-          | "r" -> self#rewrite false
-          | "R" -> self#rewrite true
+          | "1" -> self#rewrite 1
+          | "2" -> self#rewrite 2
+          | "3" -> self#rewrite 3
+          | "4" -> self#rewrite 4
+          | "5" -> self#rewrite 5
+          | "6" -> self#rewrite 6
+          | "7" -> self#rewrite 7
+          | "8" -> self#rewrite 8
+          | "9" -> self#rewrite 9
           | "ArrowLeft" -> self#undo()
           | "ArrowRight" -> self#redo()
           | " " -> play <- not play
-          | "!" -> self#redraw
-          | "?" -> self#refresh
+          | "r" -> self#redraw
+          | "!" -> self#refresh
           | "" -> ()
           | s -> temporary#msg "skipping key '%s'" s)
       | _ -> temporary#msg "ignored key `%s' during ongoing action" s
