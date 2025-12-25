@@ -8,7 +8,7 @@ val undo: 'a t -> 'a option
 val redo: 'a t -> 'a option
 
 
-class virtual mk:
+class virtual ['a] mk:
       ('a -> string) ->           (* serialize *)
       (string -> 'a) ->           (* deserialize *)
   object
@@ -25,5 +25,6 @@ class virtual mk:
     method redo: unit -> unit
 
     method load: string -> unit
+    method load': 'a -> unit
     method save: string -> unit
   end

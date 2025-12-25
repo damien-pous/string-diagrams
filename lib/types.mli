@@ -56,6 +56,8 @@ class type arena =
     method resize: float*float -> unit
     method pointer: point
     method refresh: unit
+    method clipboard: string
+    method set_clipboard: string -> unit
   end
 
 type pp_mode = Full | Sparse | Term | TermIfPossible

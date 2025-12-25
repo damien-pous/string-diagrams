@@ -135,7 +135,7 @@ let pp_env mode f (e: env) =
   in pp_env f e
 let pp_envgraph mode f (e,g) = pp_env mode f e; pp mode f g
 let pp_equation mode f (u,v) = 
-  Format.fprintf f "%a = %a" (pp mode) u (pp mode) v
+  Format.fprintf f "%a ≡ %a" (pp mode) u (pp mode) v
 let pp_equations mode f (e,h,g) =
   Format.fprintf f "%a[%a]" 
   (pp_env mode) e

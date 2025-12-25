@@ -18,6 +18,7 @@ class virtual mk: arena ->
     method undo: unit -> unit
     method redo: unit -> unit
 
+    method load': equations -> unit
     method load: string -> unit
     method save: string -> unit
   end

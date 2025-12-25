@@ -18,7 +18,7 @@ let changed = ref false
 class virtual mk (arena: arena) =
   object(self)
 
-    inherit History.mk string_of_state state_of_string as parent
+    inherit [equations]History.mk string_of_state state_of_string as parent
     method private virtual help: string -> unit
         
     val mutable state = env [], [], (Graph.emp(),Graph.emp())
@@ -49,9 +49,9 @@ class virtual mk (arena: arena) =
         (if self#lhs#get "fill" = None then "=?=" else "=");
       self#refresh
 
-    method !load f =
+    method !load' f =
       (* not optimal: parent#load already calls #redraw, via #set_state *)
-      parent#load f;
+      parent#load' f;
       arena#fit self#box;
       self#redraw
     
@@ -268,7 +268,19 @@ class virtual mk (arena: arena) =
       | _ -> ();
          (* (match self#catch with `N(g,n) -> temporary#msg "depth %i" (g#depth n) | _ -> ()); *)
          (* self#refresh *)
-             
+
+    method private load_from_clipboard =
+      let l = Lexing.from_string arena#clipboard in
+      let x = Parser.equations Lexer.token l in
+      self#load' (Graph.equations x)
+
+    method private graph_to_clipboard =
+      match self#catch with
+      | `N(g,_) | `G g ->
+         let s = Format.asprintf "%a" (Graph.pp Term) g in
+         arena#set_clipboard s;
+         temporary#msg "graph copied to clipboard: %s" s
+      | _ -> temporary#msg "no graph to export here"
 
     method on_key_press s =
       if s = "Escape" then self#abort
@@ -281,6 +293,8 @@ r/R     rewrite box
 u       unbox or unfold node
 -/+     shrink/enlarge element
 f       release fixed element
+l       load state from clipboard
+e       export graph term to clipboard
 ->/<-   undo/redo
 SPACE   pause/start
 ESC     abort current action
@@ -288,6 +302,8 @@ ESC     abort current action
 h       print this help message"
           | "f" -> self#release
           | "u" -> self#unfold
+          | "l" -> self#load_from_clipboard
+          | "e" -> self#graph_to_clipboard
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1
           | "=" -> arena#fit self#box; self#redraw

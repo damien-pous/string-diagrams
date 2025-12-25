@@ -24,7 +24,7 @@ let redo h =
 
 open Messages
 
-class virtual mk serialize deserialize =
+class virtual ['a] mk serialize deserialize =
   object(self)
 
     method private virtual state: 'a
@@ -55,13 +55,16 @@ class virtual mk serialize deserialize =
       | Some s -> self#set_sstate s
       | None -> temporary#msg "no more redos"
 
-    method load f =
-      self#set_state (self#read f);
+    method load' (s: 'a) =
+      self#set_state s;
       self#checkpoint;
       clear hist
 
+    method load f =
+      self#load' (self#read f)
+
     method save f =
-      self#write f self#state;
+      self#write f self#state
 
     initializer
       self#checkpoint;

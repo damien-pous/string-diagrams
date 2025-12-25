@@ -5,7 +5,11 @@ open Vg
 class arena ~width ~height ?window da () =
   object(self)
     inherit Arena.generic
-        
+
+    val clipboard = GData.clipboard Gdk.Atom.clipboard
+    method! clipboard = Option.value clipboard#text ~default:"" 
+    method! set_clipboard = clipboard#set_text
+    
     val mutable backing = GDraw.pixmap ~width ~height ?window ()
     
     method private dsize =
