@@ -112,7 +112,7 @@ class virtual gen n m ?(pos=P2.o) ~name (l: kvl) =
     method virtual faketpos: float -> point
     method spos i = self#fakespos (float_of_int i)
     method tpos i = self#faketpos (float_of_int i)
-    method setdirs (_: point list) (_: point list) = ()
+    method setdirs (_: (point*vector) list) (_: (point*vector) list) = ()
     
     method virtual private box: box
     method safebox = Box2.(v_mid pos (V2.smul 1.1 (size self#box)))
@@ -232,10 +232,16 @@ class cross n m ?pos ?(radius=Constants.cross_radius) ~name l: element =
       | 1 -> bdir
       | 2 -> adir
       | _ -> assert false
-    method! setdirs i o = match i,o with
+    method! setdirs i o =
+      let d (p,dp) (q,dq) =
+        (* V2.(unit (q-p)) *)
+        let n = Geometry.dist p q /. 4. in
+        V2.(unit (q-p-smul n (dp+dq)))
+      in
+      match i,o with
       | [a;b],[b';a'] ->
-         adir <- V2.(unit (a'-a));
-         bdir <- V2.(unit (b'-b));
+         adir <- d a a';
+         bdir <- d b b';
       | _ -> assert false
   end
 

@@ -18,9 +18,11 @@ let group g =
 let generic k (g: graph) =
   MSet.iter (fun n ->
       if n#get "shape" = Some "cross" then
+        let a,b = g#prev (InnerSource(n,1)), g#prev (InnerSource(n,2)) in
+        let c,d = g#next (InnerTarget(n,1)), g#next (InnerTarget(n,2)) in
         n#setdirs
-          [g#ipos (g#prev (InnerSource(n,1))); g#ipos (g#prev (InnerSource(n,2)))]
-          [g#opos (g#next (InnerTarget(n,1))); g#opos (g#next (InnerTarget(n,2)))]
+          [g#ipos a, g#idir a; g#ipos b, g#idir b]
+          [g#opos c, g#odir c; g#opos d, g#odir d]
     ) g#nodes;
   let t = Hashtbl.create (MSet.size g#nodes) in
   let add x s v =
