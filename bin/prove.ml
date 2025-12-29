@@ -109,7 +109,6 @@ let atomic ?(clearall=true) f x d =
   Messages.catch f x d refresh
 let atomic_unit ?clearall f x = atomic ?clearall f x ()
 let atomic_true ?clearall f x = atomic ?clearall f x true
-
 let _ = file_factory#add_item "Open" ~key:GdkKeysyms._O ~callback:(atomic_unit load)
 let _ = file_factory#add_item "Save" ~key:GdkKeysyms._S ~callback:(atomic_unit save)
 let _ = file_factory#add_item "Save as" ~key:GdkKeysyms._E ~callback:(atomic_unit save_as)
@@ -125,10 +124,10 @@ let _ = da#event#connect#motion_notify ~callback:(atomic_true ~clearall:false on
 let _ = da#event#connect#button_press ~callback:(atomic_true on_button_press)
 let _ = da#event#connect#button_release ~callback:(atomic_true on_button_release)
 let _ = da#event#connect#key_press ~callback:(atomic_true on_key_press)
-let _ = Glib.Timeout.add ~ms:25 ~callback:(fun _ -> self#on_tic; true)
+let _ = Glib.Timeout.add ~ms:25 ~callback:(Printexc.print (fun _ -> self#on_tic; true))
 let _ = window#connect#destroy ~callback:Main.quit
 let _ = window#add_accel_group accel_group
-let _ = fullscreen()
+(* let _ = fullscreen() *)
 let _ = window#show ()
 let _ = atomic_unit self#load !file
 let _ = Main.main ()

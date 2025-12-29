@@ -84,7 +84,7 @@ let improve_tmp =
   generic (fun g add ->
   let repulse = 0.0 in
   let attract_link = -0.5 in
-  let attract_depth = -5.0 in
+  let attract_level = -5.0 in
   let heights =                 (* heigths of each slice *)
     let rec insert d y = function
       | [] when d=1 -> [y]
@@ -93,7 +93,7 @@ let improve_tmp =
       | x::q -> x::insert (d-1) y q
     in
     MSet.fold (fun n ->
-        let d,h = g#depth n, Box2.h n#box in
+        let d,h = n#level, Box2.h n#box in
         insert d h
       ) [] g#nodes
   in
@@ -105,7 +105,7 @@ let improve_tmp =
       | x::q -> let s = s +. sep in 
                 (s +. x/.2.) :: psum (s +. x) q
     in List.nth (0.::psum (V2.y (Box2.bm_pt g#box)) heights)
-                (* 0.::.. because depth starts at 1 *)
+                (* 0.::.. because level starts at 1 *)
   in
   (* box repulsion *)
   if repulse<>0.0 then 
@@ -121,12 +121,12 @@ let improve_tmp =
               add x (repulse/.(d'*.d'*.d)) xy
         ) g#nodes
     ) g#nodes;
-  (* attract to depth *)
+  (* attract to level *)
   MSet.iter (fun n ->
-      let d = g#depth n in
+      let d = n#level in
       let h = h d in
       let h' = V2.y n#pos in
-      add n (attract_depth*.(h'-.h)) V2.oy
+      add n (attract_level*.(h'-.h)) V2.oy
     ) g#nodes;
   (* attract *)
   MSet.iter (fun (i,o) ->
@@ -146,7 +146,7 @@ let improve =
   let repulse = 0.0 in
   let attract_x = 5.0 in
   let attract_y = 4.0 in
-  let mdepth = MSet.fold (fun n -> max (g#depth n)) 0 g#nodes in    
+  let mlevel = MSet.fold (fun n -> max n#level) 0 g#nodes in    
   (* Format.eprintf "%i@." (Random.int 10); *)
   (* box repulsion *)
   if repulse<>0.0 then 
@@ -176,7 +176,7 @@ let improve =
     ) g#edges;
   MSet.iter (fun n ->
       if n#nsources=0 then
-      let x,y = n#pos, g#fakeipos (g#ceil n) in
+      let x,y = n#pos, g#fakeipos n#ceiling in
       let xy = V2.sub y x in
       let xy = V2.ltr (M2.scale2 (V2.v 1. 0.)) xy in
         add n attract_x xy
@@ -184,23 +184,23 @@ let improve =
   (* vertical attraction *)
   MSet.iter (fun n ->
       let _,prevs =
-        if n#nsources = 0 then 0,[g#fakeipos (g#ceil n)] else
+        if n#nsources = 0 then 0,[g#fakeipos n#ceiling] else
         Misc.fold (fun i (d,l) ->
             let p = g#prev (InnerSource(n,i)) in
             let dp = match p with
-              | InnerTarget(m,_) -> g#depth m
-              | _ -> mdepth+1
+              | InnerTarget(m,_) -> m#level
+              | _ -> mlevel+1
             in
             if dp < d then dp,[g#ipos p]
             else if dp = d then d,(g#ipos p::l)
             else d,l 
-          ) n#nsources (mdepth+2,[Box2.tm_pt g#box]) 
+          ) n#nsources (mlevel+2,[Box2.tm_pt g#box]) 
       in
       let _,nexts =
         Misc.fold (fun i (d,l) ->
             let p = g#next (InnerTarget(n,i)) in
             let dp = match p with
-              | InnerSource(m,_) -> g#depth m
+              | InnerSource(m,_) -> m#level
               | _ -> 0
             in
             if dp > d then dp,[g#opos p]

@@ -101,7 +101,7 @@ let to_term (g: graph) =
     | [] -> Term.idm[],[]
     | j::q ->
          match g#prev j with
-         | InnerTarget(n,i) when g#depth n = d ->
+         | InnerTarget(n,i) when n#level = d ->
             if i<>1 then not_a_graph_term "did not reach first target first";
             let u,l = slice d (eat n 2 q) in
             Term.tns n#term u, (add n 1 l)            
@@ -142,21 +142,57 @@ let pp_equations mode f (e,h,g) =
   (pp_print_list " -> \n" (pp_equation mode)) (h@[g])
 
 
+class links n m: linked =
+  object
+    val ilinks = Array.make n None
+    val olinks = Array.make m None
+    method ilink i = ilinks.(i-1)
+    method olink o = olinks.(o-1)
+    method ilink_set i p = Array.set ilinks (i-1) (Some p)
+    method olink_set o p = Array.set olinks (o-1) (Some p)
+    method clear_tables = Array.fill ilinks 0 n None; Array.fill olinks 0 m None
+  end
+
+class leveled n m =
+  object(self)
+    inherit links m n as parent (* note the input/output reversal *)
+    val mutable level = None
+    val mutable ceiling = None
+    method! clear_tables =
+      parent#clear_tables;
+      level <- None;
+      ceiling <- None
+    method level =
+      match level with
+      | Some l -> l
+      | None ->
+         let l = 1 + fold (fun i ->
+                         max (match self#ilink i with
+                              | Some (InnerSource(m,_)) -> m#level
+                              | _ -> 0
+                           )) m 0
+         in level <- Some l; l
+    method ceiling: fakeiport =
+      match ceiling with
+      | Some c -> c
+      | None -> failwith "missing ceiling"
+    method set_ceiling c = ceiling <- Some c
+  end
+
 (* generic pregraph *)
 class gen_graph nodes edges area =
   object(self)
     inherit Element.proxy area
-
-    val mutable depth = Hashtbl.create (MSet.size nodes)
-    val mutable ceilings = Hashtbl.create (MSet.size nodes)
+    inherit links area#nsources area#ntargets
     
     val mutable edges: (iport*oport) mset = edges
     val mutable nodes = nodes
 
     (* warning: to be called whenever the graph changes *)
-    method private reset_tables =
-      Hashtbl.clear depth;
-      Hashtbl.clear ceilings;
+    method private rebuild_tables =
+      self#clear_tables;
+      MSet.iter (fun n -> n#clear_tables) nodes;
+      self#compute_tables
     
     method edges = edges
     method nodes = nodes
@@ -164,14 +200,18 @@ class gen_graph nodes edges area =
       (* TODO: sanity checks *)
       nodes <- nodes';
       edges <- edges';
-      self#reset_tables;
+      self#rebuild_tables;
 
-    method ceil n: fakeiport =
-      assert (n#nsources = 0);
-      try Hashtbl.find ceilings n
-      with Not_found -> self#compute_ceilings; self#ceil n
-
-    method private compute_ceilings =
+    method private set_edge (i,o) =
+      (match i with
+      | Source i -> self#ilink_set i o
+      | InnerTarget(n,i) -> n#ilink_set i o);
+      (match o with
+      | Target o -> self#olink_set o i
+      | InnerSource(n,o) -> n#olink_set o i)
+    
+    method private compute_tables =
+      MSet.iter self#set_edge edges;
       let next = function
         | `Left -> [],
            if self#nsources = 0 then `Right
@@ -209,7 +249,7 @@ class gen_graph nodes edges area =
       in
       let add l k =
         let n = float_of_int (List.length l+1) in
-        List.iteri (fun i x -> Hashtbl.add ceilings x (k (float_of_int (i+1)/.n))) l
+        List.iteri (fun i x -> x#set_ceiling (k (float_of_int (i+1)/.n))) l
       in
       add (collect `Left) (fun p -> Source (0.5+.p/.2.));
       for i = 1 to self#nsources do
@@ -223,17 +263,6 @@ class gen_graph nodes edges area =
             add (collect (`RightI (InnerTarget(n,i)))) (fun p -> InnerTarget(n,i'+.p))
           done;          
         ) nodes      
-
-    (* distance to the targets of the graph (TODO: acyclicity check) *)
-    method depth n =
-      try Hashtbl.find depth n
-      with Not_found ->
-            let d = 1 + fold (fun i ->
-                            max (match self#next (InnerTarget(n,i)) with
-                                 | Target _ -> 0
-                                 | InnerSource(m,_) -> self#depth m)
-                          ) n#ntargets 0
-            in Hashtbl.add depth n d; d
 
     method ipos = function
       | Source i -> self#spos i
@@ -263,11 +292,14 @@ class gen_graph nodes edges area =
       | Target i -> self#ttyp i
       | InnerSource(n,i) -> n#styp i
     
-    
-    (* memoise? *)
-    method private out_edge p = MSet.find (fun e -> src e = p) edges
-    method ifree p = self#out_edge p = None
-    method next_opt p = Option.map tgt (self#out_edge p)
+    method next_opt = function
+      | Source i -> self#ilink i
+      | InnerTarget(n,i) -> n#ilink i
+    method prev_opt = function
+      | Target o -> self#olink o
+      | InnerSource(n,o) -> n#olink o
+
+    method ifree p = self#next_opt p = None
     method next p = match self#next_opt p with Some q -> q | None -> raise Incomplete_graph
     method nexts p =
       let rec dfs p (nodes,ports) =
@@ -278,10 +310,7 @@ class gen_graph nodes edges area =
         | Some q -> nodes, MSet.add q ports
       in dfs p (MSet.empty,MSet.empty)
 
-    (* memoise? *)
-    method private inp_edge p = MSet.find (fun e -> tgt e = p) edges
-    method ofree p = self#inp_edge p = None
-    method prev_opt p = Option.map src (self#inp_edge p)
+    method ofree p = self#prev_opt p = None
     method prev p = match self#prev_opt p with Some q -> q | None -> raise Incomplete_graph
     method prevs p =
       let rec dfs p (nodes,ports) =
@@ -295,9 +324,9 @@ class gen_graph nodes edges area =
     method rem_edge e =      
       assert (MSet.mem e edges);
       edges <- MSet.rem e edges;
-      self#reset_tables;
+      self#rebuild_tables;
       
-    method rem_node n =
+    method private unsafe_rem_node n =
       assert (MSet.mem n nodes);
       nodes <- MSet.rem n nodes;
       edges <- MSet.filter
@@ -305,7 +334,10 @@ class gen_graph nodes edges area =
                   | InnerTarget(m,_),InnerSource(m',_) -> m<>n && m'<>n
                   | InnerTarget(m,_),_ | _,InnerSource(m,_) -> m<>n
                   | _ -> true) edges;
-      self#reset_tables;
+
+    method rem_node n =
+      self#unsafe_rem_node n;
+      self#rebuild_tables;
       
     
     method add_edge (src,tgt) =
@@ -313,11 +345,11 @@ class gen_graph nodes edges area =
       Typ.unify1 ~msg:"src-tgt" (self#ityp src) (self#otyp tgt);
       (* assert (not (self#reaches tgt src));       *)
       edges <- MSet.add (src,tgt) edges;
-      self#reset_tables;      
+      self#rebuild_tables;      
 
     method add_node n =
       nodes <- MSet.add n nodes;
-      (* self#reset_tables;       *)
+      (* self#rebuild_tables;       *)
 
     method replace g =
       g#move self#pos; (* TODO: resize h, or create it to fit the current box? *)
@@ -340,11 +372,11 @@ class gen_graph nodes edges area =
             | _ -> None
           ) h#edges
       in
-      self#rem_node n;
+      self#unsafe_rem_node n;
       h#move n#pos;   (* TODO: resize h, or create it to fit the current box? *)
       nodes <- MSet.union nodes h#nodes;
       edges <- MSet.union edges new_edges;
-      self#reset_tables;
+      self#rebuild_tables;
       
     method unbox n =
       match n#kind with
@@ -403,7 +435,7 @@ class gen_graph nodes edges area =
               draw#point ~color:(ocolor self p) (self#opos p)
           );
         if false && n#nsources=0 then
-          draw#segment n#pos (self#fakeipos (self#ceil n))
+          draw#segment n#pos (self#fakeipos n#ceiling)
       in
       area#draw draw;
       MSet.iter (self#draw_edge draw) edges;
@@ -443,6 +475,8 @@ class gen_graph nodes edges area =
       in
       MSet.fold (fun g b -> g#improve ~force && b) b self#inner_graphs
 
+    initializer
+      self#compute_tables
   end
 
 
@@ -528,6 +562,7 @@ let seq g h =
 let var_node n m name l =
   object(self)
     inherit Element.proxy (Element.mk n m ~name l) as parent
+    inherit leveled (List.length n) (List.length m)
     method kind = Var name
     method! draw canvas =
       parent#draw canvas;
@@ -539,6 +574,7 @@ let var_node n m name l =
 let graph_node g =
   object
     inherit Element.proxy g
+    inherit leveled g#nsources g#ntargets
     method kind = Box g
     method term = Term.box g#term
   end

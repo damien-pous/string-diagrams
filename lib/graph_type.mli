@@ -1,9 +1,19 @@
 open Types
 open Term
 
-class type graph =
+
+class type linked =
+  object
+    method ilink: int -> (node,int) oport option
+    method olink: int -> (node,int) iport option
+    method ilink_set: int -> (node,int) oport -> unit
+    method olink_set: int -> (node,int) iport -> unit
+    method clear_tables: unit
+  end
+and graph =
   object
     inherit element
+    inherit linked
     (* note below: [(node,int) iport / (node,int) oport] should be abbreviated as [iport / oport] *)
 
     method nodes: node mset
@@ -38,10 +48,6 @@ class type graph =
     method prev_opt: (node,int) oport -> (node,int) iport option
     method prevs: (node,int) oport -> node mset * (node,int) iport mset
 
-    (* distance to the targets of the graph *)
-    method depth: node -> int
-    method ceil: node -> (node,float) iport
-
     method rem_edge: (node,int) iport*(node,int) oport -> unit
     method add_edge: (node,int) iport*(node,int) oport -> unit
     method rem_node: node -> unit
@@ -67,10 +73,15 @@ class type graph =
   end
 and node =
   object
+    inherit linked
     inherit element
     method kind: graph kind
     method draw: canvas -> unit
     method term: term
+
+    method level: int
+    method ceiling: (node,float) Types.iport
+    method set_ceiling: (node,float) Types.iport -> unit
   end
 
 type iport = (node,int) Types.iport

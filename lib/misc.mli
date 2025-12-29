@@ -15,6 +15,7 @@ val sqr: float -> float
 val comp: ('b -> 'c) -> ('a -> 'b) -> 'a -> 'c
 
 val memo: ('a -> 'b) -> 'a -> 'b
+val memo': int -> ('a -> 'b) -> (unit -> unit) * ('a -> 'b)
 
 (** iter n f x = f^n(x) *)
 val iter: int -> ('a -> 'a) -> 'a -> 'a
@@ -25,3 +26,4 @@ val forall: int -> (int -> bool) -> bool
 val exists: int -> (int -> bool) -> bool
 
 val unique_assq: ('a * 'b) list -> bool
+

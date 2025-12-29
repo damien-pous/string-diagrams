@@ -27,6 +27,13 @@ let memo f =
     m := (x,y) :: !m;
     y
 
+let memo' n f =
+  let t = Hashtbl.create n in
+  (fun () -> Hashtbl.clear t),
+  (fun x ->
+    try Hashtbl.find t x
+    with Not_found -> let y = f x in Hashtbl.add t x y; y)
+
 let rec iter n f x = match n with 0 -> x | n -> iter (n-1) f (f x)
 let rec fold f n x = match n with 0 -> x | n -> fold f (n-1) (f n x)
 
