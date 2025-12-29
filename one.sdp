@@ -1,0 +1,3 @@
+let f: A->A in
+let g: A->A in
+f·g = (f;g)·id
