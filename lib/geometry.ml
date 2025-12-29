@@ -120,7 +120,7 @@ let mem_poly a p =
              | R -> n+1
              | E -> n
            ) 0
-let mem_point a p = V2.(norm2 (p-a)) <= sqr (2. *. Constants.pradius)
+let mem_point a p = V2.(norm2 (p-a)) <= sqr (2. *. Constants.point_radius)
 
 let poly_box p =
   Polygon.fold1 p (fun x b -> Box2.add_pt b x) Box2.empty

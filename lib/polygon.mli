@@ -16,3 +16,5 @@ val least_point: ('a -> 'a -> int) -> 'a t -> 'a
 val least_triple: ('a -> 'a -> int) -> 'a t -> 'a * 'a * 'a
 
 val to_path: Gg.p2 t -> Vg.path
+
+val triangle: 'a -> 'a -> 'a -> 'a t

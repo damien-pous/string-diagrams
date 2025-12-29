@@ -1,11 +1,11 @@
 // let A<color=red>: ⊗ in
 // let B<color=blue>: ⊗ in
-let m<color=red;shape=circle>: A^2 -> A in
-let n<color=blue;shape=circle>: B^2-> B in
-let o<color=violet;shape=circle>: C^2-> C in
-let x<color=cacadoie;shape=circle>: B⊗A -> A⊗B in
-let y<color=cacadoie;shape=circle>: C⊗B -> B⊗C in
-let z<color=cacadoie;shape=circle>: C⊗A -> A⊗C in
+let m<color=red;shape=triangle>: A^2 -> A in
+let n<color=blue;shape=triangle>: B^2-> B in
+let o<color=violet;shape=triangle>: C^2-> C in
+let x<color=cacadoie;shape=cross>: B⊗A -> A⊗B in
+let y<color=cacadoie;shape=cross>: C⊗B -> B⊗C in
+let z<color=cacadoie;shape=cross>: C⊗A -> A⊗C in
 let mno := id·id·z·id·id ; id·x·y·id ; m·n·o in
 m·id ; m = id·m ; m ->
 n·id ; n = id·n ; n ->

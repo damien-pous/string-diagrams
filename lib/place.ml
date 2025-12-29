@@ -9,13 +9,19 @@ let fix x = x#set "fixed" "true"
 let unfix x = x#unset "fixed"
 
 let speed = 0.01
-let minmove = Constants.pradius /. 10.
+let minmove = Constants.point_radius /. 10.
 
 let group g =
   let c = g#pos in
   MSet.iter (fun n -> n#move c) g#nodes
 
 let generic k (g: graph) =
+  MSet.iter (fun n ->
+      if n#get "shape" = Some "cross" then
+        n#setdirs
+          [g#ipos (g#prev (InnerSource(n,1))); g#ipos (g#prev (InnerSource(n,2)))]
+          [g#opos (g#next (InnerTarget(n,1))); g#opos (g#next (InnerTarget(n,2)))]
+    ) g#nodes;
   let t = Hashtbl.create (MSet.size g#nodes) in
   let add x s v =
     let v = V2.smul s v in

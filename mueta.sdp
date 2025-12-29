@@ -1,10 +1,10 @@
 // let A<color=red>: ⊗ in
 // let B<color=blue>: ⊗ in
-let m<color=red;shape=point>: A⊗A -> A in
-let e<color=red;shape=point>: 1 -> A in
-let n<color=blue;shape=point>: B⊗B -> B in
-let f<color=blue;shape=point>: 1 -> B in
-let x<color=cacadoie;shape=point>: B⊗A -> A⊗B in
+let m<color=red;shape=triangle>: A⊗A -> A in
+let e<color=red;shape=triangle>: 1 -> A in
+let n<color=blue;shape=triangle>: B⊗B -> B in
+let f<color=blue;shape=triangle>: 1 -> B in
+let x<color=cacadoie;shape=cross>: B⊗A -> A⊗B in
 let mn<color=violet> := id·x·id ; m·n in
 let ef<color=violet> := e·f in
 m·id ; m = id·m ; m ->

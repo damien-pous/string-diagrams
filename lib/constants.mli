@@ -20,11 +20,12 @@ val var_size: int -> int -> size2
 val idm_size: int -> size2
 val estimate_size: int -> int -> int -> size2 (* sources, targets, number of nodes *)
 
-val circle_size: float
+val point_radius: float
+val circle_radius: float
+val cross_radius: float
+val triangle_radius: float
 
 val expand: size2 -> size2
-
-val pradius: float
 
 val iport_color: color
 val oport_color: color

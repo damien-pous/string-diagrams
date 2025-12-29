@@ -45,10 +45,10 @@ class virtual mk (arena: arena) =
 
     method private highlight_iport i =
       temporary#circle ~fill:(Graph.icolor graph i)
-        {center = graph#ipos i; radius = 1.5*.Constants.pradius}
+        {center = graph#ipos i; radius = 1.5*.Constants.point_radius}
     method private highlight_oport o =
       temporary#circle ~fill:(Graph.ocolor graph o)
-        {center = graph#opos o; radius = 1.5*.Constants.pradius}
+        {center = graph#opos o; radius = 1.5*.Constants.point_radius}
     
     method private refresh =
       (match mode with

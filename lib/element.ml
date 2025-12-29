@@ -65,6 +65,7 @@ class proxy (e: #element): element =
     method tdir = e#tdir
     method styp = e#styp
     method ttyp = e#ttyp
+    method setdirs = e#setdirs
 
     method pos = e#pos
     method size = e#size
@@ -111,6 +112,7 @@ class virtual gen n m ?(pos=P2.o) ~name (l: kvl) =
     method virtual faketpos: float -> point
     method spos i = self#fakespos (float_of_int i)
     method tpos i = self#faketpos (float_of_int i)
+    method setdirs (_: point list) (_: point list) = ()
     
     method virtual private box: box
     method safebox = Box2.(v_mid pos (V2.smul 1.1 (size self#box)))
@@ -173,7 +175,7 @@ class rectangle n m ?pos ~size ~name l =
       (match self#get "size" with Some s -> size <- p2_of_string s; sized <- true | None -> ())
   end
 
-class circle n m ?pos ~radius ~name l =
+class circle n m ?pos ?(radius=Constants.circle_radius) ~name l =
   object(self)
     inherit gen n m ?pos ~name l as parent
     val mutable radius = radius
@@ -202,24 +204,57 @@ class circle n m ?pos ~radius ~name l =
       (match self#get "radius" with Some s -> radius <- float_of_string s; sized <- true | None -> ())
   end
 
-class point n m ?pos ~name l: element =
-  object(self)
-    inherit gen n m ?pos ~name l
-    method size = V2.v (2.*.Constants.pradius) (2.*.Constants.pradius)
-    method width = 2.*.Constants.pradius
-    method height = 2.*.Constants.pradius
-    method box = Box2.v_mid pos self#size
-    method contains p = Geometry.dist p pos <= Constants.pradius
-    method scale _ = ()
-    method rebox _ = failwith "cannot rebox a point area"
+class point n m ?pos ?(radius=Constants.point_radius) ~name l =
+  object
+    inherit circle n m ?pos ~radius ~name l
+    method! rebox _ = failwith "cannot rebox a point area"
     method! spos _ = pos
     method! tpos _ = pos
-    method fakespos _ = pos
-    method faketpos _ = pos
-    method sdir i = V2.polar (-1.) (Float.pi *. float_of_int (nsources-i+1) /. float_of_int (nsources+1))
-    method tdir i = V2.polar 1. (-. Float.pi *. float_of_int (ntargets-i+1) /. float_of_int (ntargets+1))
-    method draw (draw: canvas) =
-      draw#point ~color pos
+    method! fakespos _ = pos
+    method! faketpos _ = pos
+  end
+
+class cross n m ?pos ?(radius=Constants.cross_radius) ~name l: element =
+  let _ = match n,m with
+    | [a;b],[b';a'] when Typ.eq [a;b] [a';b'] -> ()
+    | _ -> failwith "invalid cross type (%a -> %a)" Typ.pp n Typ.pp m
+  in
+  object
+    inherit point n m ?pos ~radius ~name l
+    val mutable adir = V2.polar 1. (-. Float.pi /. 3.)
+    val mutable bdir = V2.polar 1. (-2. *. Float.pi /. 3.)      
+    method! rebox _ = failwith "cannot rebox a cross area"
+    method! sdir = function
+      | 1 -> adir
+      | 2 -> bdir
+      | _ -> assert false
+    method! tdir = function
+      | 1 -> bdir
+      | 2 -> adir
+      | _ -> assert false
+    method! setdirs i o = match i,o with
+      | [a;b],[b';a'] ->
+         adir <- V2.(unit (a'-a));
+         bdir <- V2.(unit (b'-b));
+      | _ -> assert false
+  end
+
+class triangle n m ?pos ?(radius=Constants.triangle_radius) ~name l: element =
+  let _ = match n,m with
+    | [a;b],[c] when Typ.eq [a;b] [c;c] -> ()
+    | [],[_] -> ()
+    | _ -> failwith "invalid triangle type (%a -> %a)" Typ.pp n Typ.pp m
+  in
+  object(self)
+    inherit circle n m ?pos ~radius ~name l
+    method! rebox _ = failwith "cannot rebox a triangle area"
+    method! draw (draw: canvas) =
+      let radius = 1.4 *. radius in
+      draw#polygon ~fill:self#fill
+        V2.(Polygon.triangle
+         (pos + polar radius (2. *. Float.pi/.3.))
+         (pos + polar radius (1. *. Float.pi/.3.))
+         (pos + polar radius (3. *. Float.pi/.2.)))
   end
 
 class polygon n m poly =
@@ -268,7 +303,7 @@ class polygon n m poly =
 
 let mk n m ~name l =
   if List.mem_assoc "radius" l then
-    new circle n m ~radius:Constants.circle_size ~name l
+    new circle n m ~name l
   else
     match List.assoc_opt "shape" l with
     | None | Some "rect" ->
@@ -277,11 +312,15 @@ let mk n m ~name l =
        let size = Constants.var_size n' m' in
        new rectangle n m ~size ~name l
     | Some "square" ->
-       let d = 2.*.Constants.circle_size in
+       let d = 2.*.Constants.circle_radius in
        let size = Size2.v d d in
        new rectangle n m ~size ~name l
     | Some "circle" ->
-       new circle n m ~radius:Constants.circle_size ~name l
+       new circle n m ~name l
     | Some "point" ->
        new point n m ~name l
+    | Some "cross" ->
+       new cross n m ~name l
+    | Some "triangle" ->
+       new triangle n m ~name l
     | Some s -> failwith "unknown shape: %s" s

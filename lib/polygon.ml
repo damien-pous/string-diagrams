@@ -53,3 +53,5 @@ let least_triple cmp p =
   fold3 p min (get3 p)
 
 let rev p = { p with points=List.rev p.points }
+
+let triangle a b c = { start=a; points=[b;c] }

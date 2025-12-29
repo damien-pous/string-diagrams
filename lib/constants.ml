@@ -11,7 +11,10 @@ let font = Vg.Font.{name="Helvetica"; slant=`Normal; weight=`W100; size=fontsize
 (* in inches *)
 let pathlinewidth = 2.0
 let shapelinewidth = 0.0
-let pradius = 2.0
+let point_radius = 2.0
+let circle_radius = 5.0
+let cross_radius = 5.0
+let triangle_radius = 8.0
 
 let spacing = fontsize *. 3.
 let expand s = V2.(s + v spacing spacing)
@@ -24,7 +27,6 @@ let empty_size n m =
 let estimate_size n m k =
   let nm = max n m in
   Size2.v (float_of_int nm *. spacing) (float_of_int nm *. spacing /. float_of_int (k+1))
-let circle_size = 5.0
 
 let black = Color.black
 let red = Color.v 0.8 0.1 0.1 1.

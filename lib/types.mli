@@ -127,6 +127,7 @@ class type element = object
   method faketpos: float -> point
   method sdir: int -> vector
   method tdir: int -> vector
+  method setdirs: point list -> point list -> unit
   method size: size
   method color: color
   method box: box

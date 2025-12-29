@@ -39,7 +39,7 @@ class basic: canvas =
       self#shape ?color ?fill (P.empty |> P.rect b)
     method point ?color p =
       let fill = color in
-      self#shape ?color ?fill (P.empty |> P.circle p Constants.pradius)
+      self#shape ?color ?fill (P.empty |> P.circle p Constants.point_radius)
     method segment ?color x y =
       self#path ?color (P.empty |> P.sub x |> P.line y)
     method curve ?color x p q y =
