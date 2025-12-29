@@ -276,6 +276,10 @@ let mk n m ~name l =
        let m' = List.length m in
        let size = Constants.var_size n' m' in
        new rectangle n m ~size ~name l
+    | Some "square" ->
+       let d = 2.*.Constants.circle_size in
+       let size = Size2.v d d in
+       new rectangle n m ~size ~name l
     | Some "circle" ->
        new circle n m ~radius:Constants.circle_size ~name l
     | Some "point" ->
