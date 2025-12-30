@@ -63,11 +63,11 @@ class virtual mk (arena: arena) =
           temporary#polygon ~fill:(Constants.color "tgray") p;
           if false then 
             let p = Geometry.clockwise p in
-            MSet.iter (fun (i,o) ->              
-            let s,t = g#ipos i, g#opos o in
+            MSet.iter (fun e ->
+              let c = g#edge_curve e in
               Polygon.fold2 p (fun ij () ->
-                  match Geometry.intersection ij (s,t) with
-                  | Some(x,d) ->
+                  match Geometry.cintersection ij c with
+                  | Some(x,d,_) ->
                      let color = match d with
                        | R -> Constants.iport_color
                        | _ -> Constants.oport_color

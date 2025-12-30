@@ -83,6 +83,24 @@ let intersection (a,b) (c,d) =
     Some(V2.(smul (1./.(ob-.oa)) (smul ob a - smul oa b)), oc)
   else None
 
+(** point of the cubic Bezier curve (a,b,c,d) at time t\in[0;1] *)
+let cpoint t a b c d =
+  let t' = 1.-.t in
+  let t2 = t*.t in
+  let t'2 = t'*.t' in
+  V2.(smul (t'*.t'2) a + smul (3.*.t*.t'2) b + smul (3.*.t2*.t') c + smul (t2*.t) d)
+
+let cintersection ab (c,x,y,d) =
+  let step = Constants.point_radius /. dist c d in
+  let rec walk t p =
+    let t = min 1. (t +. step) in
+    if t=1. then None
+    else let q = cpoint t c x y d in
+         match intersection ab (p,q) with
+         | None -> walk t q
+         | Some(p,o) -> Some(p,o,V2.(unit (q-p)))
+  in walk 0. c
+
 (** ensuring a polygon is presented clockwise *)
 let clockwise p =
   let attempt cmp k p =

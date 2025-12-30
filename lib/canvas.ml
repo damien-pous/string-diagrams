@@ -40,14 +40,15 @@ class basic: canvas =
     method point ?color p =
       let fill = color in
       self#shape ?color ?fill (P.empty |> P.circle p Constants.point_radius)
-    method segment ?color x y =
+    method segment ?color (x,y) =
       self#path ?color (P.empty |> P.sub x |> P.line y)
-    method curve ?color x p q y =
+    method curve ?color (x,p,q,y) =
       self#path ?color (P.empty |> P.sub x |> P.ccurve p q y)
+      
     method line ?color l =
       let d = V2.smul 1000. l.dir in
       self#point ?color l.point;
-      self#segment ?color (V2.sub l.point d) (V2.add l.point d)
+      self#segment ?color V2.(l.point-d, l.point+d)
     method text p text =
       let p = V2.sub p
                 (V2.v (float_of_int (String.length text) *. Constants.fontsize/.3.)
@@ -66,8 +67,8 @@ class void: canvas =
     method polygon ?border ?color ?fill _ = ignore (border,color,fill) 
     method box ?color ?fill _ = ignore (color,fill) 
     method point ?color _ = ignore color 
-    method segment ?color _ _ = ignore color 
-    method curve ?color _ _ _ _ = ignore color 
+    method segment ?color _ = ignore color 
+    method curve ?color _ = ignore color 
     method line ?color _ = ignore color 
     method text _ _ = ()
   end

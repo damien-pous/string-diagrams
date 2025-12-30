@@ -10,9 +10,6 @@ exception Incomplete_graph
 exception Not_a_graph_term of string
 let not_a_graph_term fmt = Format.kasprintf (fun s -> raise (Not_a_graph_term s)) fmt
 
-let src = fst
-let tgt = snd
-
 let iter_positionned_edges g f =
   MSet.iter (fun (i,o) -> f (i,g#ipos i) (o,g#opos o)) g#edges
 let iter_iports g f =
@@ -416,12 +413,12 @@ class gen_graph nodes edges area =
 
     method term = to_term (self:>graph)
 
-    method draw_edge (draw: canvas) (i,o) =
+    
+    method edge_curve (i,o) =
       let p,ui = self#ipos i, self#idir i in
       let q,uo = self#opos o, self#odir o in
-      let color = icolor self i in
       let d = V2.(norm (q-p)) /. 3. in
-        draw#curve ~color p V2.(p+smul d ui) V2.(q-smul d uo) q      
+        V2.(p,p+smul d ui,q-smul d uo,q)      
     
     method! draw (draw: canvas) =
       let draw_node n =
@@ -435,10 +432,14 @@ class gen_graph nodes edges area =
               draw#point ~color:(ocolor self p) (self#opos p)
           );
         if false && n#nsources=0 then
-          draw#segment n#pos (self#fakeipos n#ceiling)
+          draw#segment (n#pos, self#fakeipos n#ceiling)
+      in
+      let draw_edge e =
+        let color = icolor self (fst e) in
+        draw#curve ~color (self#edge_curve e)      
       in
       area#draw draw;
-      MSet.iter (self#draw_edge draw) edges;
+      MSet.iter draw_edge edges;
       MSet.iter draw_node nodes
 
     (* careful: since we use a proxy rather than plain inheritance,
@@ -708,17 +709,16 @@ let find_ports g p =
 
 let create_box (g: graph) p =
   let debug_msg fmt = debug_msg "box" fmt in
-  let edge_error (i,o) msg =
-    temporary#segment ~color:Color.red (g#ipos i) (g#opos o);
+  let edge_error e msg =
+    temporary#curve ~color:Color.red (g#edge_curve e);
     error msg
   in              
   let p = Geometry.clockwise p in
   let cuts = Polygon.fold2 p (fun ij acc ->
                  MSet.fold (fun e acc ->
-                     let s,t = g#ipos (src e), g#opos (tgt e) in
-                     match Geometry.intersection ij (s,t) with
-                     | Some(x,(L|E)) -> `S (e,(x,V2.(unit (t-s)))) :: acc
-                     | Some(x,R) -> `T (e,(x,V2.(unit (t-s)))) :: acc
+                     match Geometry.cintersection ij (g#edge_curve e) with
+                     | Some(x,(L|E),u) -> `S (e,(x,u)) :: acc
+                     | Some(x,R,u) -> `T (e,(x,u)) :: acc
                      | None -> acc
                    ) acc g#edges
                ) []

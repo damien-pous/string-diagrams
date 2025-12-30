@@ -48,10 +48,15 @@ val mem_point: point -> point -> bool
 (* enclosing box for a polygon *)
 val poly_box: polygon -> box
 
-(* (potential, oriented) intersection of two segments
+(* (potential, oriented) intersection of two segments [AB[ and [CD]
    (allowing A,C,D, excluding B)
-   when [AB] and [CD] cross, the orientation is [side AB C] *)
+   when [AB[ and [CD] cross, the orientation is [side AB C] *)
 val intersection: point*point -> point*point -> (point*lr) option
-  
+
+(* (potential, oriented) first intersection of a segment [AB[ and a cubic Bezier curve [C]
+   when [AB[ and [C] cross, the orientation is [side AB p] where [p] is a point of [C] just before the intersection, and the direction is pq where q is a point of [C] just after the intersection
+ *)
+val cintersection: point*point -> point*point*point*point -> (point*lr*vector) option
+
 (* scale a box around its center *)
 val scale_box: float -> box -> box

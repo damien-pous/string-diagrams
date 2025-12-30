@@ -31,8 +31,8 @@ class type canvas =
     method pentagon: ?color:color -> ?fill:color -> circle -> unit
     method polygon: ?border: float -> ?color:color -> ?fill:color -> polygon -> unit
     method point: ?color:color -> point -> unit
-    method segment: ?color:color -> point -> point -> unit 
-    method curve: ?color:color -> point -> point -> point -> point -> unit 
+    method segment: ?color:color -> point*point -> unit 
+    method curve: ?color:color -> point*point*point*point -> unit 
     method line: ?color:color -> line -> unit 
     method text: point -> string -> unit 
   end

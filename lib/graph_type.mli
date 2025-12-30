@@ -61,7 +61,7 @@ and graph =
 
     method pp: pp_mode -> formatter -> unit
     method draw: canvas -> unit
-    method draw_edge: canvas -> (node,int) iport*(node,int) oport -> unit
+    method edge_curve: (node,int) iport * (node,int) oport -> point*point*point*point
     method term: term
 
     (* improve placement of inner nodes (elastic dynamic)
