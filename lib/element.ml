@@ -188,9 +188,9 @@ class circle n m ?pos ?(radius=Constants.circle_radius) ~name l =
     method scale s = radius <- s *. radius; sized <- true
     method rebox (_: box): unit = failwith "cannot rebox a circular area"
     method fakespos i =
-      V2.add pos (V2.polar radius (Float.pi *. (fnsources-.i+.1.) /. (fnsources+.1.)))
+      V2.add pos (V2.polar (0.66*.radius) (Float.pi *. (fnsources-.i+.1.) /. (fnsources+.1.)))
     method faketpos i =
-      V2.add pos (V2.polar radius (-. Float.pi *. (fntargets-.i+.1.) /. (fntargets+.1.)))
+      V2.add pos (V2.polar (0.66*.radius) (-. Float.pi *. (fntargets-.i+.1.) /. (fntargets+.1.)))
     method sdir i = V2.polar (-1.) (Float.pi *. float_of_int (nsources-i+1) /. float_of_int (nsources+1))
     method tdir i = V2.polar 1. (-. Float.pi *. float_of_int (ntargets-i+1) /. float_of_int (ntargets+1))
     method private fill =
@@ -251,16 +251,29 @@ class triangle n m ?pos ?(radius=Constants.triangle_radius) ~name l: element =
     | [],[_] -> ()
     | _ -> failwith "invalid triangle type (%a -> %a)" Typ.pp n Typ.pp m
   in
+  let v1 = V2.polar (1.) (-.Float.pi/.5.) in
+  let v2 = V2.polar (-1.) (Float.pi/.5.) in
   object(self)
-    inherit circle n m ?pos ~radius ~name l
+    inherit point n m ?pos ~radius ~name l
     method! rebox _ = failwith "cannot rebox a triangle area"
+    method! spos = function
+      | 1 -> V2.(pos - smul (0.66*.radius) v1)
+      | 2 -> V2.(pos - smul (0.66*.radius) v2)
+      | _ -> assert false
+    method! tpos = function
+      | _ -> V2.(pos - smul (0.66*.radius) oy)
+    method! sdir = function
+      | 1 -> v1
+      | 2 -> v2
+      | _ -> assert false
+    method! tdir = function
+      | _ -> V2.v 0. (-1.)    
     method! draw (draw: canvas) =
-      let radius = 1.4 *. radius in
       draw#polygon ~fill:self#fill
         V2.(Polygon.triangle
-         (pos + polar radius (2. *. Float.pi/.3.))
-         (pos + polar radius (1. *. Float.pi/.3.))
-         (pos + polar radius (3. *. Float.pi/.2.)))
+         (pos - smul radius v1)
+         (pos - smul radius v2)
+         (pos - smul radius oy))
   end
 
 class polygon n m poly =
