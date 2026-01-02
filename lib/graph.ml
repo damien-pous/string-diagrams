@@ -760,8 +760,8 @@ let create_box (g: graph) p =
         | l -> `T [a] :: l)
   in
   let src,tgt = match group cuts with
-    | [] -> if true then error "ignored empty box creation" else [],[]
-    | [`S s] -> if true then error "empty target boxes unsupported yet" else s,[]
+    | [] -> if true then warning "ignored empty box creation" else [],[]
+    | [`S s] -> if true then warning "empty target boxes unsupported yet" else s,[]
     | [`T t] -> [],t
     | [`S s;`T t]
       | [`T t;`S s] -> s,t

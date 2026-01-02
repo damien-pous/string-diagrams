@@ -131,12 +131,12 @@ class virtual mk (arena: arena) =
     method undo () =
       match History.undo hist with
       | Some (eg,s) -> self#set_state ~s (state_of_string eg)
-      | None -> temporary#msg "no more undos"
+      | None -> warning "no more undos"
 
     method redo () =
       match History.redo hist with
       | Some (eg,s) -> self#set_state ~s (state_of_string eg)
-      | None -> temporary#msg "no more redos"
+      | None -> warning "no more redos"
 
     method on_entry_changed =
       debug_msg "entry" "on entry changed with `%s'" self#entry;
@@ -169,7 +169,7 @@ class virtual mk (arena: arena) =
     method private remove =
       match self#catch with
       | `N n -> graph#rem_node n; self#graph_changed 
-      | _ -> temporary#msg "no node to remove here"
+      | _ -> warning "no node to remove here"
 
     method private add_node f =
       try let l,n,m,_ = List.assoc f env in
@@ -184,15 +184,15 @@ class virtual mk (arena: arena) =
           | Var f ->
              match List.assoc f env with
              | (_,_,_,Some g) -> graph#subst n (Graph.copy g); self#graph_changed
-             | _ -> temporary#msg "this box is atomic"
+             | _ -> error "this box is atomic"
          )
-      | _ -> temporary#msg "no node to unfold/unbox here"
+      | _ -> warning "no node to unfold/unbox here"
 
     method private scale s =
       match self#catch with
       | `N n -> n#scale s; self#drawing_changed
       | `None -> graph#scale s; self#drawing_changed
-      | _ -> temporary#msg "nothing to scale here"
+      | _ -> warning "nothing to scale here"
 
     method private improve_placement =
       if not (graph#improve ~force:true) then self#drawing_changed
@@ -201,7 +201,7 @@ class virtual mk (arena: arena) =
       let f = if b then Place.fix else Place.unfix in
       match self#catch with
       | `N n -> f n; self#checkpoint
-      | _ -> temporary#msg "no node to %s here" (if b then "fix" else "release")
+      | _ -> warning "no node to %s here" (if b then "fix" else "release")
 
     method on_button_press =
       match mode with 
@@ -281,9 +281,9 @@ h:      print this help message"
           | "ArrowLeft" -> self#undo()
           | "ArrowRight" -> self#redo()
           | "" -> ()
-          | s -> temporary#msg "skipping key '%s'" s)
+          | s -> warning "skipping key '%s'" s)
       | `New_node -> mode <- `Normal; self#add_node s
-      | _ -> temporary#msg "ignored key `%s' during ongoing action" s
+      | _ -> warning "ignored key `%s' during ongoing action" s
 
     method init s =
       self#set_state ~rebox:true ~s (state_of_string s);

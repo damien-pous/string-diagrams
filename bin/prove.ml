@@ -39,16 +39,16 @@ let dialog title action stock stock' filter =
   dlg#add_select_button_stock stock stock';
   dlg#add_filter filter;
   ignore(dlg#set_current_folder ".");
-  fun k () ->
-  if dlg#run() = stock' then (
-    match dlg#filename with
-    | Some f ->
-       let f = Filename.chop_extension f in
-       window#set_title (Filename.basename f);
-       file := f;
-       k f
-    | None -> ()
-  ); dlg#misc#hide()
+  fun k -> Messages.catch (fun () ->
+               if dlg#run() = stock' then (
+                 match dlg#filename with
+                 | Some f ->
+                    let f = Filename.chop_extension f in
+                    window#set_title (Filename.basename f);
+                    file := f;
+                    k f
+                 | None -> ()
+               )) () () dlg#misc#hide
 
 class gprover =
   object(self)
@@ -59,11 +59,11 @@ class gprover =
     val open_dialog =
       dialog "Open graph file" `OPEN `OPEN `OPEN 
         (GFile.filter ~name: "SDP file" ~patterns:["*.sdp"] ())
-    method private open_dialog = open_dialog self#load ()
+    method private open_dialog = open_dialog self#load
     val saveas_dialog=
       dialog "Save graphs as" `SAVE `SAVE `SAVE 
         (GFile.filter ~name: "SD file" ~patterns:["*.sd"] ())
-    method private saveas_dialog = saveas_dialog self#save ()
+    method private saveas_dialog = saveas_dialog self#save
     method private do_save =
       self#save !file
     method private quit = Main.quit()

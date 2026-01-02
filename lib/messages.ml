@@ -25,11 +25,13 @@ let temporary =
   end
 
 exception User_error of string
-let error fmt =
+let warning fmt =
   Format.kasprintf (fun s -> raise (User_error s)) fmt
+let error fmt = warning ("error: "^^fmt)
 
 let catch f x y k =
   match f x with
   | y -> k(); y
-  | exception User_error s -> temporary#msg "Error: %s" s; k(); y
-  | exception e -> k(); raise e
+  | exception User_error s 
+  | exception Failure s -> temporary#msg "%s" s; k(); y
+  | exception e -> temporary#msg "%s" (Printexc.to_string e); k(); y

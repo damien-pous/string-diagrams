@@ -134,15 +134,15 @@ class virtual mk (arena: arena) =
           | Var f ->
              match List.assoc f self#env with
              | (_,_,_,Some h) -> g#subst n (Graph.copy h); self#changed
-             | _ -> temporary#msg "this box is atomic"
+             | _ -> warning "this box is atomic"
          )
-      | _ -> temporary#msg "no node to unfold/unbox here"
+      | _ -> warning "no node to unfold/unbox here"
 
     method private scale s =
       match self#catch with
       | `N (_,n) -> n#scale s; self#changed
       | `G g -> g#scale s; self#changed
-      | _ -> temporary#msg "nothing to scale here"
+      | _ -> warning "nothing to scale here"
 
     method private improve_placement force =      
       if not (self#fold_graphs (fun g s -> g#improve ~force && s) true) || force then        
@@ -153,7 +153,7 @@ class virtual mk (arena: arena) =
     method private release =
       match self#catch with
       | `N(_,n) -> Place.unfix n; self#perturbate
-      | _ -> temporary#msg "no node to release here"
+      | _ -> warning "no node to release here"
     
     method private create_box g p =
       let _,h = Graph.create_box g p in
@@ -269,7 +269,7 @@ class virtual mk (arena: arena) =
          let s = Format.asprintf "%a" (Graph.pp Term) g in
          arena#set_clipboard s;
          temporary#msg "graph copied to clipboard: %s" s
-      | _ -> temporary#msg "no graph to export here"
+      | _ -> warning "no graph to export here"
 
     method on_key_press ctrl s =
       if ctrl then
@@ -281,7 +281,7 @@ class virtual mk (arena: arena) =
          | "z" -> self#undo()
          | "r" -> self#redo()
          | "q" -> self#quit
-         | s -> temporary#msg "skipping key control %s" s)
+         | s -> warning "skipping key control %s" s)
       else if s = "Escape" then self#abort
       else match mode with
       | `Normal | `Move_node _ ->
@@ -323,7 +323,7 @@ h       print this help message"
           | "!" -> self#refresh
           | "q" -> self#quit
           | "" -> ()
-          | s -> temporary#msg "skipping key '%s'" s)
-      | _ -> temporary#msg "ignored key `%s' during ongoing action" s
+          | s -> warning "skipping key '%s'" s)
+      | _ -> warning "ignored key `%s' during ongoing action" s
     
   end

@@ -48,12 +48,12 @@ class virtual ['a] mk serialize deserialize =
     method undo () =
       match undo hist with
       | Some s -> self#set_sstate s
-      | None -> temporary#msg "no more undos"
+      | None -> warning "no more undos"
 
     method redo () =
       match redo hist with
       | Some s -> self#set_sstate s
-      | None -> temporary#msg "no more redos"
+      | None -> warning "no more redos"
 
     method load' (s: 'a) =
       self#set_state s;
