@@ -22,7 +22,13 @@ class virtual mk (arena: arena) =
 
     inherit [equations]History.mk string_of_state state_of_string as parent
     method private virtual help: string -> unit
-        
+
+    method private virtual open_dialog: unit
+    method private virtual saveas_dialog: unit
+    method private virtual do_save: unit
+    method private virtual quit: unit
+    method virtual fullscreen: unit
+    
     val mutable state = env [], [], (Graph.emp(),Graph.emp())
     val mutable mode = `Normal
 
@@ -265,8 +271,18 @@ class virtual mk (arena: arena) =
          temporary#msg "graph copied to clipboard: %s" s
       | _ -> temporary#msg "no graph to export here"
 
-    method on_key_press s =
-      if s = "Escape" then self#abort
+    method on_key_press ctrl s =
+      if ctrl then
+        (match s with
+         | "s" -> self#do_save
+         | "e" -> self#saveas_dialog
+         | "o" -> self#open_dialog
+         | "f" -> self#fullscreen
+         | "z" -> self#undo()
+         | "r" -> self#redo()
+         | "q" -> self#quit
+         | s -> temporary#msg "skipping key control %s" s)
+      else if s = "Escape" then self#abort
       else match mode with
       | `Normal | `Move_node _ ->
          (match s with
@@ -305,6 +321,7 @@ h       print this help message"
           | " " -> play <- not play
           | "r" -> self#redraw
           | "!" -> self#refresh
+          | "q" -> self#quit
           | "" -> ()
           | s -> temporary#msg "skipping key '%s'" s)
       | _ -> temporary#msg "ignored key `%s' during ongoing action" s
