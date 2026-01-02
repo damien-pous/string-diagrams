@@ -55,3 +55,22 @@ let least_triple cmp p =
 let rev p = { p with points=List.rev p.points }
 
 let triangle a b c = { start=a; points=[b;c] }
+
+let rec split_last = function
+  | [] -> assert false
+  | [x] -> [],x
+  | x::q -> let q,z = split_last q in x::q,z
+
+let rotate p =
+  if p.points = [] then p
+  else let points,start = split_last p.points in
+       { start; points=p.start::points}
+  
+let filter f p =
+  let rec walk a = function
+    | b::(c::q as cq) ->
+       if f a b c then b::walk b cq
+       else walk c q
+    | l -> l
+  in
+  rotate {p with points=walk p.start p.points}

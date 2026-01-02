@@ -66,6 +66,7 @@ class proxy (e: #element): element =
     method styp = e#styp
     method ttyp = e#ttyp
     method setdirs = e#setdirs
+    method improve_shape = e#improve_shape
 
     method pos = e#pos
     method size = e#size
@@ -112,6 +113,8 @@ class virtual gen n m ?(pos=P2.o) ~name (l: kvl) =
     method virtual faketpos: float -> point
     method spos i = self#fakespos (float_of_int i)
     method tpos i = self#faketpos (float_of_int i)
+
+    method improve_shape = ()
     method setdirs (_: (point*vector) list) (_: (point*vector) list) = ()
     
     method virtual private box: box
@@ -316,6 +319,8 @@ class polygon n m poly =
     method! scale _ = failwith "TODO: scale polygon"
     method! draw (draw: canvas) =
       draw#polygon (* ~border:0.5 *) ~fill:self#fill poly
+    method! improve_shape =
+      poly <- Geometry.smoothen poly
     initializer
       self#add "fill" "tgray"
   end

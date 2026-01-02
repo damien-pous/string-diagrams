@@ -48,6 +48,9 @@ val mem_point: point -> point -> bool
 (* enclosing box for a polygon *)
 val poly_box: polygon -> box
 
+(* smoothening a polygon by removing useless/strange points *)
+val smoothen: polygon -> polygon
+
 (* (potential, oriented) intersection of two segments [AB[ and [CD]
    (allowing A,C,D, excluding B)
    when [AB[ and [CD] cross, the orientation is [side AB C] *)

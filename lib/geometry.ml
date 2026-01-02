@@ -143,6 +143,15 @@ let mem_point a p = V2.(norm2 (p-a)) <= sqr (2. *. Constants.point_radius)
 let poly_box p =
   Polygon.fold1 p (fun x b -> Box2.add_pt b x) Box2.empty
 
+let smoothen =
+  Polygon.filter
+    (fun a b c ->
+      let ab=dist a b in
+      let ac=dist a c in
+      let bc=dist b c in
+      ab > 3.0 && bc > 3.0 && 1.8 *. ac > dist a b +. dist b c
+    )
+
 (* TMP
 
 (** returns the control point between x and y such that

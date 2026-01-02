@@ -458,6 +458,7 @@ class gen_graph nodes edges area =
     val mutable on_stabilize = (fun () -> true)
     method on_stabilize k = on_stabilize <- k
     method improve ~force =
+      (* self#improve_shape;       *)
       let b =
         if (force || not stable) then (
           let b = 
