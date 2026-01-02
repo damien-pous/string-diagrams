@@ -254,8 +254,8 @@ class triangle n m ?pos ?(radius=Constants.triangle_radius) ~name l: element =
     | [],[_] -> ()
     | _ -> failwith "invalid triangle type (%a -> %a)" Typ.pp n Typ.pp m
   in
-  let v1 = V2.polar (1.) (-.Float.pi/.5.) in
-  let v2 = V2.polar (-1.) (Float.pi/.5.) in
+  let v1 = V2.polar (1.) (-.Float.pi/.4.) in
+  let v2 = V2.polar (-1.) (Float.pi/.4.) in
   object(self)
     inherit point n m ?pos ~radius ~name l
     method! rebox _ = failwith "cannot rebox a triangle area"
