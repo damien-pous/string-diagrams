@@ -2,50 +2,9 @@ open Gg
 open Types
 open Misc
 
-type kv = string*string
-type kvl = kv list
-
-type 'a env = (name*(kvl*typs*typs*'a option)) list
-
-let envmap h =
-  List.map (function
-      | f,(l,n,m,None) -> f,(l,n,m,None)
-      | f,(l,n,m,Some t) -> f,(l,n,m,Some (h t)))
-
-let float_of_string x =
-  try float_of_string x
-  with _ -> failwith "not a float: %s" x
-    
-let p2_of_string s =
-  let i = String.index s ',' in
-  P2.v (float_of_string (String.sub s 0 i))
-    (float_of_string (String.sub s (i+1) (String.length s-i-1)))
-
-let string_of_p2 p =
-  Format.sprintf "%g,%g" (P2.x p) (P2.y p)
-
-let kv k v =
-  (match k with
-  | "radius" -> ignore(float_of_string v)
-  | "pos" | "shift" | "size" -> ignore(p2_of_string v)
-  | "color" -> ignore (Constants.color v)
-  | _ -> ());
-  k,v
-
-let merge h k =
-  List.append h
-    (List.filter (fun (i,_) -> not (List.mem_assoc i h)) k)
-
-let pos p = merge ["pos",string_of_p2 p]
-
-let pp_kvl f l =
-  if l<>[] then
-    Format.fprintf f "<%a>"
-      (pp_print_list ";" (fun f (k,v)-> Format.fprintf f "%s=%s" k v))
-      l
-
 class proxy (e: #element): element =
   object
+    method has = e#has
     method get = e#get
     method set = e#set
     method unset =e#unset
@@ -89,15 +48,8 @@ class virtual gen n m ?(pos=P2.o) ~name (l: kvl) =
   object(self)
     val fnsources = float_of_int nsources 
     val fntargets = float_of_int ntargets 
-        
-    val mutable kvl = l
-    method private kvl = kvl
-    method private has k = List.mem_assoc k kvl 
-    method private rem k = kvl <- List.remove_assoc k kvl 
-    method private add k v = self#rem k; kvl <- (k,v)::kvl 
-    method get k = List.assoc_opt k kvl
-    method set k v = kvl <- (k,v)::List.remove_assoc k kvl
-    method unset k = kvl <- List.remove_assoc k kvl
+
+    inherit Info.gen l
 
     val mutable pos = pos
     val mutable placed = false
@@ -106,8 +58,8 @@ class virtual gen n m ?(pos=P2.o) ~name (l: kvl) =
     method move p = self#shift V2.(p-pos)
 
     method private update_kvl =
-      if placed then self#add "pos" (string_of_p2 pos)
-    method pp_kvl mode f = self#update_kvl; if mode=Full then pp_kvl f self#kvl
+      if placed then self#set "pos" (string_of_p2 pos)
+    method pp_kvl mode f = self#update_kvl; if mode=Full then Info.pp_kvl f kvl
 
     method virtual fakespos: float -> point
     method virtual faketpos: float -> point
@@ -135,7 +87,7 @@ class virtual gen n m ?(pos=P2.o) ~name (l: kvl) =
     val ntargets = ntargets
     initializer
       (match self#get "pos" with Some p -> pos <- p2_of_string p; placed <- true | None -> ());
-      color <- Constants.color' ?color:(self#get "color") name
+      color <- Info.color name l
   end
 
 
@@ -173,7 +125,7 @@ class rectangle n m ?pos ~size ~name l =
       draw#box ~fill:self#fill self#box
     method! private update_kvl =
       parent#update_kvl;
-      if sized then self#add "size" (string_of_p2 size)
+      if sized then self#set "size" (string_of_p2 size)
     initializer
       (match self#get "size" with Some s -> size <- p2_of_string s; sized <- true | None -> ())
   end
@@ -202,7 +154,7 @@ class circle n m ?pos ?(radius=Constants.circle_radius) ~name l =
       draw#circle ~fill:self#fill {center = pos; radius }
     method! private update_kvl =
       parent#update_kvl;
-      if sized then self#add "radius" (string_of_float radius)
+      if sized then self#set "radius" (string_of_float radius)
     initializer
       (match self#get "radius" with Some s -> radius <- float_of_string s; sized <- true | None -> ())
   end
@@ -322,19 +274,22 @@ class polygon n m poly =
     method! improve_shape =
       poly <- Geometry.smoothen poly
     initializer
-      self#add "fill" "tgray"
+      self#set "fill" "tgray"
   end
 
+let mk_rect n m ~name l =
+  let n' = List.length n in 
+  let m' = List.length m in
+  let size = Constants.var_size n' m' in
+  new rectangle n m ~size ~name l
+  
 let mk n m ~name l =
-  if List.mem_assoc "radius" l then
+  if Info.mem "radius" l then
     new circle n m ~name l
   else
-    match List.assoc_opt "shape" l with
-    | None | Some "rect" ->
-       let n' = List.length n in 
-       let m' = List.length m in
-       let size = Constants.var_size n' m' in
-       new rectangle n m ~size ~name l
+    match Info.get_opt "shape" l with
+    | Some "rect" ->
+       mk_rect n m ~name l
     | Some "square" ->
        let d = 2.*.Constants.circle_radius in
        let size = Size2.v d d in
@@ -348,3 +303,10 @@ let mk n m ~name l =
     | Some "triangle" ->
        new triangle n m ~name l
     | Some s -> failwith "unknown shape: %s" s
+    | None ->
+       match n,m with
+       | [],[a] -> new triangle n m ~name (Info.merge l (Typ.kvl a))
+       | [a;b],[c] when Typ.eq [a;b] [c;c] -> new triangle n m ~name (Info.merge l (Typ.kvl a))
+       | [a;b],[c;d] when Typ.eq [a;b] [d;c] -> new cross n m ~name (Info.merge l (Typ.kvl a))
+       | _ -> mk_rect n m ~name l
+       

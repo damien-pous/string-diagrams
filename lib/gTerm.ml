@@ -1,6 +1,6 @@
 open Types
 open Misc
-open Element
+open Messages
 
 type iport = (string,int) Types.iport
 type oport = (string,int) Types.oport
@@ -48,124 +48,167 @@ let typ u n m =
   Typ.unify ~msg:"(type cast: targets)" (targets u) m;
   u
 
-let of_raw (e: 'a env) u =
-  let sym f l = 
-    try let (l',n,m,_) = List.assoc f e in
-        merge l l',n,m
-    with Not_found -> failwith "unknown symbol: %s" f
+let eqn u v =
+  Typ.unify ~msg:"(equation: sources)" (sources u) (sources v);
+  Typ.unify ~msg:"(equation: targets)" (targets u) (targets v);
+  u,v
+
+let sym e f l =
+  match List.assoc f e with
+  | l',T2((n,m),_) -> Info.merge l l',n,m
+  | _ -> failwith "not an morphism variable (%s)" f
+  | exception Not_found -> failwith "undefined morphism variable (%s)" f
+
+let rec pp_raw f = function
+  | Raw.One -> Format.fprintf f "1"
+  | Raw.Idm -> Format.fprintf f "id"
+  | Raw.Wld -> Format.fprintf f "_"
+  | Raw.Var(n,_) -> Format.fprintf f "%s" n
+  | Raw.Seq(u,v) -> Format.fprintf f "Seq(%a,%a)" pp_raw u pp_raw v
+  | Raw.Dot(u,v) -> Format.fprintf f "Dot(%a,%a)" pp_raw u pp_raw v
+  | Raw.Tns(u,v) -> Format.fprintf f "Tns(%a,%a)" pp_raw u pp_raw v
+  | Raw.Typ(u,v) -> Format.fprintf f "Typ(%a,%a)" pp_raw u pp_raw v
+  | Raw.Arr(u,v) -> Format.fprintf f "Arr(%a,%a)" pp_raw u pp_raw v
+  | Raw.Exp(u,n) -> Format.fprintf f "Exp(%a,%i)" pp_raw u n
+  | Raw.Eqn(u,v) -> Format.fprintf f "Eqn(%a,%a)" pp_raw u pp_raw v
+  | Raw.Box(u,_) -> Format.fprintf f "[%a]" pp_raw u
+  | Raw.Gph(_,_) -> Format.fprintf f "Gph(...)"
+  | Raw.Let(n,_,_,u) -> Format.fprintf f "Let(%s,...,%a)" n pp_raw u
+
+let rec typs e = function
+  | Raw.One -> []
+  | Raw.Wld -> Typ.flex 1
+  | Raw.Var (n,l) ->
+     if l<>[] then temporary#msg "ignoring type variable infos: %a" Info.pp_kvl l;
+     (match List.assoc n e with
+      | l,T1 -> [Typ.name n l]
+      | _ -> failwith "not an object variable (%s)" n
+      | exception Not_found -> [Typ.name n []])
+  | Raw.Tns(s,t) -> typs e s @ typs e t
+  | Raw.Exp(s,n) -> Typ.exp (typs e s) n
+  | r -> failwith "not a tensor expression: %a" pp_raw r
+
+let typ1 e = function
+  | Raw.Arr(u,v) ->
+     let n,m = typs e u, typs e v in
+     if false && m=[] then failwith "empty target morphisms are not yet supported";
+     n,m
+  | r -> failwith "not a morphism type: %a" pp_raw r
+
+let rec term e = function
+  | Raw.Idm -> Idm (Typ.flex 1)
+  | Raw.Var(f,l) ->
+     (match List.assoc f e with
+      | l',T2((n,m),_) -> Var(n,m,f,Info.merge l l')
+      | l,T1 -> Idm [Typ.name f l]
+      | _ -> failwith "not an term/object variable (%s)" f
+      | exception Not_found -> Idm [Typ.name f []])       
+  | Raw.Seq(u,v) -> seq (term e u) (term e v)
+  | Raw.Dot(u,v) | Raw.Tns(u,v) ->
+     Tns (term e u, term e v)
+  | Raw.Typ(Raw.Gph(elems,l),t) ->
+     let n,m = typ1 e t in
+     gph e elems l (Some (n,m))
+  | Raw.Typ(u,t) ->
+     let n,m = typ1 e t in
+     typ (term e u) n m
+  | Raw.Box(u,l) -> Box(term e u, l)
+  | Raw.Gph(elems,l) -> gph e elems l None
+  (* cast objects to morphisms *)
+  | r -> Idm (typs e r)
+and gph env elems l t =
+  let n =
+    List.fold_left (fun n e ->
+        match e with
+        | Raw.Edge (Source i, _) -> max i n
+        | _ -> n
+      ) 0 elems
   in
-  let rec build = function
-    | Raw.Emp -> Idm []
-    | Raw.Idm t -> Idm t
-    | Raw.Var(f,l) -> let (l,n,m) = sym f l in Var(n,m,f,l)
-    | Raw.Seq(u,v) -> seq (build u) (build v)
-    | Raw.Tns(u,v) -> Tns(build u, build v)
-    | Raw.Box(u,l) -> Box(build u, l)
-    | Raw.Typ(Raw.Gph(elems,l),n,m) -> gph elems l (Some (n,m))
-    | Raw.Gph(elems,l) -> gph elems l None
-    | Raw.Typ(u,n,m) -> typ (build u) n m
-  and gph elems l t =
-    let n =
-      List.fold_left (fun n e ->
-          match e with
-          | Raw.Edge (Source i, _) -> max i n
-          | _ -> n
-        ) 0 elems
-    in
-    let m =
-      List.fold_left (fun m e ->
-          match e with
-          | Raw.Edge (_,Target i) -> max i m
-          | _ -> m
-        ) 0 elems
-    in
-    let n,m = match t with
-      | None -> Typ.flex n, Typ.flex m
-      | Some(n',m') when n<=List.length n' && m<=List.length m' -> n',m'
-      | _ -> failwith "arity mismatch (explicit graph)"
-    in
-    if m=[] then failwith "empty target graphs are not yet supported";
-    let nodes =
-      List.fold_left (fun nodes e ->
-          match e with
-          | Raw.Node (n,_,_) when List.mem_assoc n nodes -> failwith "duplicate node: %s" n
-          | Raw.Node (n,u,l) ->
-             let l,node = match u with
-               | Raw.Var(f,_) -> let (l,n,m) = sym f l in l,VNode(n,m,f)
-               | _ -> l,GNode (build u)
-             in
-             (n,(node,l))::nodes             
-          | _ -> nodes
-        ) [] elems
-    in
-    let kind j =
-      try fst (List.assoc j nodes)
-      with Not_found -> failwith "undeclared inner node: %s" j
-    in
-    let iport = function
-      | Source i as p ->
-         if i>0 then p
-         else failwith "invalid outer source: %i" i
-      | InnerTarget(j,i) ->
-         try 
-           if 1<=i && i<=List.length (ktargets (kind j)) then InnerTarget(j,i)
-           else failwith "invalid inner source: %s.%i" j i
-         with Not_found -> failwith "unknown source node: %i" (List.length n)
-    in
-    let oport = function
-      | Target i as p ->
-         if i>0 then p
-         else failwith "invalid outer target: %i" i
-      | InnerSource(j,i) ->
-         try 
-           if 1<=i && i<=List.length (ksources (kind j)) then InnerSource(j,i)
-           else failwith "invalid inner target: %s.%i" j i
-         with Not_found -> failwith "unknown target node: %i" (List.length n)
-    in
-    let edges =
-      List.fold_left (fun edges e ->
-          match e with
-          | Raw.Edge(i,o) -> (iport i,oport o) :: edges
-          | _ -> edges
-        ) [] elems
-    in
-    Gph(n,m,nodes,edges,l)
-  in build u       
-
-let env (e: kvl Raw.env) =
-  let rec env = function
-    | [] -> []
-    | (f,(l,t,b))::e ->
-       let e = env e in
-       match b,t with
-       | None,None -> failwith "variables must be given either a type or a body (%s)" f
-       | Some b,Some(n,m) ->
-          (* if m=0 then failwith "empty target variables are not yet supported"; *)
-          let b = typ (of_raw e b) n m in
-          (f,(l,n,m,Some b))::e
-       | Some b,None ->
-          let b = of_raw e b in
-          (f,(l,sources b,targets b,Some b))::e
-       | None,Some(n,m) -> 
-          (* if m=0 then failwith "empty target variables are not yet supported"; *)
-          (f,(l,n,m,None))::e
+  let m =
+    List.fold_left (fun m e ->
+        match e with
+        | Raw.Edge (_,Target i) -> max i m
+        | _ -> m
+      ) 0 elems
   in
-  env (List.rev e)
-
-let envterm (e,t) = let e = env e in e,of_raw e t
-
-let of_equation e (u,v) =
-  let u = of_raw e u in
-  let v = of_raw e v in
-  Typ.unify ~msg:"equation sources" (sources u) (sources v);
-  Typ.unify ~msg:"equation targets" (targets u) (targets v);
-  (u,v)
-
-let equations (e,l,placed) =
-  let h,g = match List.rev l with
-    | [] -> assert false
-    | g::h -> h,g
+  let n,m = match t with
+    | None -> Typ.flex n, Typ.flex m
+    | Some(n',m') when n<=List.length n' && m<=List.length m' -> n',m'
+    | _ -> failwith "arity mismatch (explicit graph)"
   in
-  let e = env e in
-  e, List.rev_map (of_equation e) h, of_equation e g, placed
-  
+  if m=[] then failwith "empty target graphs are not yet supported";
+  let nodes =
+    List.fold_left (fun nodes e ->
+        match e with
+        | Raw.Node (n,_,_) when List.mem_assoc n nodes -> failwith "duplicate node: %s" n
+        | Raw.Node (n,u,l) ->
+           let l,node = match u with
+             | Raw.Var(f,_) -> let (l,n,m) = sym env f l in l,VNode(n,m,f)
+             | _ -> l,GNode (term env u)
+           in
+           (n,(node,l))::nodes             
+        | _ -> nodes
+      ) [] elems
+  in
+  let kind j =
+    try fst (List.assoc j nodes)
+    with Not_found -> failwith "undeclared inner node: %s" j
+  in
+  let iport = function
+    | Source i as p ->
+       if i>0 then p
+       else failwith "invalid outer source: %i" i
+    | InnerTarget(j,i) ->
+       try 
+         if 1<=i && i<=List.length (ktargets (kind j)) then InnerTarget(j,i)
+         else failwith "invalid inner source: %s.%i" j i
+       with Not_found -> failwith "unknown source node: %i" (List.length n)
+  in
+  let oport = function
+    | Target i as p ->
+       if i>0 then p
+       else failwith "invalid outer target: %i" i
+    | InnerSource(j,i) ->
+       try 
+         if 1<=i && i<=List.length (ksources (kind j)) then InnerSource(j,i)
+         else failwith "invalid inner target: %s.%i" j i
+       with Not_found -> failwith "unknown target node: %i" (List.length n)
+  in
+  let edges =
+    List.fold_left (fun edges e ->
+        match e with
+        | Raw.Edge(i,o) -> (iport i,oport o) :: edges
+        | _ -> edges
+      ) [] elems
+  in
+  Gph(n,m,nodes,edges,l)
+
+let decl e = function
+  | None,None -> T1
+  | Some t,Some b ->
+     let n,m = typ1 e t in
+     let b = term e b in
+     T2((n,m),Some (typ b n m))
+  | None,Some b ->
+     let b = term e b in
+     T2((sources b,targets b),Some b)
+  | Some (Raw.Eqn(u,v)),None ->
+     TE(eqn (term e u) (term e v))
+  | Some t,None ->
+     T2(typ1 e t,None)
+
+let equation e = function
+  | Raw.Eqn(u,v) -> eqn (term e u) (term e v)
+  | r -> failwith "expecting an equation: %a" pp_raw r
+
+let rec env k e = function
+  | Raw.Arr(u,v) ->
+     let h = equation e u in
+     env k (("",([],TE h))::e) v
+  | Raw.Let(n,l,d,u) ->
+     let d = decl e d in
+     env k ((n,(l,d))::e) u
+  | r -> e, k e r
+
+let eterm = env term []
+let goal = env equation []

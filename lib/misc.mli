@@ -27,3 +27,7 @@ val exists: int -> (int -> bool) -> bool
 
 val unique_assq: ('a * 'b) list -> bool
 
+
+val float_of_string: string -> float
+val p2_of_string: string -> Gg.P2.t
+val string_of_p2: Gg.P2.t -> string

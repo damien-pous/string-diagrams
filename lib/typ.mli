@@ -1,7 +1,7 @@
 type t
 type ts = t list
 
-val name: string -> t
+val name: string -> Info.kvl -> t
 val flex1: unit -> t
 val flex: int -> ts
 val exp: ts -> int -> ts
@@ -12,7 +12,9 @@ val unify: msg:string -> ts -> ts -> unit
 val eq1: t -> t -> bool
 val eq: ts -> ts -> bool
 
-val get: t -> string option
+val get: t -> (string*Info.kvl) option
+val kvl: t -> Info.kvl
 
 val pp1: Format.formatter -> t -> unit
 val pp: Format.formatter -> ts -> unit
+

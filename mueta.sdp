@@ -1,22 +1,22 @@
-// let A<color=red>: ⊗ in
-// let B<color=blue>: ⊗ in
-let m<color=red;shape=triangle>: A⊗A -> A in
-let e<color=red;shape=triangle>: 1 -> A in
-let n<color=blue;shape=triangle>: B⊗B -> B in
-let f<color=blue;shape=triangle>: 1 -> B in
-let x<color=cacadoie;shape=cross>: B⊗A -> A⊗B in
+let A<color=red> in
+let B<color=blue> in
+let m: A⊗A -> A in
+let e: 1 -> A in
+let n: B⊗B -> B in
+let f: 1 -> B in
+let x<color=cacadoie>: B⊗A -> A⊗B in
 let mn<color=violet> := id·x·id ; m·n in
 let ef<color=violet> := e·f in
 m·id ; m = id·m ; m ->
-id·e ; m = id ->
 e·id ; m = id ->
+id·e ; m = id ->
 n·id ; n = id·n ; n ->
-id·f ; n = id ->
 f·id ; n = id ->
+id·f ; n = id ->
 id·m ; x = x·id ; id·x ; m·id ->
 id·e ; x = e·id ->
 f·id ; x = id·f ->
 n·id ; x = id·x ; x·id ; id·n ->
 // mn·id·id ; mn = id·id·mn ; mn
-id·id·ef ; mn = id·id
 // ef·id·id ; mn = id·id
+id·id·ef ; mn = id·id

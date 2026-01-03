@@ -90,7 +90,7 @@ type fakeiport = (node,float) Types.iport
 type fakeoport = (node,float) Types.oport
 type kind = graph Types.kind
 
-type env = graph Element.env
-
-type equation = graph * graph
-type equations = env * equation list * equation
+type env = graph Types.env
+type equation = graph Types.equation
+type eterm = graph Types.eterm
+type goal = graph Types.goal

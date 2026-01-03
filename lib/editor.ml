@@ -7,8 +7,8 @@ type state = env * graph
 
 let state_of_string s =
   let l = Lexing.from_string s in
-  let et = Parser.envterm Lexer.token l in
-  envgraph et
+  let r = Parser.rawterm Lexer.token l in
+  graph r
 
 let string_of_state =
   Format.asprintf "%a" (Graph.pp_envgraph Full)
@@ -29,7 +29,7 @@ class virtual mk (arena: arena) =
     method private virtual export: string -> state -> unit
         
     val hist = History.create ("","")
-    val mutable env = env []
+    val mutable env = []
     val mutable graph = Graph.emp()
     val mutable mode = `Normal
 
@@ -172,9 +172,11 @@ class virtual mk (arena: arena) =
       | _ -> warning "no node to remove here"
 
     method private add_node f =
-      try let l,n,m,_ = List.assoc f env in
-          graph#add_node (Graph.var_node n m f (Element.pos arena#pointer l)); self#graph_changed
-      with Not_found -> error "unknown node name: %s" f
+      match List.assoc f env with
+      | l,T2((n,m),_) -> 
+         graph#add_node (Graph.var_node n m f (Info.pos arena#pointer l)); self#graph_changed
+      | _ -> error "not a node name: %s" f
+      | exception Not_found -> error "unknown node name: %s" f
     
     method private unfold =
       match self#catch with
@@ -183,8 +185,9 @@ class virtual mk (arena: arena) =
           | Box _ -> graph#unbox n; self#graph_changed
           | Var f ->
              match List.assoc f env with
-             | (_,_,_,Some g) -> graph#subst n (Graph.copy g); self#graph_changed
-             | _ -> error "this box is atomic"
+             | _,T2(_,Some g) -> graph#subst n (Graph.copy g); self#graph_changed
+             | _,T2(_,None) -> warning "this box is abstract"
+             | _ -> assert false
          )
       | _ -> warning "no node to unfold/unbox here"
 

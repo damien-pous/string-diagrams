@@ -5,6 +5,9 @@ type perm = Perm.t          (* finite support permutations *)
 type inj = Inj.t            (* finite support injections *)
 type iseq = ISeq.t          (* increasing sequences *)
 
+type kv = Info.kv           (* placement/size/color informations *)
+type kvl = Info.kvl
+
 type point= Gg.p2               (* 2D points *)
 type vector = Gg.v2             (* 2D vectors *)
 type box = Gg.box2              (* 2D boxes *)
@@ -62,10 +65,34 @@ class type arena =
 
 type pp_mode = Full | Sparse | Term | TermIfPossible
 
-type name = string              (* box/variable names *)
+(* names *)
+type name = string
 
-type typ = Typ.t                (* object types *)
+(* object types *)
+type typ = Typ.t
 type typs = Typ.ts
+
+(* arrow types *)
+type typ1 = typs * typs
+
+(* equations *)
+type 't equation = 't * 't
+
+(* declarations *)
+type 't decl =
+  | T1
+  | T2 of typ1 * 't option
+  | TE of 't equation
+
+(* environments *)
+type 't env = (name * (kvl * 't decl)) list
+
+(* terms in environment *)
+type 't eterm = 't env * 't
+
+(* goals (horn sentences) *)
+type 't goal = 't env * 't equation
+
 
 (* input/output ports
    'v is intended to be int for real ports
@@ -79,22 +106,25 @@ type 'graph kind = Box of 'graph | Var of name
 
 (* raw parsed terms/environments *)
 module Raw: sig
-  type 'a term =
-    | Emp
-    | Idm of typs
-    | Var of name * 'a
-    | Seq of 'a term * 'a term
-    | Tns of 'a term * 'a term
-    | Typ of 'a term * typs * typs
-    | Box of 'a term * 'a
-    | Gph of 'a elem list * 'a
-  and 'a elem =
-    | Node of string * 'a term * 'a
+  type term =
+    | One
+    | Idm
+    | Wld
+    | Var of name * kvl
+    | Seq of term * term
+    | Dot of term * term
+    | Tns of term * term
+    | Typ of term * term
+    | Arr of term * term
+    | Exp of term * int
+    | Eqn of term * term
+    | Box of term * kvl
+    | Gph of elem list * kvl
+    | Let of name * kvl * decl * term
+  and elem =
+    | Node of string * term * kvl
     | Edge of (string,int) iport * (string,int) oport
-  (* environments *)
-  type 'a env = (name*('a*(typs*typs) option*'a term option)) list
-  type 'a envterm = 'a env * 'a term
-  type 'a equations = 'a env * ('a term * 'a term) list * bool
+  and decl = term option * term option
 end
 
 class type paddable =
@@ -105,6 +135,7 @@ class type paddable =
   end
 
 class type element = object
+  method has: string -> bool
   method get: string -> string option
   method set: string -> string -> unit
   method unset: string -> unit

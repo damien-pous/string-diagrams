@@ -34,5 +34,6 @@ val red: color
 val gray: color
 val black: color
 val alpha: float -> color -> color
-val color: string -> color
-val color': ?color:string -> string -> color
+
+val color: string -> color      (* "blue" -> blue, etc *)
+val id_color: string -> color   (* "a" -> blue, etc *)

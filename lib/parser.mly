@@ -1,24 +1,26 @@
 %token LPAR RPAR LBRK RBRK LSQR RSQR LT GT
-%token COMMA COLON SEMI CIRC STAR DOT UNDER HAT
+%token COMMA COLON SEMI CIRC TENSOR DOT UNDER HAT
 %token ID LET EQ EQDEF IN TO EOF
 %token <Types.name> NAME
-%token <Types.perm> PRM
 %token <int> INT
-%token <float> FLOAT
-%token <Element.kv> KEYVAL
+%token <Types.kv> KEYVAL
 %token <Types.name*int> IPORT
 
+(* %token <Types.perm> PRM *)
+(* %token <float> FLOAT *)
+
+%right IN
 %left COLON
+%right TO
+%nonassoc EQ
 %left SEMI
 %right CIRC
 %left DOT
-%left STAR
+%left TENSOR
 %left HAT
 
-%type <Element.kvl Types.Raw.term> justterm
-%type <Element.kvl Types.Raw.envterm> envterm
-%type <Element.kvl Types.Raw.equations> equations
-%start justterm envterm equations
+%type <Types.Raw.term> rawterm
+%start rawterm
 
 
 %{
@@ -29,17 +31,32 @@
 %%
 
 term:
-|                                               { Emp }
-| ID                                            { Idm (Typ.flex 1)}
-| ID UNDER t=typs                               { Idm t }
+(* |                                               { Emp } *)
+| n=INT                                         { if n=1 then One 
+                                                  else Misc.failwith "invalid token (%i)" n }
+| ID                                            { Idm }
+| UNDER                                         { Wld }
 | f=NAME l=kvl                                  { Var(f,l) }
 | u=term SEMI v=term                            { Seq(u,v) }
 | u=term CIRC v=term                            { Seq(v,u) }
-| u=term DOT v=term                             { Tns(u,v) }
-| u=term t=mtyp                                 { Typ(u,fst t, snd t) }
+| u=term DOT v=term                             { Dot(u,v) }
+| u=term TENSOR v=term                          { Tns(u,v) }
+| u=term COLON t=term                           { Typ(u,t) }
+| s=term TO t=term                              { Arr(s,t) }
+| t=term HAT n=INT                              { Exp(t,n) }
+| u=term EQ v=term                              { Eqn(u,v) }
 | LSQR u=term RSQR l=kvl                        { Box(u,l) }
 | LBRK g=separated_list(COMMA, elem) RBRK l=kvl { Gph(g,l) }
+| LET f=NAME l=kvl d=decl IN u=term             { Let(f,l,d,u) }
 | LPAR t=term RPAR                              { t }
+
+decl:
+|                                               { None,None }
+| COLON t=term b=option(body)                   { Some t,b }
+| EQDEF b=term                                  { None,Some b }
+
+body:
+| EQDEF u=term { u }
 
 elem:
 | n=NAME l=kvl COLON u=term  { Node(n,u,l) }
@@ -52,41 +69,10 @@ iport:
 oport:
 | i=INT   { Target i }
 | p=IPORT { InnerSource(fst p,snd p) }
-
-env:
-| h=list(decl) { h }
-
-decl:
-| LET f=NAME l=kvl t=option(mtyp) b=option(body) IN { (f,(l,t,b)) }
-
-mtyp:
-| COLON n=typs TO m=typs { (n,m) }
-
-typs:
-| UNDER { Typ.flex 1 }
-| a=NAME { [Typ.name a] }
-| n=INT { if n<>1 then Misc.failwith "invalid type (%i)" n; [] }
-| s=typs STAR t=typs { s @ t }
-| t=typs HAT n=INT { if n<0 then Misc.failwith "invalid exponent (%i)" n; Typ.exp t n }
-| LPAR t=typs RPAR { t }
-
-body:
-| EQDEF u=term { u }
   
 kvl:
 | LT h=separated_list(SEMI, KEYVAL) k=kvl GT { h @ k }
 | { [] }
 
-equation:
-| u=term EQ v=term { (u,v) }
-
-justterm:
+rawterm:
 | u=term EOF { u }
-
-envterm:
-| e=env u=term EOF { (e,u) }
-
-equations:
-| e=env l=separated_nonempty_list(TO,equation) EOF { (e,l,false) }
-| e=env LSQR l=separated_nonempty_list(TO,equation) RSQR EOF { (e,l,true) }
-

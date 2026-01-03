@@ -1,12 +1,13 @@
-// let A<color=red>: ⊗ in
-// let B<color=blue>: ⊗ in
-let m<color=red;shape=triangle>: A^2 -> A in
-let n<color=blue;shape=triangle>: B^2-> B in
-let o<color=violet;shape=triangle>: C^2-> C in
-let x<color=cacadoie;shape=cross>: B⊗A -> A⊗B in
-let y<color=cacadoie;shape=cross>: C⊗B -> B⊗C in
-let z<color=cacadoie;shape=cross>: C⊗A -> A⊗C in
-let mno := id·id·z·id·id ; id·x·y·id ; m·n·o in
+let A<color=red> in
+let B<color=blue> in
+let C<color=violet> in
+let m: A^2 -> A in
+let n: B^2-> B in
+let o: C^2-> C in
+let x<color=cacadoie>: B⊗A -> A⊗B in
+let y<color=cacadoie>: C⊗B -> B⊗C in
+let z<color=cacadoie>: C⊗A -> A⊗C in
+let mno<color=turquoise> := id·id·z·id·id ; id·x·y·id ; m·n·o in
 m·id ; m = id·m ; m ->
 n·id ; n = id·n ; n ->
 o·id ; o = id·o ; o ->
@@ -17,4 +18,4 @@ o·id ; y = id·y ; y·id ; id·o ->
 id·m ; z = z·id ; id·z ; m·id ->
 o·id ; z = id·z ; z·id ; id·o ->
 y·id ; id·z ; x·id = id·x ; z·id ; id·y ->
-mno·id·id·id ; mno  = id·id·id·mno ; mno 
+mno·id·id·id ; mno = id·id·id·mno ; mno 

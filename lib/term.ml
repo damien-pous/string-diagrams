@@ -62,8 +62,7 @@ let pp =
     let paren fmt = if o <= i then fmt else "("^^fmt^^")" in
     let pp = pp i in
     match u with
-    | Idm []     -> ()
-    | Idm n      -> Format.fprintf f "id_%a" Typ.pp n
+    | Idm n      -> Format.fprintf f "%a" Typ.pp n
     | Var(_,_,n) -> Format.fprintf f "%s" n
     | Seq(u,v)   -> Format.fprintf f (paren "%a ; %a") pp u pp v
     | Tns(u,v)   -> Format.fprintf f (paren "%a·%a") pp u pp v

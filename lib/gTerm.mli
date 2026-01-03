@@ -1,5 +1,4 @@
 open Types
-open Element
 
 type iport = (string,int) Types.iport
 type oport = (string,int) Types.oport
@@ -17,8 +16,5 @@ and kind =
   | VNode of typs * typs * name
   | GNode of term
 
-val env: kvl Raw.env -> term env
-val of_raw: 'a env -> kvl Raw.term -> term
-val envterm: kvl Raw.envterm -> term env * term
-val equations: kvl Raw.equations -> term env * (term*term) list * (term*term) * bool
-
+val eterm: Raw.term -> term eterm
+val goal: Raw.term -> term goal

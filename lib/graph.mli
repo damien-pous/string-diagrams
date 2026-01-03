@@ -1,4 +1,3 @@
-open Element
 open Types
 open Graph_type
 
@@ -14,16 +13,14 @@ val box: graph -> (* kvl ->  *)graph
 val var_node: typs -> typs -> name -> kvl -> node
 
 (* graphs from raw terms *)
-val env: kvl Raw.env -> env
-val of_raw: env -> kvl Raw.term -> graph
-val envgraph: kvl Raw.envterm -> env * graph
-val equations: kvl Raw.equations -> equations
+val graph: Raw.term -> env * graph
+val goal: Raw.term -> goal
 
 (* textual pretty printing *)
 val pp: pp_mode -> formatter -> graph -> unit
 val pp_env: pp_mode -> formatter -> env -> unit
 val pp_envgraph: pp_mode -> formatter -> env*graph -> unit
-val pp_equations: pp_mode -> formatter -> equations -> unit
+val pp_goal: pp_mode -> formatter -> goal -> unit
 
 (* sharing-free copy (by serialisation for now) *)
 val copy: graph -> graph

@@ -3,8 +3,8 @@ open Diagrams
 let from_string s =
   try
     let l = Lexing.from_string s in
-    let et = Parser.envterm Lexer.token l in
-    Graph.envgraph et
+    let r = Parser.rawterm Lexer.token l in
+    Graph.graph r
   with e -> Format.eprintf "error parsing\n%s@." s; raise e
 
 let to_string = Format.kasprintf (fun s -> s) "%a" (Graph.pp_envgraph Full)
@@ -75,7 +75,7 @@ let _ = test "" "[id]"
 let _ = test "" "[id]·id"
 let _ = test "" "[id];id"
 
-let _ = test "let f: A->A in" "f"
+let _ = test "let A in let f: A->A in" "f"
 let _ = test "let f: A->A in" "f;f"
 let _ = test "let f: A->A in" "f·f"
 let _ = test "let f: A->A in" "[f]"
@@ -100,8 +100,8 @@ let _ = test e "(f·id;f)·id;f;g"
 let _ = test e "[f·id;f]·id;f"
 let _ = test_iso e "f" "f;id"
 let _ = test_iso e "f" "id·id;f"
-let _ = test_iso e "f" "f·"
-let _ = test_iso e "f" "·f"
+let _ = test_iso e "f" "f·1"
+let _ = test_iso e "f" "1·f"
 let _ = test_iso e "f;(g;h)" "(f;g);h"
 let _ = test_iso e "f·(g·h)" "(f·g)·h"
 let _ = test_iso e "f;(g;h);[g]" "(f;g);h;[g;id]"

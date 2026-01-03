@@ -32,7 +32,7 @@ let black = Color.black
 let red = Color.v 0.8 0.1 0.1 1.
 let gray = Color.gray 0.5
 let alpha s c = Color.with_a c s
-let xcolor = function
+let color = function
   | "red"    -> red
   | "green"  -> Color.v 0.1 0.8 0.1 1.
   | "blue"   -> Color.v 0.1 0.1 0.8 1.
@@ -46,7 +46,7 @@ let xcolor = function
   | "brown"  -> Color.v 0.7 0.3 0.0 1.
   | "cacadoie" -> Color.v 0.3 0.6 0.0 1.
   | "white"  -> Color.white
-  | "void"  -> Color.void
+  | "void"   -> Color.void
   | "black"  -> Color.black
   | "gray"   -> gray
   | "lhs"    -> Color.v 1.0 1.0 0. 0.5
@@ -55,25 +55,22 @@ let xcolor = function
   | "tgray"  -> Color.gray ~a:0.2 0.0
   | _        -> gray
 
-let color' ?color name =
-  match color with
-  | Some c -> xcolor c 
-  | None -> xcolor
-              (if name = "" then "void"
-               else match name.[0] with
-               | 'a' -> "yellow"
-               | 'b' -> "orange"
-               | 'c' | 'A' -> "red"
-               | 'd' | 'C' -> "violet"
-               | 'e' -> "green"
-               | 'f' -> "lblue"
-               | 'g' | 'B' -> "blue"
-               | 'h' -> "turquoise"
-               | 'i' -> "purple"
-               | 'j' -> "rose"
-               | 'k' -> "cacadoie"
-               | _   -> "gray")
-let color = xcolor
+let id_color name =
+  color
+    (if name = "" then "void" else
+       match Char.lowercase_ascii name.[0] with
+       | 'a' -> "yellow"
+       | 'b' -> "orange"
+       | 'c' -> "red"
+       | 'd' -> "violet"
+       | 'e' -> "green"
+       | 'f' -> "lblue"
+       | 'g' -> "blue"
+       | 'h' -> "turquoise"
+       | 'i' -> "purple"
+       | 'j' -> "rose"
+       | 'k' -> "cacadoie"
+       | _   -> "gray")
 
 let iport_color = color "violet"
 let oport_color = color "turquoise"

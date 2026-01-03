@@ -1,15 +1,14 @@
 open Types
-open Graph
 open Graph_type
 open Messages
 
 let state_of_string s =
-  (Marshal.from_string s 0: equations)
+  (Marshal.from_string s 0: goal)
   (* let l = Lexing.from_string s in *)
   (* let x = Parser.equations Lexer.token l in *)
   (* Graph.equations x *)
 
-let string_of_state (s: equations) =
+let string_of_state (s: goal) =
   Marshal.to_string s [Marshal.Closures] 
   (* Format.asprintf "%a" (pp_equations Full) *)
 
@@ -20,7 +19,7 @@ let changed = ref false
 class virtual mk (arena: arena) =
   object(self)
 
-    inherit [equations]History.mk string_of_state state_of_string as parent
+    inherit [goal]History.mk string_of_state state_of_string as parent
     method private virtual help: string -> unit
 
     method private virtual open_dialog: unit
@@ -29,14 +28,14 @@ class virtual mk (arena: arena) =
     method private virtual quit: unit
     method virtual fullscreen: unit
     
-    val mutable state = env [], [], (Graph.emp(),Graph.emp())
+    val mutable state = [], (Graph.emp(),Graph.emp())
     val mutable mode = `Normal
 
-    method private state = state    
-    method private env = let (e,_,_) = state in e
-    method private hyps = let (_,h,_) = state in h
-    method private lhs = let (_,_,(l,_)) = state in l
-    method private rhs = let (_,_,(_,r)) = state in r
+    method private state = state
+    method private env = fst state
+    method private hyps = Env.hyps self#env 
+    method private lhs = fst (snd state)
+    method private rhs = snd (snd state)
     method private iter_graphs f =
       List.iter (fun (l,r) -> f l; f r) self#hyps;
       f self#lhs; f self#rhs
@@ -133,8 +132,9 @@ class virtual mk (arena: arena) =
              self#changed
           | Var f ->
              match List.assoc f self#env with
-             | (_,_,_,Some h) -> g#subst n (Graph.copy h); self#changed
-             | _ -> warning "this box is atomic"
+             | _,T2(_,Some h) -> g#subst n (Graph.copy h); self#changed
+             | _,T2(_,None) -> warning "this box is abstract"
+             | _ -> assert false
          )
       | _ -> warning "no node to unfold/unbox here"
 
@@ -260,8 +260,8 @@ class virtual mk (arena: arena) =
 
     method private load_from_clipboard =
       let l = Lexing.from_string arena#clipboard in
-      let x = Parser.equations Lexer.token l in
-      self#load' (Graph.equations x)
+      let x = Parser.rawterm Lexer.token l in
+      self#load' (Graph.goal x)
 
     method private graph_to_clipboard =
       match self#catch with

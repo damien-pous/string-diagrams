@@ -5,8 +5,8 @@ class virtual mk: arena ->
   object
     method private virtual help: string -> unit
 
-    method private virtual read: string -> equations
-    method private virtual write: string -> equations -> unit
+    method private virtual read: string -> goal
+    method private virtual write: string -> goal -> unit
 
     method private virtual open_dialog: unit
     method private virtual saveas_dialog: unit
@@ -25,7 +25,7 @@ class virtual mk: arena ->
     method undo: unit -> unit
     method redo: unit -> unit
 
-    method load': equations -> unit
+    method load': goal -> unit
     method load: string -> unit
     method save: string -> unit
   end

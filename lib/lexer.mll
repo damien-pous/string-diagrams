@@ -12,7 +12,7 @@
            | None -> int_of_string (String.sub s i (n-i)) :: acc
            | Some j -> split (int_of_string (String.sub s i (j-i-1)) :: acc) (j+1)
     in List.rev (split [int_of_string x] 0)
-  let keyval k v = KEYVAL(Element.kv k v)
+  let keyval k v = KEYVAL(Info.kv k v)
   let p2_of_strings x y =
     Gg.P2.v (float_of_string x) (float_of_string y)
 }
@@ -56,7 +56,7 @@ rule token = parse
   | '.'
   | (* · *) "\194\183" | "\\cdotp"         { DOT }
   | '*'
-  | (* ⊗ *) "\226\138\151" | "\\otimes"    { STAR }
+  | (* ⊗ *) "\226\138\151" | "\\otimes"    { TENSOR }
   | '_'                                    { UNDER }
   | '^'                                    { HAT }
   | '='
@@ -67,12 +67,12 @@ rule token = parse
   | "let"                                  { LET }
   | "in"                                   { IN }
   | int as n                               { INT (int_of_string n) } 
-  | float as x                             { FLOAT (float_of_string x) }
-  (* cycles&permutations: at least two elements, if comma then arbitrary ints, otherwise digits *)
-  | '(' (ndigit ndigit+ as s) ')'          { PRM (Perm.of_cycle (diglist_of_string s)) }
-  | '(' (nint as x) ((',' nint)+ as q) ')' { PRM (Perm.of_cycle (numlist_of_string x q)) }
-  | '[' (ndigit ndigit+ as s) ']'          { PRM (Perm.of_list (diglist_of_string s)) }
-  | '[' (nint as x) ((',' nint)+ as q) ']' { PRM (Perm.of_list (numlist_of_string x q)) }
+  (* | float as x                             { FLOAT (float_of_string x) } *)
+  (** cycles&permutations: at least two elements, if comma then arbitrary ints, otherwise digits *)
+  (* | '(' (ndigit ndigit+ as s) ')'          { PRM (Perm.of_cycle (diglist_of_string s)) } *)
+  (* | '(' (nint as x) ((',' nint)+ as q) ')' { PRM (Perm.of_cycle (numlist_of_string x q)) } *)
+  (* | '[' (ndigit ndigit+ as s) ']'          { PRM (Perm.of_list (diglist_of_string s)) } *)
+  (* | '[' (nint as x) ((',' nint)+ as q) ']' { PRM (Perm.of_list (numlist_of_string x q)) } *)
   | name as s                              { NAME s }
   | name as s '.' (nint as i)              { IPORT (s,int_of_string i) }
   | "pos=" (pos as p)

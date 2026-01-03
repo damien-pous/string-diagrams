@@ -20,8 +20,12 @@ let iter_oports g f =
   MSet.iter (fun n -> fold (fun i () -> f (InnerSource(n,i))) n#nsources ()) g#nodes
 
 
-let icolor g i = match Typ.get (g#ityp i) with Some a -> Constants.color' a | None -> Constants.black
-let ocolor g o = match Typ.get (g#otyp o) with Some a -> Constants.color' a | None -> Constants.black
+let tcolor t =
+  match Typ.get t with
+  | Some (n,l) -> Info.color n l
+  | None -> Constants.black
+let icolor g i = tcolor (g#ityp i)
+let ocolor g o = tcolor (g#otyp o)
 
 
 (** checking isomorphism
@@ -63,13 +67,15 @@ let rec iso g h =
   forall g#ntargets (fun i -> iso_up (Target i) (Target i)) &&
     forall g#nsources (fun i -> iso_dn (Source i) (Source i))
 let rec iso_env e f =
+  (* TOFIX (what to do with non-T2 elements?) *)
   match e,f with
   | [],[] -> true
-  | (x,(_,n,m,g))::e, (x',(_,n',m',h))::f when x=x' && Typ.eq n n' && Typ.eq m m' ->
+  | (x,(_,T2((n,m),g)))::e, (x',(_,T2((n',m'),h)))::f when x=x' && Typ.eq n n' && Typ.eq m m' ->
      iso_env e f && (match g,h with
                      | None, None -> true
                      | Some g, Some h -> iso g h
                      | _ -> false)
+  | (x,_)::e,(x',_)::f when x=x' -> iso_env e f
   | _ -> false
 let iso_envgraph (e,g) (f,h) =
   iso_env e f && iso g h
@@ -120,23 +126,18 @@ let to_term (g: graph) =
 
 (** pretty printing graphs *)
 let pp mode f g = g#pp mode f
+let pp_decl mode f = function
+  | T1 -> ()
+  | T2 ((n,m),None) -> Format.fprintf f ": %a -> %a" Typ.pp n Typ.pp m
+  | T2 ((n,m),Some g) -> Format.fprintf f ": %a -> %a := %a" Typ.pp n Typ.pp m (pp mode) g
+  | TE (u,v) -> Format.fprintf f ": %a ≡ %a" (pp mode) u (pp mode) v
 let pp_env mode f (e: env) =
-  let rec pp_env f = function
-    | [] -> ()
-    | (x,(l,n,m,None))::q ->
-       pp_env f q;
-       Format.fprintf f "let %s%a: %a -> %a in\n" x Element.pp_kvl l Typ.pp n Typ.pp m
-    | (x,(l,n,m,Some g))::q ->
-       pp_env f q;
-       Format.fprintf f "let %s%a: %a -> %a := %t in\n" x Element.pp_kvl l Typ.pp n Typ.pp m (g#pp mode)
-  in pp_env f e
+  List.iter (fun (n,(l,d)) ->
+      Format.fprintf f "let %s%a%a in\n" n Info.pp_kvl l (pp_decl mode) d
+    ) (List.rev e)
 let pp_envgraph mode f (e,g) = pp_env mode f e; pp mode f g
-let pp_equation mode f (u,v) = 
-  Format.fprintf f "%a ≡ %a" (pp mode) u (pp mode) v
-let pp_equations mode f (e,h,g) =
-  Format.fprintf f "%a[%a]" 
-  (pp_env mode) e
-  (pp_print_list " -> \n" (pp_equation mode)) (h@[g])
+let pp_goal mode f (e,(u,v)) = 
+  Format.fprintf f "%a%a ≡ %a@." (pp_env mode) e (pp mode) u (pp mode) v
 
 
 class links n m: linked =
@@ -656,34 +657,28 @@ let of_gterm u =
     in
     rectangle_graph n m nodes edges ?pos size l
   in build u
-  
 
-let env e = Element.envmap of_gterm (GTerm.env e)
-let of_raw e t = of_gterm (GTerm.of_raw e t)
-let envgraph et =
-  let (e,t) = GTerm.envterm et in
-  Element.envmap of_gterm e, of_gterm t
-
-
-let of_equation ~placed (u,v) =
-  let g = of_gterm u in
-  let h = of_gterm v in
-  if not placed then (
-    let b = Box2.union g#box h#box in
-    g#rebox b; h#rebox b);
-  g,h
-
-let equations ehg =
-  let (e,h,g,placed) = GTerm.equations ehg in
-  let h = List.map (of_equation ~placed) h in
-  let l,r = of_equation ~placed g in
-  if not placed then (
+let graph r =
+  let e,u = GTerm.eterm r in
+  Env.map of_gterm e, of_gterm u
+let goal r =
+  let e,(u,v) = GTerm.goal r in
+  let e,(l,r as g) = Env.map of_gterm e, (of_gterm u, of_gterm v) in
+  let h = Env.hyps e in
+  let placed u = u#pos <> P2.o in
+  let placed (u,v) = placed u || placed v in
+  if not (List.exists placed (g::h)) then (
+    let rebox (u,v) = 
+      let b = Box2.union u#box v#box in
+      u#rebox b; v#rebox b
+    in
+    List.iter rebox (g::h);
     l#scale 2.0; r#scale 2.0;
     let ph = List.map (fun (l,r) -> Pad.hpad Constants.spacing [l;r]) h in
     let ph = Pad.hpad (3.*.Constants.spacing) ph in
     let plr = Pad.hpad Constants.spacing [l;r] in
-    ignore (Pad.vpad (2.*.Constants.spacing) [plr;ph]));
-  Element.envmap of_gterm e, h, (l,r)
+    ignore (Pad.vpad (2.*.Constants.spacing) [plr;ph])
+  ); e,g
 
 (* copy a graph by serialisation (is there a nicer way?) *)
 let copy (g: graph) =

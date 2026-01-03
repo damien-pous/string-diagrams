@@ -43,3 +43,17 @@ let exists n f = fold (fun i b -> b || f i) n false
 let rec unique_assq = function
   | [] -> true
   | (x,_)::q -> not (List.mem_assq x q) && unique_assq q
+
+
+
+let float_of_string x =
+  try float_of_string x
+  with _ -> failwith "not a float: %s" x
+    
+let p2_of_string s =
+  let i = String.index s ',' in
+  Gg.P2.v (float_of_string (String.sub s 0 i))
+    (float_of_string (String.sub s (i+1) (String.length s-i-1)))
+
+let string_of_p2 p =
+  Format.sprintf "%g,%g" (Gg.P2.x p) (Gg.P2.y p)
