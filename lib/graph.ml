@@ -116,7 +116,7 @@ let to_term (g: graph) =
   let rec up d l =
     let v,l = slice d l in
     if Term.is_id v then
-      if l = (List.init g#nsources (fun i -> g#next (Source(i+1)))) then v
+      if l = List.init g#nsources (fun i -> g#next (Source(i+1))) then v
       else not_a_graph_term "sources improperly linked"
     else 
       let u = up (d+1) l in
@@ -479,7 +479,7 @@ class gen_graph nodes edges area =
       MSet.fold (fun g b -> g#improve ~force && b) b self#inner_graphs
 
     initializer
-      self#compute_tables
+      self#rebuild_tables
   end
 
 

@@ -264,12 +264,19 @@ class virtual mk (arena: arena) =
       self#load' (Graph.goal x)
 
     method private graph_to_clipboard =
-      match self#catch with
-      | `N(g,_) | `G g ->
-         let s = Format.asprintf "%a" (Graph.pp Term) g in
-         arena#set_clipboard s;
-         temporary#msg "graph copied to clipboard: %s" s
-      | _ -> warning "no graph to export here"
+      let g = 
+        match self#catch with
+        | `G g -> g
+        | `N(g,n) ->
+           (match n#kind with
+            | Box h -> h
+            | _ -> g)
+        | _ -> warning "no graph to export here"
+      in
+      let s = Format.asprintf "%a" (Graph.pp Term) g in
+      arena#set_clipboard s;
+      temporary#msg "graph copied to clipboard: %s" s
+      
 
     method on_key_press ctrl s =
       if ctrl then
