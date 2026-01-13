@@ -17,4 +17,5 @@ val kvl: t -> Info.kvl
 
 val pp1: Format.formatter -> t -> unit
 val pp: Format.formatter -> ts -> unit
+val pp_dot: Format.formatter -> ts -> unit
 

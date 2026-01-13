@@ -49,11 +49,11 @@ class basic: canvas =
       let d = V2.smul 1000. l.dir in
       self#point ?color l.point;
       self#segment ?color V2.(l.point-d, l.point+d)
-    method text p text =
+    method text ?(color=Color.black) p text =
       let p = V2.sub p
                 (V2.v (float_of_int (String.length text) *. Constants.fontsize/.3.)
                    (Constants.fontsize/.3.)) in
-      self#blend (I.move p (I.const Color.black |> I.cut_glyphs ~text Constants.font []))
+      self#blend (I.move p (I.const color |> I.cut_glyphs ~text Constants.font []))
   end
 
 class void: canvas =
@@ -70,5 +70,5 @@ class void: canvas =
     method segment ?color _ = ignore color 
     method curve ?color _ = ignore color 
     method line ?color _ = ignore color 
-    method text _ _ = ()
+    method text ?color _ _ = ignore color 
   end

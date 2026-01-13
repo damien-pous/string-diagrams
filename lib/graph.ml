@@ -22,7 +22,7 @@ let iter_oports g f =
 
 let tcolor t =
   match Typ.get t with
-  | Some (n,l) -> Info.color n l
+  | Some (n,l) -> Info.get_color n l
   | None -> Constants.black
 let icolor g i = tcolor (g#ityp i)
 let ocolor g o = tcolor (g#otyp o)
@@ -136,7 +136,7 @@ let pp_env mode f (e: env) =
       Format.fprintf f "let %s%a%a in\n" n Info.pp_kvl l (pp_decl mode) d
     ) (List.rev e)
 let pp_envgraph mode f (e,g) = pp_env mode f e; pp mode f g
-let pp_goal mode f (e,(u,v)) = 
+let pp_goal mode f ((e,(u,v)),_) = 
   Format.fprintf f "%a%a ≡ %a@." (pp_env mode) e (pp mode) u (pp mode) v
 
 
@@ -249,6 +249,7 @@ class gen_graph nodes edges area =
         let n = float_of_int (List.length l+1) in
         List.iteri (fun i x -> x#set_ceiling (k (float_of_int (i+1)/.n))) l
       in
+      try
       add (collect `Left) (fun p -> Source (0.5+.p/.2.));
       for i = 1 to self#nsources do
         let i' = float_of_int i in
@@ -260,7 +261,8 @@ class gen_graph nodes edges area =
             let i' = float_of_int i in
             add (collect (`RightI (InnerTarget(n,i)))) (fun p -> InnerTarget(n,i'+.p))
           done;          
-        ) nodes      
+        ) nodes
+      with Incomplete_graph -> ()
 
     method ipos = function
       | Source i -> self#spos i
@@ -406,6 +408,7 @@ class gen_graph nodes edges area =
       Format.fprintf f "}%t: %a -> %a" (self#pp_kvl mode) Typ.pp self#sources Typ.pp self#targets
     method pp mode f =
       match mode with
+      | Rocq -> Term.pp_rocq f self#term
       | Term -> Term.pp f self#term
       | TermIfPossible ->
          (try Term.pp f self#term
@@ -419,7 +422,27 @@ class gen_graph nodes edges area =
       let p,ui = self#ipos i, self#idir i in
       let q,uo = self#opos o, self#odir o in
       let d = V2.(norm (q-p)) /. 3. in
-        V2.(p,p+smul d ui,q-smul d uo,q)      
+      V2.(p,p+smul d ui,q-smul d uo,q)
+
+    method private draw_interface (draw: canvas) =
+      Misc.fold (fun i () ->
+          let t = self#styp i in
+          match Typ.get t with
+          | Some (n,_) -> 
+             let color = tcolor t in
+             let p = V2.(self#spos i - smul Constants.fontsize (self#sdir i)) in
+             draw#text ~color p n
+          | None -> ()
+        ) self#nsources ();
+      Misc.fold (fun i () ->
+          let t = self#ttyp i in
+          match Typ.get t with
+          | Some (n,_) -> 
+             let color = tcolor t in
+             let p = V2.(self#tpos i + smul Constants.fontsize (self#tdir i)) in
+             draw#text ~color p n
+          | None -> ()
+        ) self#ntargets ();
     
     method! draw (draw: canvas) =
       let draw_node n =
@@ -440,6 +463,7 @@ class gen_graph nodes edges area =
         draw#curve ~color (self#edge_curve e)      
       in
       area#draw draw;
+      if Constants.editor && not (self#has "fill") then self#draw_interface draw;
       MSet.iter draw_edge edges;
       MSet.iter draw_node nodes
 
@@ -569,7 +593,7 @@ let var_node n m name l =
     method kind = Var name
     method! draw canvas =
       parent#draw canvas;
-      if false then canvas#text self#pos name
+      if !Constants.labels then canvas#text self#pos name
     method term = Term.var n m name
   end
 
@@ -596,8 +620,10 @@ let node_graph n =
 let var n m name l = node_graph (var_node n m name l)
 
 (* boxed graph *)
-let box g = node_graph (graph_node g)
-
+let box g =
+  let n = graph_node g in
+  n#set "fill" "tgray";
+  node_graph n
   
 (** * graphs from generalised terms *)
 
@@ -662,9 +688,9 @@ let graph r =
   let e,u = GTerm.eterm r in
   Env.map of_gterm e, of_gterm u
 let goal r =
-  let e,(u,v) = GTerm.goal r in
+  let (e,(u,v)),s = GTerm.goal r in
   let e,(l,r as g) = Env.map of_gterm e, (of_gterm u, of_gterm v) in
-  let h = Env.hyps e in
+  let h = List.map snd (Env.hyps e) in
   let placed u = u#pos <> P2.o in
   let placed (u,v) = placed u || placed v in
   if not (List.exists placed (g::h)) then (
@@ -678,7 +704,7 @@ let goal r =
     let ph = Pad.hpad (3.*.Constants.spacing) ph in
     let plr = Pad.hpad Constants.spacing [l;r] in
     ignore (Pad.vpad (2.*.Constants.spacing) [plr;ph])
-  ); e,g
+  ); (e,g),s
 
 (* copy a graph by serialisation (is there a nicer way?) *)
 let copy (g: graph) =
@@ -822,3 +848,33 @@ let create_box (g: graph) p =
   debug_msg "%t" (h#pp Full);
   g#update (MSet.add b nodes_out) (edges_out b);
   b,h
+
+
+open Vg
+
+let multi_pdf l file =  
+  (* export to pdf via cairo (could not find how to get the right fonts with vg) *)
+  match l with
+  | [] -> failwith "cannot export an empty list to PDF"
+  | (image,view)::q ->
+     let size = Box2.size view in
+     let w,h = V2.x size, V2.y size in
+     let i = Cairo.PDF.create file ~w ~h in
+     let cr = Cairo.create i in
+     let vgr = Vgr.create (Vgr_cairo.target cr) `Other in 
+     ignore (Vgr.render vgr (`Image (size, view, image)));
+     List.iter (fun (image,view) ->
+         Cairo.show_page cr;
+         let w,h = V2.x size, V2.y size in
+         Cairo.PDF.set_size i ~w ~h;
+         ignore (Vgr.render vgr (`Image (size, view, image)))
+       ) q;
+     ignore (Vgr.render vgr `End);
+     Cairo.Surface.finish i
+
+let pdf image view file = multi_pdf [image,view] file
+
+let to_pdf (g: graph) f =
+  let c = new Canvas.basic in
+  g#draw c;
+  pdf c#get g#box f

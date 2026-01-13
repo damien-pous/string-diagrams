@@ -1,11 +1,9 @@
-let A<color=red> in
-let B<color=blue> in
-let m: A^2 -> A in
-let n: B^2-> B in
-let x<color=cacadoie>: B⊗A -> A⊗B in
+let m: M^2 -> M in
+let n: N^2-> N in
+let x: N⊗M -> M⊗N in
 let mn := id·x·id ; m·n in
-let M: m·id ; m ≡ id·m ; m in
-let N: n·id ; n ≡ id·n ; n in
-let MX: id·m ; x ≡ x·id ; id·x ; m·id in
-let NX: n·id ; x ≡ id·x ; x·id ; id·n in
+let mA: m·id ; m ≡ id·m ; m in
+let nA: n·id ; n ≡ id·n ; n in
+let mx: id·m ; x ≡ x·id ; id·x ; m·id in
+let nx: n·id ; x ≡ id·x ; x·id ; id·n in
 (id·x·id ; m·n)·id·id ; (id·x·id ; m·n) ≡ id·id·(id·x·id ; m·n) ; (id·x·id ; m·n)

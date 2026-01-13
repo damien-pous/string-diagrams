@@ -1,12 +1,20 @@
 open Gg
 
+let editor =
+  match Sys.argv with
+  | [|e|] -> Filename.basename e = "edit.exe"
+  | _ -> false
+let labels = ref editor
+let toggle_labels () = labels := not !labels
+
 let inch = 72.27
 let mm = inch /. 25.4
 
 (* in points *)
 let fontsize = 11.
 (* let font = Vg.Font.{name="Latin Modern Roman"; slant=`Italic; weight=`W100; size=fontsize } *)
-let font = Vg.Font.{name="Helvetica"; slant=`Normal; weight=`W100; size=fontsize }
+let font = Vg.Font.{name="Sans"; slant=`Normal; weight=`W100; size=fontsize }
+let msg_font = "Sans 20"
 
 (* in inches *)
 let pathlinewidth = 2.0
@@ -20,7 +28,9 @@ let spacing = fontsize *. 3.
 let expand s = V2.(s + v spacing spacing)
 let size n = Size2.v (float_of_int n *. spacing) spacing
 let idm_size = size
-let var_size n m = size (max n m)
+let var_size n m =
+  if (n,m) <> (6,3) then (* V2.smul 0.4 *) (size (max n m))
+  else Size2.v (5. *. spacing) (2.*.spacing)
 let empty_size n m =
   if n+m=0 then Size2.v (spacing /. 2.) spacing
   else var_size n m
@@ -57,20 +67,35 @@ let color = function
 
 let id_color name =
   color
-    (if name = "" then "void" else
-       match Char.lowercase_ascii name.[0] with
+    (
+     if editor then match name with
+       | "A" | "I" -> "blue"
+       | "B" | "I'" -> "turquoise"
+       | "C" | "J" -> "yellow"
+       | "D" | "J'" -> "orange"
+       | ""  -> "void"
+       | _   -> "tgray"
+     else if name = "" then "void"
+     else match Char.lowercase_ascii name.[0] with
        | 'a' -> "yellow"
        | 'b' -> "orange"
        | 'c' -> "red"
        | 'd' -> "violet"
-       | 'e' -> "green"
-       | 'f' -> "lblue"
-       | 'g' -> "blue"
+       | 'e' -> "red" (* "green" *)
+       | 'f' -> "blue" (* "lblue" *)
+       | 'g' -> "violet" (* "blue" *)
        | 'h' -> "turquoise"
        | 'i' -> "purple"
        | 'j' -> "rose"
        | 'k' -> "cacadoie"
-       | _   -> "gray")
+       | 'm' -> "turquoise" (* "red" *)
+       | 'n' -> "violet" (* "blue" *)
+       | 'o' -> "orange" (* violet *)
+       | 'x' -> "cacadoie"
+       | 'y' -> "cacadoie"
+       | 'z' -> "cacadoie"
+       | _   -> "gray"
+    )
 
 let iport_color = color "violet"
 let oport_color = color "turquoise"

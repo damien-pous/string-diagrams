@@ -1,6 +1,10 @@
 open Gg
 open Vg
 
+val editor: bool
+val labels: bool ref
+val toggle_labels: unit -> unit
+
 (* number of points in an inch: 72(.27) *)
 val inch: float
 (* number of points in a mm: inch / 25.4 *)
@@ -9,6 +13,7 @@ val mm: float
 (* below: always in points *)
 val fontsize: float
 val font: font
+val msg_font: string
 
 val pathlinewidth: float
 val shapelinewidth: float

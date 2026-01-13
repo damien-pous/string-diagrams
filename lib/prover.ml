@@ -12,7 +12,7 @@ let string_of_state (s: goal) =
   Marshal.to_string s [Marshal.Closures] 
   (* Format.asprintf "%a" (pp_equations Full) *)
 
-exception Found3 of graph*node*graph
+exception Found3 of string*graph*node*graph
 
 let changed = ref false
 
@@ -28,30 +28,35 @@ class virtual mk (arena: arena) =
     method private virtual quit: unit
     method virtual fullscreen: unit
     
-    val mutable state = [], (Graph.emp(),Graph.emp())
+    val mutable state = ([], (Graph.emp(),Graph.emp())), ""
     val mutable mode = `Normal
 
     method private state = state
-    method private env = fst state
+    method private goal = fst state
+    method private script = snd state
+    method private env = fst self#goal
     method private hyps = Env.hyps self#env 
-    method private lhs = fst (snd state)
-    method private rhs = snd (snd state)
+    method private lhs = fst (snd self#goal)
+    method private rhs = snd (snd self#goal)
     method private iter_graphs f =
-      List.iter (fun (l,r) -> f l; f r) self#hyps;
+      List.iter (fun (_,(l,r)) -> f l; f r) self#hyps;
       f self#lhs; f self#rhs
     method private fold_graphs: 'a. (graph -> 'a -> 'a) -> 'a -> 'a = fun f a ->
-      List.fold_right (fun (l,r) a -> f l (f r a)) self#hyps
+      List.fold_right (fun (_,(l,r)) a -> f l (f r a)) self#hyps
       (f self#lhs (f self#rhs a))
-      
+
+    method private add_script: 'a. ('a, formatter, unit) format -> 'a =
+      Format.kasprintf (fun s -> state <- self#goal, (self#script^"\n"^s))
+    
     method private box =
       Gg.Box2.(
-          List.fold_right (fun (l,r) -> union (union l#box r#box)) self#hyps
+          List.fold_right (fun (_,(l,r)) -> union (union l#box r#box)) self#hyps
             (union self#lhs#box self#rhs#box))
 
     method private redraw =
       arena#canvas#clear;
       self#iter_graphs (fun g -> g#draw arena#canvas);
-      List.iter (fun (l,r) -> arena#canvas#text (Gg.P2.mid l#pos r#pos) "=") self#hyps;
+      List.iter (fun (_,(l,r)) -> arena#canvas#text (Gg.P2.mid l#pos r#pos) "=") self#hyps;
       arena#canvas#text (Gg.P2.mid self#lhs#pos self#rhs#pos)
         (if self#lhs#get "fill" = None then "=?=" else "=");
       self#refresh
@@ -128,7 +133,7 @@ class virtual mk (arena: arena) =
           | Box _ ->
              g#unbox n;
              g#unset "place";
-             List.iter (fun (l,r) -> l#unset "fill"; r#unset "fill") self#hyps;
+             List.iter (fun (_,(l,r)) -> l#unset "fill"; r#unset "fill") self#hyps;
              self#changed
           | Var f ->
              match List.assoc f self#env with
@@ -159,7 +164,7 @@ class virtual mk (arena: arena) =
       let _,h = Graph.create_box g p in
       g#set "place" "locked";
       h#set "place" "locked";
-      List.iter (fun (l,r) ->
+      List.iter (fun (_,(l,r)) ->
           if Graph.iso h l then
             (h#set "fill" "lhs"; l#set "fill" "lhs"; r#set "fill" "rhs")
           else if Graph.iso h r then
@@ -168,35 +173,38 @@ class virtual mk (arena: arena) =
       self#changed
 
     method private rewrite i =
-      let l,r =
+      let x,l,r =
         let j = ref i in
-        match List.fold_left (fun acc (l,r) ->
+        match List.fold_left (fun acc (x,(l,r)) ->
                   if l#get "fill" = Some "lhs" then (
                     decr j;                  
-                    if !j=0 then Some (l,r) else
+                    if !j=0 then Some (x,l,r) else
                       (l#unset "fill"; r#unset "fill"; acc)
                   ) else if r#get "fill" = Some "lhs" then (
                     decr j;                  
-                    if !j=0 then Some (r,l) else
+                    if !j=0 then Some ("-"^x,r,l) else
                       (l#unset "fill"; r#unset "fill"; acc)
                   ) else acc
               ) None self#hyps
         with
-        | Some(l,r) -> l,r
+        | Some(x,l,r) -> x,l,r
         | None -> error "no such matching hypothesis (%i)" i
       in
-      let g,n,h =
-        try self#iter_graphs (fun g ->
-                if g#get "place" = Some "locked" then
-                  MSet.iter (fun n ->
-                      match n#kind with
-                      | Box h -> if h#get "fill" = Some "lhs" then
-                                   raise (Found3(g,n,h))
-                      | _ -> ()) g#nodes
-              );
+      let i,g,n,h =
+        let k (i,g) =
+          if g#get "place" = Some "locked" then
+            MSet.iter (fun n ->
+                match n#kind with
+                | Box h -> if h#get "fill" = Some "lhs" then
+                             raise (Found3(i,g,n,h))
+                | _ -> ()) g#nodes
+        in
+        try List.iter k ["",self#lhs; "2: ",self#rhs];
             error "could not find the pattern to rewrite"
-        with Found3(g,n,h) -> g,n,h
+        with Found3(i,g,n,h) -> i,g,n,h
       in
+      self#add_script "  transitivity (%a). %smcat.\n  rewrite %s.\n" (Graph.pp Rocq) g i x;
+      temporary#msg "rewrite %s" x;
       h#set "place" "contract";
       h#on_stabilize
         (fun () ->
@@ -260,23 +268,39 @@ class virtual mk (arena: arena) =
 
     method private load_from_clipboard =
       let l = Lexing.from_string arena#clipboard in
-      let x = Parser.rawterm Lexer.token l in
+      let x = Parser.rocqgoal Lexer.token l in
       self#load' (Graph.goal x)
 
     method private graph_to_clipboard =
-      let g = 
+      let k,g = 
         match self#catch with
-        | `G g -> g
+        | `G g -> "graph",g
         | `N(g,n) ->
            (match n#kind with
-            | Box h -> h
-            | _ -> g)
-        | _ -> warning "no graph to export here"
+            | Box h -> "node",h
+            | _ -> "graph",g)
+        | _ -> warning "no graph/node to export here"
       in
-      let s = Format.asprintf "%a" (Graph.pp Term) g in
+      let s = Format.asprintf "%a" (Graph.pp Rocq) g in
       arena#set_clipboard s;
-      temporary#msg "graph copied to clipboard: %s" s
-      
+      temporary#msg "%s copied to clipboard: %s" k s
+
+    method private graph_to_pdf =
+      let k,g = 
+        match self#catch with
+        | `G g -> "graph",g
+        | `N(g,n) ->
+           (match n#kind with
+            | Box h -> "node",h
+            | _ -> "graph",g)
+        | _ -> warning "no graph/node to export here"
+      in
+      Graph.to_pdf g "g.pdf";
+      temporary#msg "%s exported to g.pdf" k
+
+    method private script_to_clipboard =
+      arena#set_clipboard self#script;
+      temporary#msg "Rocq script copied to clipboard"    
 
     method on_key_press ctrl s =
       if ctrl then
@@ -297,10 +321,13 @@ class virtual mk (arena: arena) =
                      "** keys **
 1..n    rewrite box using matching hypothesis
 u       unbox or unfold node
+t:      toggle node labels
 -/+     shrink/enlarge element
 f       release fixed element
 l       load state from clipboard
 e       export graph term to clipboard
+p       export graph as pdf (file g.pdf)
+E       export Rocq script to clipboard
 ->/<-   undo/redo
 SPACE   pause/start
 ESC     abort current action
@@ -309,8 +336,11 @@ r       redraw picture
 h       print this help message"
           | "f" -> self#release
           | "u" -> self#unfold
+          | "t" -> Constants.toggle_labels(); self#redraw
+          | "p" -> self#graph_to_pdf
           | "l" -> self#load_from_clipboard
           | "e" -> self#graph_to_clipboard
+          | "E" -> self#script_to_clipboard
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1
           | "=" -> arena#fit self#box; self#redraw

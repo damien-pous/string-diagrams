@@ -54,6 +54,7 @@ class virtual mk (arena: arena) =
       (match mode with
        | `Select p ->
           temporary#polygon ~fill:(Gg.Color.gray ~a:0.2 0.) p;
+          if false then
           let p = Geometry.clockwise p in
           MSet.iter (fun (i,o) ->              
               let s,t = graph#ipos i, graph#opos o in
@@ -145,7 +146,7 @@ class virtual mk (arena: arena) =
       | e,g ->
          self#entry_warning "";
          if not (Graph.iso_envgraph (e,g) (env,graph)) then (
-           temporary#msg "graph changed";
+           (* temporary#msg "graph changed"; *)
            env <- e;
            graph <- g;
            self#checkpoint;
@@ -264,7 +265,9 @@ d:      remove node
 n:      create node (give name afterward)
 u:      unbox or unfold node
 i:      improve placement
+t:      toggle node labels
 -/+:    shrink/enlarge element
+p       export graph as pdf (file g.pdf)
 f/F:    fix/Free element (for later placement optimisations)
 ->/<-:    undo/redo
 ESC:    abort current action
@@ -277,6 +280,8 @@ h:      print this help message"
           | "F" -> self#block false
           | "d" -> self#remove
           | "u" -> self#unfold
+          | "p" -> self#graph_to_pdf
+          | "t" -> Constants.toggle_labels(); self#redraw()
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1
           | "=" -> arena#fit graph#box; self#refresh
@@ -301,5 +306,8 @@ h:      print this help message"
     method save_to file =
       self#write file (env,graph);
       self#export file (env,graph)
+
+    method private graph_to_pdf =
+      Graph.to_pdf graph "g.pdf";
     
   end

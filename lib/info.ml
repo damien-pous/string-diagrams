@@ -27,7 +27,7 @@ let mem = List.mem_assoc
 let get = List.assoc
 let get_opt = List.assoc_opt
 
-let color n l =
+let get_color n l =
   match get "color" l with
   | c -> Constants.color c
   | exception Not_found -> Constants.id_color n

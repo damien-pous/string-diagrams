@@ -1,10 +1,8 @@
-let A<color=red> in
-let B<color=blue> in
-let m: A⊗A -> A in
-let e: 1 -> A in
-let n: B⊗B -> B in
-let f: 1 -> B in
-let x<color=cacadoie>: B⊗A -> A⊗B in
+let m: M⊗M -> M in
+let e: 1 -> M in
+let n: N⊗N -> N in
+let f: 1 -> N in
+let x: N⊗M -> M⊗N in
 let mn<color=violet> := id·x·id ; m·n in
 let ef<color=violet> := e·f in
 m·id ; m = id·m ; m ->

@@ -37,7 +37,7 @@ class type canvas =
     method segment: ?color:color -> point*point -> unit 
     method curve: ?color:color -> point*point*point*point -> unit 
     method line: ?color:color -> line -> unit 
-    method text: point -> string -> unit 
+    method text: ?color:color -> point -> string -> unit 
   end
 
 class type msg_canvas =
@@ -63,7 +63,7 @@ class type arena =
     method set_clipboard: string -> unit
   end
 
-type pp_mode = Full | Sparse | Term | TermIfPossible
+type pp_mode = Full | Sparse | Term | TermIfPossible | Rocq
 
 (* names *)
 type name = string
@@ -90,8 +90,8 @@ type 't env = (name * (kvl * 't decl)) list
 (* terms in environment *)
 type 't eterm = 't env * 't
 
-(* goals (horn sentences) *)
-type 't goal = 't env * 't equation
+(* goals (horn sentences) + current script *)
+type 't goal = ('t env * 't equation) * string
 
 
 (* input/output ports

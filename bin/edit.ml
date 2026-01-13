@@ -31,10 +31,13 @@ let vbox2 = GPack.vbox ~homogeneous:false ~packing:paned#pack2 ()
 
 let da = GMisc.drawing_area ~width ~height ~packing:(vbox1#pack ~expand:true) ()
 let arena = GArena.create ~width ~height ~window da ()
-let general_msg = GText.view ~editable:false ~cursor_visible:false ~packing:(vbox1#pack) ()
+let general_msg = GText.view ~editable:false ~cursor_visible:false ~packing:(vbox1#pack ~expand:true) ()
+let _ = general_msg#misc#modify_font_by_name Constants.msg_font
 
-let entry = GText.view ~editable:true ~accepts_tab:false ~packing:(vbox2#pack ~expand:true) ()
+let entry = GText.view ~width ~editable:true ~accepts_tab:false ~packing:(vbox2#pack ~expand:true) ()
 let entry_msg = GMisc.label ~packing:(vbox2#pack) ()
+let _ = entry#misc#modify_font_by_name Constants.msg_font
+let _ = entry_msg#misc#modify_font_by_name Constants.msg_font
 
 let dialog title action stock stock' filter =
   let dlg = GWindow.file_chooser_dialog
@@ -129,11 +132,11 @@ let fullscreen =
 
 (* TODO: capture this in editor *)
 let refresh() = arena#refresh; general_msg#buffer#set_text Messages.temporary#messages
-let atomic f x d =
-  Messages.temporary#clear;  
+let atomic ?(clearall=true) f x d =
+  if clearall then Messages.temporary#clear_all else Messages.temporary#clear;  
   Messages.catch f x d refresh
-let atomic_unit f x = atomic f x ()
-let atomic_true f x = atomic f x true
+let atomic_unit ?clearall f x = atomic ?clearall f x ()
+let atomic_true ?clearall f x = atomic ?clearall f x true
 
 let _ = file_factory#add_item "Open" ~key:GdkKeysyms._O ~callback:(atomic_unit load)
 let _ = file_factory#add_item "Save" ~key:GdkKeysyms._S ~callback:(atomic_unit save)
@@ -146,7 +149,7 @@ let _ = view_factory#add_item "Fullscreen" ~key:GdkKeysyms._F ~callback:fullscre
 let _ = GtkBase.Widget.add_events da#as_widget
           [ `KEY_PRESS; `POINTER_MOTION; `BUTTON_PRESS; `BUTTON_RELEASE ]
 let _ = da#misc#set_can_focus true
-let _ = da#event#connect#motion_notify ~callback:(atomic_true on_motion)
+let _ = da#event#connect#motion_notify ~callback:(atomic_true ~clearall:false on_motion)
 let _ = da#event#connect#button_press ~callback:(atomic_true on_button_press)
 let _ = da#event#connect#button_release ~callback:(atomic_true on_button_release)
 let _ = da#event#connect#key_press ~callback:(atomic_true on_key_press)

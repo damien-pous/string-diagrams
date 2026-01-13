@@ -87,7 +87,7 @@ class virtual gen n m ?(pos=P2.o) ~name (l: kvl) =
     val ntargets = ntargets
     initializer
       (match self#get "pos" with Some p -> pos <- p2_of_string p; placed <- true | None -> ());
-      color <- Info.color name l
+      color <- Info.get_color name l
   end
 
 
@@ -202,7 +202,8 @@ class cross n m ?pos ?(radius=Constants.cross_radius) ~name l: element =
 
 class triangle n m ?pos ?(radius=Constants.triangle_radius) ~name l: element =
   let _ = match n,m with
-    | [a;b],[c] when Typ.eq [a;b] [c;c] -> ()
+    (* | [a;b],[c] when Typ.eq [a;b] [c;c] -> () *)
+    | [_;_],[_] -> ()
     | [],[_] -> ()
     | _ -> failwith "invalid triangle type (%a -> %a)" Typ.pp n Typ.pp m
   in
@@ -307,6 +308,6 @@ let mk n m ~name l =
        match n,m with
        | [],[a] -> new triangle n m ~name (Info.merge l (Typ.kvl a))
        | [a;b],[c] when Typ.eq [a;b] [c;c] -> new triangle n m ~name (Info.merge l (Typ.kvl a))
-       | [a;b],[c;d] when Typ.eq [a;b] [d;c] -> new cross n m ~name (Info.merge l (Typ.kvl a))
+       | [a;b],[c;d] when (not Constants.editor) && Typ.eq [a;b] [d;c] -> new cross n m ~name (Info.merge l (Typ.kvl a))
        | _ -> mk_rect n m ~name l
        

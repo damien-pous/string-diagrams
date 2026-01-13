@@ -22,6 +22,8 @@ val pp_env: pp_mode -> formatter -> env -> unit
 val pp_envgraph: pp_mode -> formatter -> env*graph -> unit
 val pp_goal: pp_mode -> formatter -> goal -> unit
 
+val to_pdf: graph -> string -> unit
+
 (* sharing-free copy (by serialisation for now) *)
 val copy: graph -> graph
 

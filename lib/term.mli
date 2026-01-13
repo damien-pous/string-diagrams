@@ -17,5 +17,6 @@ val box: term -> term
 val is_id: term -> bool
 
 val pp: formatter -> term -> unit
+val pp_rocq: formatter -> term -> unit
 
 (* TODO: environments *)

@@ -1,3 +1,8 @@
+let f: A⊗B->B in
+let g: B->C in
+let h: B⊗C->C⊗B in
+1
+
 // let g: A -> A in
 // [g;g]
 
@@ -7,10 +12,10 @@
 // let g: A->A in
 // { x: { i<pos=0,10>: g, j<pos=0,-10>: g, size=5,5}: A->A, size=33,33 }: A -> A
 
-let a: A*A->A in
-let b: A->A in
-let c: A->A in
- (a.id ; [a ; b]) . c
+// let a: A*A->A in
+// let b: A->A in
+// let c: A->A in
+//  (a.id ; [a ; b]) . c
 
 // g . h
 // g ; h

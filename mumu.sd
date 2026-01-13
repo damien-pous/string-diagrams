@@ -1,5 +1,6 @@
-let m<color=red>: A⊗A -> A in
-let n<color=blue>: B⊗B -> B in
-let x<color=violet>: B⊗A -> A⊗B in
-let mn := id·x·id ; m·n in
-mn·id·id ; mn
+let m: M⊗M -> M in
+let n: N⊗N -> N in
+let x: N⊗M -> M⊗N in
+{n1<pos=18.2238,-5.63667>: n,
+ n2<pos=-15.4695,-6.18573>: m,
+ n3<radius=6.;pos=0.954871,13.8456>: x}<size=86.8065,86.8065>: M⊗N⊗M⊗N -> M⊗N

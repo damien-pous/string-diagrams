@@ -3,7 +3,7 @@ open Types
 let hyps l =
   List.rev
     (List.filter_map (function
-         | _, (_, TE e) -> Some e
+         | x, (_, TE e) -> Some (x,e)
          | _ -> None
        ) l)
 

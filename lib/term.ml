@@ -68,3 +68,19 @@ let pp =
     | Tns(u,v)   -> Format.fprintf f (paren "%a·%a") pp u pp v
     | Box u      -> Format.fprintf f "[%a]" pp u
 in pp BOT
+
+
+let pp_rocq =
+  let rec pp o f u =
+    let i = head u in
+    let paren fmt = if o <= i then fmt else "("^^fmt^^")" in
+    let pp = pp i in
+    match u with
+    | Idm n      -> Format.fprintf f "%a" Typ.pp_dot n
+    | Var(_,_,n) -> Format.fprintf f "%s" n
+    | Seq(u,v)   ->
+       if List.length (targets u) <= 2 then Format.fprintf f (paren "%a ; %a") pp u pp v
+       else Format.fprintf f (paren "%a ;; %a") pp u pp v
+    | Tns(u,v)   -> Format.fprintf f (paren "%a·%a") pp u pp v
+    | Box u      -> Format.fprintf f "[%a]" pp u
+in pp BOT

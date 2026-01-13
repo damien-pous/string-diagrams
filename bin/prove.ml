@@ -27,6 +27,7 @@ let vbox = GPack.vbox ~homogeneous:false ~packing:window#add ()
 let da = GMisc.drawing_area ~width ~height ~packing:(vbox#pack ~expand:true) ()
 let arena = GArena.create ~width ~height ~window da ()
 let general_msg = GText.view ~editable:false ~cursor_visible:false ~packing:(vbox#pack) ()
+let _ = general_msg#misc#modify_font_by_name Constants.msg_font
 
 let dialog title action stock stock' filter =
   let dlg = GWindow.file_chooser_dialog

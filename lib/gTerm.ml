@@ -211,4 +211,4 @@ let rec env k e = function
   | r -> e, k e r
 
 let eterm = env term []
-let goal = env equation []
+let goal r = env equation [] r, ""

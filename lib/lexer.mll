@@ -50,9 +50,10 @@ rule token = parse
   | '}'                                    { RBRK }
   | ','                                    { COMMA }
   | ':'                                    { COLON }
-  | ';' | "\\;"                            { SEMI }
+  | ';' | ";;" | "\\;"                     { SEMI }
   | (* ° *) "\xC2\xB0"
-  | (* ∘ *) "\xE2\x88\x98" | "\\circ"      { CIRC }
+  | (* ∘ *) "\xE2\x88\x98" | "\\circ"
+  | (* ∘∘ *) "\xE2\x88\x98\xE2\x88\x98"    { CIRC }
   | '.'
   | (* · *) "\194\183" | "\\cdotp"         { DOT }
   | '*'
@@ -60,11 +61,14 @@ rule token = parse
   | '_'                                    { UNDER }
   | '^'                                    { HAT }
   | '='
+  | (* ≡' *) "\226\137\161\'" 
   | (* ≡ *) "\226\137\161"                 { EQ }
   | ":="                                   { EQDEF }
+  | "~>"
   | "->"                                   { TO }
   | "id"                                   { ID }
   | "let"                                  { LET }
+  | "============================"         { BAR }
   | "in"                                   { IN }
   | int as n                               { INT (int_of_string n) } 
   (* | float as x                             { FLOAT (float_of_string x) } *)

@@ -51,3 +51,7 @@ let pp1 f x =
 let pp f = function
   | [] -> Format.pp_print_char f '1'
   | l -> pp_print_list "⊗" pp1 f l
+
+let pp_dot f = function
+  | [] -> Format.pp_print_char f '1'
+  | l -> pp_print_list "·" pp1 f l

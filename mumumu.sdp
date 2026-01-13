@@ -1,12 +1,9 @@
-let A<color=red> in
-let B<color=blue> in
-let C<color=violet> in
-let m: A^2 -> A in
-let n: B^2-> B in
-let o: C^2-> C in
-let x<color=cacadoie>: B⊗A -> A⊗B in
-let y<color=cacadoie>: C⊗B -> B⊗C in
-let z<color=cacadoie>: C⊗A -> A⊗C in
+let m: M^2 -> M in
+let n: N^2-> N in
+let o: O^2-> O in
+let x: N⊗M -> M⊗N in
+let y: O⊗N -> N⊗O in
+let z: O⊗M -> M⊗O in
 let mno<color=turquoise> := id·id·z·id·id ; id·x·y·id ; m·n·o in
 m·id ; m = id·m ; m ->
 n·id ; n = id·n ; n ->
