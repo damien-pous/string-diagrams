@@ -1,0 +1,9 @@
+let M<color=gray> in
+let N<color=blue> in
+let T<shape=rect;color=yellow>: 1 -> M in
+let h<color=orange>: 1 -> M⊗M in
+let a<color=red>: 1 -> M⊗M in
+let n<color=turquoise>: M⊗M -> 1 in
+let k<color=blue>: M⊗M -> 1 in
+let s!<color=violet>: M -> 1 in
+T·h·a ; n·k·s! 

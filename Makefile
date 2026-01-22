@@ -1,4 +1,3 @@
-RUN=prove
 WWW=~/work/public_html/string-diagrams/
 
 all:: run
@@ -13,10 +12,15 @@ test::
 	dune exec ./bin/text.exe -- -check default
 	dune exec ./bin/text.exe -- -check mumu
 
-run::
+prove::
 	dune build
 	OCAMLRUNPARAM=b dune runtest
-	OCAMLRUNPARAM=b dune exec ./bin/$(RUN).exe -- mumu
+	OCAMLRUNPARAM=b dune exec ./bin/prove.exe -- mumu
+
+edit::
+	dune build
+	OCAMLRUNPARAM=b dune runtest
+	OCAMLRUNPARAM=b dune exec ./bin/edit.exe
 
 www::
 	dune runtest

@@ -76,13 +76,14 @@ let id_color name =
        | ""  -> "void"
        | _   -> "tgray"
      else if name = "" then "void"
-     else match Char.lowercase_ascii name.[0] with
+     else if name = "mn" then "orange" else
+     match Char.lowercase_ascii name.[0] with
        | 'a' -> "yellow"
        | 'b' -> "orange"
        | 'c' -> "red"
        | 'd' -> "violet"
-       | 'e' -> "red" (* "green" *)
-       | 'f' -> "blue" (* "lblue" *)
+       | 'e' -> "turquoise" (* "green" *)
+       | 'f' -> "violet" (* "lblue" *)
        | 'g' -> "violet" (* "blue" *)
        | 'h' -> "turquoise"
        | 'i' -> "purple"
