@@ -64,6 +64,7 @@ let dialog title action stock stock' filter =
 class geditor =
   object
     inherit Editor.mk arena as parent
+    inherit File.SD.writer
     val mutable blocked_entry = false
     method entry = entry#buffer#get_text()
     method set_entry s =
@@ -75,9 +76,6 @@ class geditor =
       if not blocked_entry then parent#on_entry_changed
     method entry_warning = entry_msg#set_text
     method help = print_endline
-    method private read = File.SD.read
-    method private write = File.SD.write
-    method private export = File.SD.export
   end
 let self = new geditor
 

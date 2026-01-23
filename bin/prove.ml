@@ -54,9 +54,8 @@ let dialog title action stock stock' filter =
 class gprover =
   object(self)
     inherit Prover.mk arena
+    inherit File.SDP.writer
     method help = print_endline
-    method private read = File.SDP.read
-    method private write = File.SDP.write
     val open_dialog =
       dialog "Open graph file" `OPEN `OPEN `OPEN 
         (GFile.filter ~name: "SDP file" ~patterns:["*.sdp"] ())

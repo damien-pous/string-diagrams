@@ -24,9 +24,7 @@ class virtual mk (arena: arena) =
     method virtual entry_warning: string -> unit
     method virtual help: string -> unit
 
-    method private virtual read: string -> state
-    method private virtual write: string -> state -> unit
-    method private virtual export: string -> state -> unit
+    inherit [state] Writer.virt
         
     val hist = History.create ("","")
     val mutable env = []
@@ -304,10 +302,9 @@ h:      print this help message"
       History.clear hist
 
     method save_to file =
-      self#write file (env,graph);
-      self#export file (env,graph)
+      self#write file (env,graph)
 
     method private graph_to_pdf =
-      Graph.to_pdf graph "g.pdf";
+      self#write_pdf [Graph.image graph] "g.pdf"
     
   end

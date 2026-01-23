@@ -63,6 +63,14 @@ class type arena =
     method set_clipboard: string -> unit
   end
 
+class type ['a] writer =
+  object
+    method private read: string -> 'a
+    method private write: string -> 'a -> unit
+    method private write_svg: (image*box) list -> string -> unit
+    method private write_pdf: (image*box) list -> string -> unit
+  end
+
 type pp_mode = Full | Sparse | Term | TermIfPossible | Rocq
 
 (* names *)

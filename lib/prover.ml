@@ -27,6 +27,11 @@ class virtual mk (arena: arena) =
     method private virtual do_save: unit
     method private virtual quit: unit
     method virtual fullscreen: unit
+
+    method private virtual read: string -> goal
+    method private virtual write: string -> goal -> unit
+    method private virtual write_svg: (image*box) list -> string -> unit
+    method private virtual write_pdf: (image*box) list -> string -> unit
     
     val mutable state = ([], (Graph.emp(),Graph.emp())), ""
     val mutable mode = `Normal
@@ -295,7 +300,7 @@ class virtual mk (arena: arena) =
             | _ -> "graph",g)
         | _ -> warning "no graph/node to export here"
       in
-      Graph.to_pdf g "g.pdf";
+      self#write_pdf [Graph.image g] "g.pdf";
       temporary#msg "%s exported to g.pdf" k
 
     method private script_to_clipboard =

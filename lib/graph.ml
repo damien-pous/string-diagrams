@@ -849,32 +849,7 @@ let create_box (g: graph) p =
   g#update (MSet.add b nodes_out) (edges_out b);
   b,h
 
-
-open Vg
-
-let multi_pdf l file =  
-  (* export to pdf via cairo (could not find how to get the right fonts with vg) *)
-  match l with
-  | [] -> failwith "cannot export an empty list to PDF"
-  | (image,view)::q ->
-     let size = Box2.size view in
-     let w,h = V2.x size, V2.y size in
-     let i = Cairo.PDF.create file ~w ~h in
-     let cr = Cairo.create i in
-     let vgr = Vgr.create (Vgr_cairo.target cr) `Other in 
-     ignore (Vgr.render vgr (`Image (size, view, image)));
-     List.iter (fun (image,view) ->
-         Cairo.show_page cr;
-         let w,h = V2.x size, V2.y size in
-         Cairo.PDF.set_size i ~w ~h;
-         ignore (Vgr.render vgr (`Image (size, view, image)))
-       ) q;
-     ignore (Vgr.render vgr `End);
-     Cairo.Surface.finish i
-
-let pdf image view file = multi_pdf [image,view] file
-
-let to_pdf (g: graph) f =
+let image (g: graph) =
   let c = new Canvas.basic in
   g#draw c;
-  pdf c#get g#box f
+  (c#get,g#box)

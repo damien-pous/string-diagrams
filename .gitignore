@@ -30,3 +30,7 @@ _opam/
 
 # test files
 test.*
+
+# generated images
+*.pdf
+*.svg

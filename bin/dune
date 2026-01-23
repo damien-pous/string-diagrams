@@ -2,13 +2,13 @@
  (public_name sd-edit)
  (name edit)
  (modules edit)
- (libraries diagrams diagrams_cairo diagrams_gtk))
+ (libraries diagrams diagrams_gtk))
 
 (executable
  (public_name sd-prove)
  (name prove)
  (modules prove)
- (libraries diagrams diagrams_cairo diagrams_gtk))
+ (libraries diagrams diagrams_gtk))
 
 (executable
  (public_name sd)

@@ -6,7 +6,7 @@ open Vg
 
 
 let initial_term =
-  "let f: 2 -> 1 in f*id ; f"
+  "let f: 2 -> 1 in f.id ; f"
 
 module Html = Dom_html
 	
@@ -108,14 +108,12 @@ class arena (canvasdiv: Html.divElement Js.t) (canvas: Html.canvasElement Js.t) 
 
 class editor arena entry infos warnings =
   object
-    inherit Editor.mk arena 
+    inherit Editor.mk arena
+    inherit Writer.fake " from web applet"
     method entry = Js.to_string (entry##.value)
     method set_entry s = entry##.value := Js.string s
     method entry_warning = print warnings
     method help = print infos
-    method private read _ = assert false
-    method private write _ _ = assert false
-    method private export _ _ = assert false
   end
 
 

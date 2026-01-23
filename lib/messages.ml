@@ -35,3 +35,4 @@ let catch f x y k =
   | exception User_error s 
   | exception Failure s -> temporary#msg "%s" s; k(); y
   | exception e -> temporary#msg "%s" (Printexc.to_string e); k(); y
+

@@ -57,6 +57,12 @@ let svg_via_vg image view file =
   ignore (Vgr.render r `End);
   close_out o
 
+class image_writer =
+  object
+    method private write_svg = multi_svg
+    method private write_pdf = multi_pdf
+  end
+
 open Graph
 
 module SD = struct
@@ -74,18 +80,15 @@ let write f l =
   Format.fprintf f "%a" (pp_envgraph Full) l;
   close_out o
 
-let draw g =
-  let c = new Canvas.basic in
-  g#draw c;
-  c#get
-  
-let export f (_,g) =
-  let i,b = draw g, g#box in
-  pdf i b (f^".pdf");
-  svg i b (f^".svg")
-
 let exists f = Sys.file_exists (f ^ ".sd")
-  
+
+class writer =
+  object
+    inherit image_writer
+    method private read = read
+    method private write = write
+  end
+
 end
 
 module SDP = struct
@@ -104,6 +107,13 @@ let write f l =
   close_out o
 
 let exists f = Sys.file_exists (f ^ ".sdp")
+
+class writer =
+  object
+    inherit image_writer
+    method private read = read
+    method private write = write
+  end
   
 end
 

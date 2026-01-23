@@ -12,7 +12,6 @@ val svg: image -> box -> string -> unit
 (* alternative for single page SVG documents, via vg.cairo *)
 val svg_via_vg: image -> box -> string -> unit
 
-
 (* below, files are given by their basenames,
    extensions ".sd", ".sdp", ".pdf" or ".svg" are automativally added *)
 
@@ -25,11 +24,10 @@ module SD: sig
 val read: string -> env*graph
 val write: string -> env*graph -> unit
 
-(* exporting to both PDF & SVG *)
-val export: string -> env*graph -> unit
-
 (* does the given SD file already exists *)
 val exists: string -> bool
+
+class writer: [env*graph] Types.writer
 
 end
 
@@ -42,5 +40,7 @@ val write: string -> goal -> unit
 
 (* does the given SDP file already exists *)
 val exists: string -> bool
+
+class writer: [goal] Types.writer
 
 end

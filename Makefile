@@ -1,6 +1,6 @@
 WWW=~/work/public_html/string-diagrams/
 
-all:: run
+all:: test
 
 build::
 	dune build
