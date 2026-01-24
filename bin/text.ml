@@ -1,15 +1,18 @@
 open Diagrams
 open Diagrams_cairo
-open File.SD
+open File
 
 let check f =
   ignore(read f)
 
 let export f =
   let _,g = read f in
-  let i = Graph.image g in
-  File.multi_pdf [i] f;
-  File.multi_svg [i] f
+  match g with
+  | Types.Eqn _ -> failwith "TODO: export equations"
+  | Types.Trm g ->
+     let i = Graph.image g in
+     File.multi_pdf [i] f;
+     File.multi_svg [i] f
 
 let _ =
   Arg.(parse

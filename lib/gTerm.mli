@@ -17,4 +17,4 @@ and kind =
   | GNode of term
 
 val eterm: Raw.term -> term eterm
-val goal: Raw.term -> term goal
+val state: Raw.term -> term state

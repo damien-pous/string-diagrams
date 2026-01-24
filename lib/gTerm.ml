@@ -210,5 +210,9 @@ let rec env k e = function
      env k ((n,(l,d))::e) u
   | r -> e, k e r
 
+let term_or_equation e = function
+  | Raw.Eqn(u,v) -> Eqn (eqn (term e u) (term e v), "")
+  | r -> Trm (term e r)
+
 let eterm = env term []
-let goal r = env equation [] r, ""
+let state = env term_or_equation []

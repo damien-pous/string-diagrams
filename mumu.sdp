@@ -1,9 +1,0 @@
-let m: M^2 -> M in
-let n: N^2-> N in
-let x: N⊗M -> M⊗N in
-let mn := id·x·id ; m·n in
-let mA: m·id ; m ≡ id·m ; m in
-let nA: n·id ; n ≡ id·n ; n in
-let mx: id·m ; x ≡ x·id ; id·x ; m·id in
-let nx: n·id ; x ≡ id·x ; x·id ; id·n in
-(id·x·id ; m·n)·id·id ; (id·x·id ; m·n) ≡ id·id·(id·x·id ; m·n) ; (id·x·id ; m·n)

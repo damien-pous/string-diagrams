@@ -1,3 +1,4 @@
+(*
 open Diagrams
 open Diagrams_cairo
 open Diagrams_gtk
@@ -10,7 +11,7 @@ let height = 600
 let file = ref
              (match Sys.argv with
               | [|_|] -> "default"
-              | [|_;file|] when File.SD.exists file -> file
+              | [|_;file|] when File.exists file -> file
               | _ -> Format.eprintf "usage: edit [file]\n"; exit 1)
 
 let _ = GtkMain.Main.init ()
@@ -64,7 +65,7 @@ let dialog title action stock stock' filter =
 let self = 
   object(self)
     inherit Editor.mk arena as parent
-    inherit File.SD.writer
+    inherit File.writer
     val mutable blocked_entry = false
     method entry = entry#buffer#get_text()
     method set_entry s =
@@ -172,3 +173,4 @@ let _ = window#show ()
 let _ = atomic_unit self#load_from !file
 let _ = Main.main ()
 
+ *)

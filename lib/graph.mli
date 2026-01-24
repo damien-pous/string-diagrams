@@ -14,13 +14,13 @@ val var_node: typs -> typs -> name -> kvl -> node
 
 (* graphs from raw terms *)
 val graph: Raw.term -> env * graph
-val goal: Raw.term -> goal
+val state: Raw.term -> state
 
 (* textual pretty printing *)
 val pp: pp_mode -> formatter -> graph -> unit
 val pp_env: pp_mode -> formatter -> env -> unit
 val pp_envgraph: pp_mode -> formatter -> env*graph -> unit
-val pp_goal: pp_mode -> formatter -> goal -> unit
+val pp_state: pp_mode -> formatter -> state -> unit
 
 val image: graph -> image*box
 
@@ -32,6 +32,7 @@ val copy: graph -> graph
 val iso: graph -> graph -> bool
 val iso_env: env -> env -> bool
 val iso_envgraph: env*graph -> env*graph -> bool
+val iso_state: state -> state -> bool
 
 (* capturing a subgraph inside a box *)
 val create_box: graph -> polygon -> node*graph

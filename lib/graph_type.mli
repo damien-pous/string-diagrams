@@ -93,4 +93,5 @@ type kind = graph Types.kind
 type env = graph Types.env
 type equation = graph Types.equation
 type eterm = graph Types.eterm
-type goal = graph Types.goal
+type term_or_equation = graph Types.term_or_equation
+type state = graph Types.state

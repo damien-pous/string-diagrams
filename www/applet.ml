@@ -6,7 +6,7 @@ open Vg
 
 
 let initial_term =
-  "let m: A^2 -> A in m.id ; m"
+  "let m: A^2 -> A in m.A ; m = A.m ; m"
 
 module Html = Dom_html
 	
@@ -110,6 +110,7 @@ let onload _ =
   let canvasdiv = get "canvas" in
   let canvas = app canvasdiv Html.createCanvas in
   let entry = app (get "entry") Html.createTextarea in
+  entry##.value := Js.string initial_term;
   let strokes = app (get "strokes") Html.createTextarea in
   strokes##.value := Js.string "type commands here";
   let keys = get "keys" in
@@ -118,7 +119,7 @@ let onload _ =
   let arena = new arena canvasdiv canvas in
   let self =
     object(self)
-      inherit Editor.mk arena
+      inherit Prover.mk arena
       inherit Writer.fake " from web applet"
       method entry = Js.to_string (entry##.value)
       method set_entry s = entry##.value := Js.string s
@@ -175,7 +176,7 @@ let onload _ =
   add_listener entry Html.Event.keyup (atomic onkeyup Js._false);
   (* add_listener entry Html.Event.focus (fun _ -> entryfocused := true; Js._true); *)
   (* add_listener entry Html.Event.blur (fun _ -> entryfocused := false; Js._true); *)
-  entry##.value := Js.string initial_term;
+  self#load_string initial_term;
   strokes##focus;
   Js._false
 

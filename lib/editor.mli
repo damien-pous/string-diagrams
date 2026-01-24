@@ -1,3 +1,4 @@
+(*
 open Types
 open Graph_type
 
@@ -11,3 +12,4 @@ class virtual mk: arena ->
     method virtual entry_warning: string -> unit
     method on_entry_changed: unit
   end
+ *)

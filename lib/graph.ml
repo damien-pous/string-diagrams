@@ -66,21 +66,31 @@ let rec iso g h =
   in
   forall g#ntargets (fun i -> iso_up (Target i) (Target i)) &&
     forall g#nsources (fun i -> iso_dn (Source i) (Source i))
+let iso_eqn (u,v) (u',v') = iso u v && iso u' v'
 let rec iso_env e f =
-  (* TOFIX (what to do with non-T2 elements?) *)
   match e,f with
   | [],[] -> true
-  | (x,(_,T2((n,m),g)))::e, (x',(_,T2((n',m'),h)))::f when x=x' && Typ.eq n n' && Typ.eq m m' ->
-     iso_env e f && (match g,h with
-                     | None, None -> true
-                     | Some g, Some h -> iso g h
-                     | _ -> false)
-  | (x,_)::e,(x',_)::f when x=x' -> iso_env e f
+  | (x,(_,d))::e, (x',(_,d'))::f when x=x' ->
+     iso_env e f && 
+     (match d,d' with
+      | T1, T1 -> true
+      | T2((n,m),g), T2((n',m'),h) when x=x' && Typ.eq n n' && Typ.eq m m' ->
+         (match g,h with
+          | None, None -> true
+          | Some g, Some h -> iso g h
+          | _ -> false)
+      | TE e, TE f -> iso_eqn e f
+      | _ -> false
+     )
   | _ -> false
 let iso_envgraph (e,g) (f,h) =
   iso_env e f && iso g h
-
-
+let iso_state (e,g) (f,h) =
+  iso_env e f &&
+    match g,h with
+    | Trm g, Trm h -> iso g h
+    | Eqn (e,_), Eqn (f,_) -> iso_eqn e f
+    | _ -> false
 
 (** extracting terms from graphs without empty target nodes
     (building on the depth of each node)
@@ -136,8 +146,10 @@ let pp_env mode f (e: env) =
       Format.fprintf f "let %s%a%a in\n" n Info.pp_kvl l (pp_decl mode) d
     ) (List.rev e)
 let pp_envgraph mode f (e,g) = pp_env mode f e; pp mode f g
-let pp_goal mode f ((e,(u,v)),_) = 
-  Format.fprintf f "%a%a ≡ %a@." (pp_env mode) e (pp mode) u (pp mode) v
+let pp_state mode f (e,x) =
+  match x with
+  | Trm u -> Format.fprintf f "%a%a@." (pp_env mode) e (pp mode) u
+  | Eqn((u,v),_) -> Format.fprintf f "%a%a ≡ %a@." (pp_env mode) e (pp mode) u (pp mode) v
 
 
 class links n m: linked =
@@ -687,28 +699,42 @@ let of_gterm u =
 let graph r =
   let e,u = GTerm.eterm r in
   Env.map of_gterm e, of_gterm u
-let goal r =
-  let (e,(u,v)),s = GTerm.goal r in
-  let e,(l,r as g) = Env.map of_gterm e, (of_gterm u, of_gterm v) in
+let map_term_or_equation f = function
+  | Trm g -> Trm (f g)
+  | Eqn((l,r),s) -> Eqn((f l,f r),s)
+let state r =
+  let e,x = GTerm.state r in
+  let e,x = Env.map of_gterm e, map_term_or_equation of_gterm x in  
   let h = List.map snd (Env.hyps e) in
   let placed u = u#pos <> P2.o in
+  let placed_x = match x with Trm g -> placed g | Eqn((l,r),_) -> placed l || placed r in
   let placed (u,v) = placed u || placed v in
-  if not (List.exists placed (g::h)) then (
+  if not (placed_x || List.exists placed h) then (
     let rebox (u,v) = 
       let b = Box2.union u#box v#box in
       u#rebox b; v#rebox b
     in
-    List.iter rebox (g::h);
-    l#scale 2.0; r#scale 2.0;
+    List.iter rebox h;
+    (match x with
+     | Trm g -> g#scale 2.0
+     | Eqn((l,r),_) -> rebox (l,r); l#scale 2.0; r#scale 2.0);
     let ph = List.map (fun (l,r) -> Pad.hpad Constants.spacing [l;r]) h in
     let ph = Pad.hpad (3.*.Constants.spacing) ph in
-    let plr = Pad.hpad Constants.spacing [l;r] in
-    ignore (Pad.vpad (2.*.Constants.spacing) [plr;ph])
-  ); (e,g),s
+    let g = match x with Trm g -> [g] | Eqn((l,r),_) -> [l;r] in
+    let pg = Pad.hpad Constants.spacing g in
+    ignore (Pad.vpad (2.*.Constants.spacing) [pg;ph])
+  ); (e,x)
 
 (* copy a graph by serialisation (is there a nicer way?) *)
 let copy (g: graph) =
-  let g': graph = Marshal.from_string (Marshal.to_string g [Marshal.Closures]) 0 in
+  let g' = 
+    if can_marshal_closures then marshal_copy g
+    else failwith "TODO: copy graph without marshaling"
+      (* let s = Format.asprintf "%a" (pp Full) g in *)
+      (* let l = Lexing.from_string s in *)
+      (* let x = Parser.rawterm Lexer.token l in *)
+      (* snd (graph x) *)
+  in
   Typ.unify ~msg:"Graph.copy" g#sources g'#sources;
   Typ.unify ~msg:"Graph.copy" g#targets g'#targets;
   g'

@@ -64,20 +64,18 @@ class image_writer =
   end
 
 open Graph
-
-module SD = struct
   
 let read f =
   let i = open_in (f^".sd") in
   let l = Lexing.from_channel i in
   let r = Parser.rawterm Lexer.token l in
   close_in i;
-  graph r
+  state r
 
 let write f l =
   let o = open_out (f^".sd") in
   let f = Format.formatter_of_out_channel o in
-  Format.fprintf f "%a" (pp_envgraph Full) l;
+  Format.fprintf f "%a" (pp_state Full) l;
   close_out o
 
 let exists f = Sys.file_exists (f ^ ".sd")
@@ -88,33 +86,3 @@ class writer =
     method private read = read
     method private write = write
   end
-
-end
-
-module SDP = struct
-  
-let read f =
-  let i = open_in (f^".sdp") in
-  let l = Lexing.from_channel i in
-  let t = Parser.rawterm Lexer.token l in
-  close_in i;
-  goal t
-
-let write f l =
-  let o = open_out (f^".sdp") in
-  let f = Format.formatter_of_out_channel o in
-  Format.fprintf f "%a" (pp_goal Full) l;
-  close_out o
-
-let exists f = Sys.file_exists (f ^ ".sdp")
-
-class writer =
-  object
-    inherit image_writer
-    method private read = read
-    method private write = write
-  end
-  
-end
-
-

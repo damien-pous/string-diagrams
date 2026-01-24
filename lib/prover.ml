@@ -3,17 +3,15 @@ open Types
 open Graph_type
 open Messages
 
-type state = goal
-
-let initial_state: state = ([], (Graph.emp(),Graph.emp())),""
+let initial_state: state = ([], Trm (Graph.idm (Typ.flex 1)))
 
 let state_of_string s =
   let l = Lexing.from_string s in
   let x = Parser.rawterm Lexer.token l in
-  Graph.goal x
+  Graph.state x
 
 let string_of_state s =
-  Format.asprintf "%a" (Graph.pp_goal Full) s
+  Format.asprintf "%a" (Graph.pp_state Full) s
 
 let copy_state: state -> state =
   if can_marshal_closures then marshal_copy
@@ -23,10 +21,10 @@ exception Found3 of string*graph*node*graph
 
 let changed = ref false
 
-class virtual mk (arena: arena): [goal] program =
+class virtual mk (arena: arena): [state] program =
   object(self)
 
-    inherit [goal] History.mk copy_state initial_state as parent
+    inherit [state] History.mk copy_state initial_state as parent
 
     method private virtual write_svg: _
     method private virtual write_pdf: _
@@ -36,38 +34,60 @@ class virtual mk (arena: arena): [goal] program =
     method private virtual save_dialog: _
     method private virtual quit: _
     method virtual fullscreen: _
+    method virtual entry: _
+    method virtual set_entry: _
+    method virtual entry_warning: _
     
     val mutable mode = `Normal
 
     val mutable state = initial_state
     method private state = state
-    method private goal = fst state
-    method private script = snd state
-    method private env = fst self#goal
-    method private hyps = Env.hyps self#env 
-    method private lhs = fst (snd self#goal)
-    method private rhs = snd (snd self#goal)
+    method private term_or_equation = snd state
+    method private env = fst state
+    method private hyps = Env.hyps self#env
+    method private graph =
+      match self#term_or_equation with
+      | Trm g -> g
+      | Eqn _ -> error "single graph expected and equation found"    
+    method private lhs =
+      match self#term_or_equation with
+      | Eqn ((g,_),_) -> g
+      | Trm _ -> error "equation expected and single graph found (lhs)"
+    method private rhs =
+      match self#term_or_equation with
+      | Eqn ((_,g),_) -> g
+      | Trm _ -> error "equation expected and single graph found (rhs)"
+    method private script =
+      match self#term_or_equation with
+      | Eqn (_,s) -> s
+      | Trm _ -> error "equation expected and single graph found (script)"
+    method private add_script: 'a. ('a, formatter, unit) format -> 'a =
+      match self#term_or_equation with
+      | Eqn (e,s) ->
+         Format.kasprintf (fun s' -> state <- self#env,Eqn(e,s^"\n"^s'))
+      | Trm _ -> error "equation expected and single graph found (add_script)"
+      
     method private iter_graphs f =
       List.iter (fun (_,(l,r)) -> f l; f r) self#hyps;
-      f self#lhs; f self#rhs
+      match self#term_or_equation with
+      | Eqn ((l,r),_) -> f l; f r
+      | Trm g -> f g
     method private fold_graphs: 'a. (graph -> 'a -> 'a) -> 'a -> 'a = fun f a ->
       List.fold_right (fun (_,(l,r)) a -> f l (f r a)) self#hyps
-      (f self#lhs (f self#rhs a))
-
-    method private add_script: 'a. ('a, formatter, unit) format -> 'a =
-      Format.kasprintf (fun s -> state <- self#goal, (self#script^"\n"^s))
+        (match self#term_or_equation with
+         | Eqn ((l,r),_) -> f l (f r a)
+         | Trm g -> f g a)
     
     method private box =
-      Gg.Box2.(
-          List.fold_right (fun (_,(l,r)) -> union (union l#box r#box)) self#hyps
-            (union self#lhs#box self#rhs#box))
+      Gg.Box2.(self#fold_graphs (fun g -> union g#box) empty)
 
-    method private redraw =
+    method private redraw ?(rebox=false) () =
       arena#canvas#clear;
       self#iter_graphs (fun g -> g#draw arena#canvas);
       List.iter (fun (_,(l,r)) -> arena#canvas#text (Gg.P2.mid l#pos r#pos) "=") self#hyps;
       arena#canvas#text (Gg.P2.mid self#lhs#pos self#rhs#pos)
         (if self#lhs#get "fill" = None then "=?=" else "=");
+      if rebox then arena#ensure self#box;
       self#refresh
 
     method private refresh =
@@ -101,7 +121,7 @@ class virtual mk (arena: arena): [goal] program =
     method private set_state s =
       state <- s;
       mode <- `Normal;
-      self#redraw
+      self#redraw()
 
     method private changed_nocheckpoint =
       if Graph.iso self#lhs self#rhs then
@@ -114,6 +134,22 @@ class virtual mk (arena: arena): [goal] program =
     method private changed =
       self#changed_nocheckpoint;
       self#checkpoint;
+
+    method on_entry_changed =
+      debug_msg "entry" "on entry changed with `%s'" self#entry;
+      mode <- `Normal;
+      match state_of_string self#entry with
+      | state' ->
+         self#entry_warning "";
+         if not (Graph.iso_state state state') then (
+           debug_msg "entry" "on entry and state changed";
+           state <- state';
+           self#checkpoint;
+           self#redraw ~rebox:true ()
+         )
+      | exception (Failure s) -> self#entry_warning s
+      | exception Parser.Error -> self#entry_warning "Parsing error"
+      | exception e -> self#entry_warning (Printexc.to_string e)
       
     method private catch =
       let p = arena#pointer in
@@ -154,7 +190,7 @@ class virtual mk (arena: arena): [goal] program =
 
     method private improve_placement force =      
       if not (self#fold_graphs (fun g s -> g#improve ~force && s) true) || force then        
-        self#redraw
+        self#redraw()
     method private perturbate =
       self#improve_placement true
     
@@ -276,7 +312,7 @@ class virtual mk (arena: arena): [goal] program =
     method load_string s =
       let l = Lexing.from_string s in
       let x = Parser.rocqgoal Lexer.token l in
-      self#load (Graph.goal x)
+      self#load (Graph.state x)
       
     method private load_from_clipboard =
       self#load_string arena#clipboard
@@ -346,14 +382,14 @@ r       redraw picture
 h       print this help message"
           | "f" -> self#release
           | "u" -> self#unfold
-          | "t" -> Constants.toggle_labels(); self#redraw
+          | "t" -> Constants.toggle_labels(); self#redraw()
           | "p" -> self#graph_to_pdf
           | "l" -> self#load_from_clipboard
           | "e" -> self#graph_to_clipboard
           | "E" -> self#script_to_clipboard
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1
-          | "=" -> arena#fit self#box; self#redraw
+          | "=" -> self#redraw ~rebox:true ()
           | "1" -> self#rewrite 1
           | "2" -> self#rewrite 2
           | "3" -> self#rewrite 3
@@ -366,7 +402,7 @@ h       print this help message"
           | "ArrowLeft" -> self#undo()
           | "ArrowRight" -> self#redo()
           | " " -> play <- not play
-          | "r" -> self#redraw
+          | "r" -> self#redraw()
           | "!" -> self#refresh
           | "q" -> self#quit
           | "" -> ()

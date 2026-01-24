@@ -85,6 +85,11 @@ class type virtual ['a] program =
     method virtual private quit: unit
     method virtual fullscreen: unit
 
+    method virtual entry: string
+    method virtual set_entry: string -> unit
+    method virtual entry_warning: string -> unit
+    method on_entry_changed: unit
+    
     (* Boolean indicates whether control is pressed *)
     method on_key_press: bool -> string -> unit
     (* Boolean indicates whether shift is pressed *)
@@ -120,9 +125,9 @@ type 't equation = 't * 't
 
 (* declarations *)
 type 't decl =
-  | T1
-  | T2 of typ1 * 't option
-  | TE of 't equation
+  | T1                          (* object declaration *)
+  | T2 of typ1 * 't option      (* morphism declaration (type + potential body) *)
+  | TE of 't equation           (* equation declaration *)
 
 (* environments *)
 type 't env = (name * (kvl * 't decl)) list
@@ -130,8 +135,11 @@ type 't env = (name * (kvl * 't decl)) list
 (* terms in environment *)
 type 't eterm = 't env * 't
 
-(* goals (horn sentences) + current script *)
-type 't goal = ('t env * 't equation) * string
+(* terms or equations (with current script) *)
+type 't term_or_equation = Trm of 't | Eqn of ('t * 't) * string
+
+(* program states *)
+type 't state = 't env * 't term_or_equation
 
 
 (* input/output ports

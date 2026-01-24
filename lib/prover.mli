@@ -1,4 +1,4 @@
 open Types
 open Graph_type
 
-class virtual mk: arena -> [goal] program
+class virtual mk: arena -> [state] program

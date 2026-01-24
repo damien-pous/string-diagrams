@@ -17,30 +17,12 @@ val svg_via_vg: image -> box -> string -> unit
 
 open Graph_type
 
-(* reading from / writing to SD files (string diagrams) *)
+(* reading from / writing to string diagrams files *)
 
-module SD: sig
-
-val read: string -> env*graph
-val write: string -> env*graph -> unit
+val read: string -> state
+val write: string -> state -> unit
 
 (* does the given SD file already exists *)
 val exists: string -> bool
 
-class writer: [env*graph] Types.writer
-
-end
-
-(* reading from SDP files (string diagram proofs) *)
-
-module SDP: sig
-
-val read: string -> goal
-val write: string -> goal -> unit
-
-(* does the given SDP file already exists *)
-val exists: string -> bool
-
-class writer: [goal] Types.writer
-
-end
+class writer: [state] Types.writer

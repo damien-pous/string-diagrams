@@ -10,7 +10,7 @@ let height = 1000
 let file = ref
              (match Sys.argv with
               | [|_|] -> "default"
-              | [|_;file|] when File.SDP.exists file -> file
+              | [|_;file|] when File.exists file -> file
               | _ -> Format.eprintf "usage: prove [file]\n"; exit 1)
 
 let _ = GtkMain.Main.init ()
@@ -54,15 +54,15 @@ let dialog title action stock stock' filter =
 let self =
   object(self)
     inherit Prover.mk arena
-    inherit File.SDP.writer
+    inherit File.writer
     method help = print_endline
     val open_dialog =
-      dialog "Open diagrammatic proof file" `OPEN `OPEN `OPEN 
-        (GFile.filter ~name: "SDP file" ~patterns:["*.sdp"] ())
+      dialog "Open diagram file" `OPEN `OPEN `OPEN 
+        (GFile.filter ~name: "SD file" ~patterns:["*.sd"] ())
     method private open_dialog = open_dialog self#load_from
     val saveas_dialog=
-      dialog "Save diagrammatic proof as" `SAVE `SAVE `SAVE 
-        (GFile.filter ~name: "SDP file" ~patterns:["*.sdp"] ())
+      dialog "Save diagram file as" `SAVE `SAVE `SAVE 
+        (GFile.filter ~name: "SD file" ~patterns:["*.sd"] ())
     method private saveas_dialog = saveas_dialog self#save_to
     method private save_dialog =
       self#save_to !file
@@ -70,7 +70,10 @@ let self =
     val mutable fs = false
     method fullscreen =
       if fs then window#unfullscreen() else window#fullscreen();
-      fs <- not fs    
+      fs <- not fs
+    method entry = ""
+    method set_entry _s = ()
+    method entry_warning _ = ()
   end
 
 let on_button_press ev =
