@@ -9,8 +9,8 @@ val redo: 'a t -> 'a option
 
 
 class virtual ['a] mk:
-      ('a -> string) ->           (* serialize *)
-      (string -> 'a) ->           (* deserialize *)
+  ('a -> 'a) ->             (* deep copy function *)
+  'a ->                     (* initial state *)
   object
     method private virtual state: 'a
     method private virtual set_state: 'a -> unit

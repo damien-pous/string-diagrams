@@ -1,3 +1,4 @@
+open Misc
 open Types
 open Graph
 open Graph_type
@@ -5,23 +6,27 @@ open Messages
 
 type state = env * graph
 
+let initial_state: state = ([], Graph.emp())
+
 let state_of_string s =
-  (* (Marshal.from_string s 0: state)  *)
   let l = Lexing.from_string s in
   let r = Parser.rawterm Lexer.token l in
   graph r
 
-let string_of_state (s: state) =
-  (* Marshal.to_string s [Marshal.Closures]  *)
-  Format.asprintf "%a" (pp_envgraph Full) s
+let string_of_state s =
+  Format.asprintf "%a" (Graph.pp_envgraph Full) s
 
 let entry_of_state =
   Format.asprintf "%a" (pp_envgraph TermIfPossible)
 
+let copy_state: state -> state =
+  if can_marshal_closures then marshal_copy
+  else fun s -> state_of_string (string_of_state s)
+
 class virtual mk (arena: arena) =
   object(self)
 
-    inherit [state] History.mk string_of_state state_of_string as parent
+    inherit [state] History.mk copy_state initial_state as parent
         
     method virtual entry: string
     method virtual set_entry: string -> unit
@@ -35,11 +40,11 @@ class virtual mk (arena: arena) =
     method virtual private save_dialog: unit
     method virtual private quit: unit
     method virtual fullscreen: unit
-        
-    val mutable env = []
-    val mutable graph = Graph.emp()
-    val mutable mode = `Normal
 
+    val mutable mode = `Normal
+    val mutable env = fst initial_state
+    val mutable graph = snd initial_state
+    
     method private box = graph#box
     
     method private redraw ?(rebox=false) () =

@@ -9,9 +9,9 @@
 (* %token <Types.perm> PRM *)
 (* %token <float> FLOAT *)
 
+%nonassoc EQ
 %left COLON
 %right TO
-%nonassoc EQ
 %left SEMI
 %right CIRC
 %left DOT

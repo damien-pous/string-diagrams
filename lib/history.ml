@@ -26,7 +26,7 @@ open Messages
 
 
 
-class virtual ['a] mk serialize deserialize =
+class virtual ['a] mk copy s0 =
   object(self)
 
     method private virtual state: 'a
@@ -35,26 +35,23 @@ class virtual ['a] mk serialize deserialize =
     method private virtual read: string -> 'a
     method private virtual write: string -> 'a -> unit
     
-    val hist = create ""
-
-    method private set_sstate s =
-      self#set_state (deserialize s)
+    val hist = create s0
 
     method private checkpoint =
-      save hist (serialize self#state) 
+      save hist (copy self#state) 
 
     method private abort =
       let s = present hist in
-      self#set_sstate s
+      self#set_state s
     
     method undo () =
       match undo hist with
-      | Some s -> self#set_sstate s
+      | Some s -> self#set_state s
       | None -> warning "no more undos"
 
     method redo () =
       match redo hist with
-      | Some s -> self#set_sstate s
+      | Some s -> self#set_state s
       | None -> warning "no more redos"
 
     method load (s: 'a) =

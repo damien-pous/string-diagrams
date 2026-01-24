@@ -1,7 +1,9 @@
 open Gg
 open Vg
 
+(* are we running the editor *)
 val editor: bool
+
 val labels: bool ref
 val toggle_labels: unit -> unit
 

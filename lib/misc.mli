@@ -32,3 +32,8 @@ val float_of_string: string -> float
 val p2_of_string: string -> Gg.P2.t
 val string_of_p2: Gg.P2.t -> string
 
+
+(* is the runtime able to marshal closures *)
+val can_marshal_closures: bool
+(* deep copy by marshaling *)
+val marshal_copy: 'a -> 'a

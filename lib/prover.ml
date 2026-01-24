@@ -1,16 +1,23 @@
+open Misc
 open Types
 open Graph_type
 open Messages
 
-let state_of_string s =
-  (Marshal.from_string s 0: goal)
-  (* let l = Lexing.from_string s in *)
-  (* let x = Parser.rawterm Lexer.token l in *)
-  (* Graph.goal x *)
+type state = goal
 
-let string_of_state (s: goal) =
-  Marshal.to_string s [Marshal.Closures]
-  (* Format.asprintf "%a" (Graph.pp_goal Full) s *)
+let initial_state: state = ([], (Graph.emp(),Graph.emp())),""
+
+let state_of_string s =
+  let l = Lexing.from_string s in
+  let x = Parser.rawterm Lexer.token l in
+  Graph.goal x
+
+let string_of_state s =
+  Format.asprintf "%a" (Graph.pp_goal Full) s
+
+let copy_state: state -> state =
+  if can_marshal_closures then marshal_copy
+  else fun s -> state_of_string (string_of_state s)
 
 exception Found3 of string*graph*node*graph
 
@@ -19,7 +26,7 @@ let changed = ref false
 class virtual mk (arena: arena): [goal] program =
   object(self)
 
-    inherit [goal] History.mk string_of_state state_of_string as parent
+    inherit [goal] History.mk copy_state initial_state as parent
 
     method private virtual write_svg: _
     method private virtual write_pdf: _
@@ -30,9 +37,9 @@ class virtual mk (arena: arena): [goal] program =
     method private virtual quit: _
     method virtual fullscreen: _
     
-    val mutable state = ([], (Graph.emp(),Graph.emp())), ""
     val mutable mode = `Normal
 
+    val mutable state = initial_state
     method private state = state
     method private goal = fst state
     method private script = snd state

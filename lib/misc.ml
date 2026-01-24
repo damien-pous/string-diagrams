@@ -57,3 +57,11 @@ let p2_of_string s =
 
 let string_of_p2 p =
   Format.sprintf "%g,%g" (Gg.P2.x p) (Gg.P2.y p)
+
+
+let marshal_copy (x: 'a): 'a =
+  Marshal.(from_string (to_string x [Closures]) 0)
+
+let can_marshal_closures =
+  try marshal_copy (fun () -> true) ()
+  with Failure _ -> Format.eprintf "warning: cannot Marshal closures on this platform@."; false
