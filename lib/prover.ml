@@ -5,33 +5,30 @@ open Messages
 let state_of_string s =
   (Marshal.from_string s 0: goal)
   (* let l = Lexing.from_string s in *)
-  (* let x = Parser.equations Lexer.token l in *)
-  (* Graph.equations x *)
+  (* let x = Parser.rawterm Lexer.token l in *)
+  (* Graph.goal x *)
 
 let string_of_state (s: goal) =
-  Marshal.to_string s [Marshal.Closures] 
-  (* Format.asprintf "%a" (pp_equations Full) *)
+  Marshal.to_string s [Marshal.Closures]
+  (* Format.asprintf "%a" (Graph.pp_goal Full) s *)
 
 exception Found3 of string*graph*node*graph
 
 let changed = ref false
 
-class virtual mk (arena: arena) =
+class virtual mk (arena: arena): [goal] program =
   object(self)
 
-    inherit [goal]History.mk string_of_state state_of_string as parent
-    method private virtual help: string -> unit
+    inherit [goal] History.mk string_of_state state_of_string as parent
 
-    method private virtual open_dialog: unit
-    method private virtual saveas_dialog: unit
-    method private virtual do_save: unit
-    method private virtual quit: unit
-    method virtual fullscreen: unit
-
-    method private virtual read: string -> goal
-    method private virtual write: string -> goal -> unit
-    method private virtual write_svg: (image*box) list -> string -> unit
-    method private virtual write_pdf: (image*box) list -> string -> unit
+    method private virtual write_svg: _
+    method private virtual write_pdf: _
+    method private virtual help: _
+    method private virtual open_dialog: _
+    method private virtual saveas_dialog: _
+    method private virtual save_dialog: _
+    method private virtual quit: _
+    method virtual fullscreen: _
     
     val mutable state = ([], (Graph.emp(),Graph.emp())), ""
     val mutable mode = `Normal
@@ -66,12 +63,6 @@ class virtual mk (arena: arena) =
         (if self#lhs#get "fill" = None then "=?=" else "=");
       self#refresh
 
-    method !load' f =
-      (* not optimal: parent#load already calls #redraw, via #set_state *)
-      parent#load' f;
-      arena#fit self#box;
-      self#redraw
-    
     method private refresh =
       (match mode with
        | `Select (g,p) ->
@@ -271,10 +262,17 @@ class virtual mk (arena: arena) =
          (* (match self#catch with `N(g,n) -> temporary#msg "depth %i" (g#depth n) | _ -> ()); *)
          (* self#refresh *)
 
-    method private load_from_clipboard =
-      let l = Lexing.from_string arena#clipboard in
+    method !load v =
+      parent#load v;
+      arena#fit self#box
+             
+    method load_string s =
+      let l = Lexing.from_string s in
       let x = Parser.rocqgoal Lexer.token l in
-      self#load' (Graph.goal x)
+      self#load (Graph.goal x)
+      
+    method private load_from_clipboard =
+      self#load_string arena#clipboard
 
     method private graph_to_clipboard =
       let k,g = 
@@ -310,7 +308,7 @@ class virtual mk (arena: arena) =
     method on_key_press ctrl s =
       if ctrl then
         (match s with
-         | "s" -> self#do_save
+         | "s" -> self#save_dialog
          | "e" -> self#saveas_dialog
          | "o" -> self#open_dialog
          | "f" -> self#fullscreen

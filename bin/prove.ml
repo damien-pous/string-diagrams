@@ -51,28 +51,27 @@ let dialog title action stock stock' filter =
                  | None -> ()
                )) () () dlg#misc#hide
 
-class gprover =
+let self =
   object(self)
     inherit Prover.mk arena
     inherit File.SDP.writer
     method help = print_endline
     val open_dialog =
-      dialog "Open graph file" `OPEN `OPEN `OPEN 
+      dialog "Open diagrammatic proof file" `OPEN `OPEN `OPEN 
         (GFile.filter ~name: "SDP file" ~patterns:["*.sdp"] ())
-    method private open_dialog = open_dialog self#load
+    method private open_dialog = open_dialog self#load_from
     val saveas_dialog=
-      dialog "Save graphs as" `SAVE `SAVE `SAVE 
-        (GFile.filter ~name: "SD file" ~patterns:["*.sd"] ())
-    method private saveas_dialog = saveas_dialog self#save
-    method private do_save =
-      self#save !file
+      dialog "Save diagrammatic proof as" `SAVE `SAVE `SAVE 
+        (GFile.filter ~name: "SDP file" ~patterns:["*.sdp"] ())
+    method private saveas_dialog = saveas_dialog self#save_to
+    method private save_dialog =
+      self#save_to !file
     method private quit = Main.quit()
     val mutable fs = false
     method fullscreen =
       if fs then window#unfullscreen() else window#fullscreen();
       fs <- not fs    
   end
-let self = new gprover
 
 let on_button_press ev =
   let state = GdkEvent.Button.state ev in
@@ -132,6 +131,6 @@ let _ = window#connect#destroy ~callback:Main.quit
 (* let _ = window#add_accel_group accel_group *)
 let _ = self#fullscreen
 let _ = window#show ()
-let _ = atomic_unit self#load !file
+let _ = atomic_unit self#load_from !file
 let _ = Main.main ()
 

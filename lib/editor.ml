@@ -6,35 +6,42 @@ open Messages
 type state = env * graph
 
 let state_of_string s =
+  (* (Marshal.from_string s 0: state)  *)
   let l = Lexing.from_string s in
   let r = Parser.rawterm Lexer.token l in
   graph r
 
-let string_of_state =
-  Format.asprintf "%a" (Graph.pp_envgraph Full)
+let string_of_state (s: state) =
+  (* Marshal.to_string s [Marshal.Closures]  *)
+  Format.asprintf "%a" (pp_envgraph Full) s
 
 let entry_of_state =
-  Format.asprintf "%a" (Graph.pp_envgraph TermIfPossible)
+  Format.asprintf "%a" (pp_envgraph TermIfPossible)
 
 class virtual mk (arena: arena) =
   object(self)
-    
+
+    inherit [state] History.mk string_of_state state_of_string as parent
+        
     method virtual entry: string
     method virtual set_entry: string -> unit
     method virtual entry_warning: string -> unit
-    method virtual help: string -> unit
+    method virtual private write_svg: (image*box) list -> string -> unit
+    method virtual private write_pdf: (image*box) list -> string -> unit
 
-    inherit [state] Writer.virt
+    method virtual private help: string -> unit
+    method virtual private open_dialog: unit
+    method virtual private saveas_dialog: unit
+    method virtual private save_dialog: unit
+    method virtual private quit: unit
+    method virtual fullscreen: unit
         
-    val hist = History.create ("","")
     val mutable env = []
     val mutable graph = Graph.emp()
     val mutable mode = `Normal
 
-    method private checkpoint =
-      debug_msg "checkpoint" "%a" (pp_envgraph TermIfPossible) (env,graph);
-      History.save hist (string_of_state (env,graph),self#entry)      
-
+    method private box = graph#box
+    
     method private redraw ?(rebox=false) () =
       arena#canvas#clear;
       graph#draw arena#canvas;
@@ -112,30 +119,22 @@ class virtual mk (arena: arena) =
       );
       arena#refresh
     
-    method private set_state ?rebox ?s (e,g) =
+    method private state = env,graph
+    method private set_state (e,g) =
       env <- e;
       graph <- g;
-      let s = match s with
-        | Some s -> s
-        | None -> entry_of_state (e,g)
-      in
-      self#set_entry s;
+      self#set_entry (entry_of_state (e,g));
       mode <- `Normal;
-      self#redraw ?rebox ()
+      self#redraw ~rebox:true ()
 
-    method private abort =
-      let (eg,s) = History.present hist in
-      self#set_state ~s (state_of_string eg)
-    
-    method undo () =
-      match History.undo hist with
-      | Some (eg,s) -> self#set_state ~s (state_of_string eg)
-      | None -> warning "no more undos"
-
-    method redo () =
-      match History.redo hist with
-      | Some (eg,s) -> self#set_state ~s (state_of_string eg)
-      | None -> warning "no more redos"
+    method !load v =
+      parent#load v;
+      arena#fit self#box
+             
+    method load_string s =
+      let l = Lexing.from_string s in
+      let x = Parser.rawterm Lexer.token l in
+      self#load (Graph.graph x)
 
     method on_entry_changed =
       debug_msg "entry" "on entry changed with `%s'" self#entry;
@@ -205,7 +204,12 @@ class virtual mk (arena: arena) =
       | `N n -> f n; self#checkpoint
       | _ -> warning "no node to %s here" (if b then "fix" else "release")
 
-    method on_button_press =
+    method private graph_to_pdf =
+      self#write_pdf [Graph.image graph] "g.pdf"
+
+    method on_tic = ()
+    
+    method on_button_press (_ctrl: bool) =
       match mode with 
       | `Normal ->
          (match self#catch with
@@ -252,8 +256,18 @@ class virtual mk (arena: arena) =
          self#refresh         
       | _ -> self#refresh
 
-    method on_key_press s =
-      if s = "Escape" then self#abort
+    method on_key_press ctrl s =
+      if ctrl then
+        (match s with
+         | "s" -> self#save_dialog
+         | "e" -> self#saveas_dialog
+         | "o" -> self#open_dialog
+         | "f" -> self#fullscreen
+         | "z" -> self#undo()
+         | "r" -> self#redo()
+         | "q" -> self#quit
+         | s -> warning "skipping key control %s" s)
+      else if s = "Escape" then self#abort
       else match mode with
       | `Normal | `Move_node _ ->
          (match s with
@@ -290,21 +304,5 @@ h:      print this help message"
           | s -> warning "skipping key '%s'" s)
       | `New_node -> mode <- `Normal; self#add_node s
       | _ -> warning "ignored key `%s' during ongoing action" s
-
-    method init s =
-      self#set_state ~rebox:true ~s (state_of_string s);
-      self#checkpoint;
-      History.clear hist
-
-    method load_from file =
-      self#set_state ~rebox:true (self#read file);
-      self#checkpoint;
-      History.clear hist
-
-    method save_to file =
-      self#write file (env,graph)
-
-    method private graph_to_pdf =
-      self#write_pdf [Graph.image graph] "g.pdf"
     
   end

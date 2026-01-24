@@ -1,12 +1,12 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html lang="en">
 <head>
-<title>Algebras and axioms for graphs of bounded treewidth</title>
+<title>String diagrams for monoidal categories</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta http-equiv="Content-Language" content="en">
-<meta name="author" content="Amina Doumane, Samuel Humeau, Damien Pous">
-<meta name="keywords" content="graphs; hypergraphs; treewidth; algebra; presentation; axiomatisation">
-<meta name="description" content="A web applet to play with graphs and their algebraic presentations">
+<meta name="author" content="Damien Pous">
+<meta name="keywords" content="monoidal categories; string diagrams; rocq">
+<meta name="description" content="A web applet to play with string diagrams and the corresponding terms in monoidal categories">
 <script type="text/javascript" src="applet.bc.js"></script>
 <link rel="stylesheet" type="text/css" href="hip.css">
 <style type="text/css">
@@ -19,20 +19,13 @@ A.comment { color: #600020 }
 
 <body>
 
-<h1>Algebras and axioms for graphs of bounded treewidth</h1>
+<h1>String diagrams for monoidal categories</h1>
 
 <p>
-  This is a web appendix to the following paper, to be presented at ICALP 2024:
-</p>
-<p>
-  <a href="https://hal.science/hal-04560570/document">
-    A finite presentation of graphs of treewidth at most three</a>, by
-  <a href="https://perso.ens-lyon.fr/amina.doumane/">Amina Doumane</a>,
-  <a href="https://perso.ens-lyon.fr/damien.pous/">Damien Pous</a> and
-  <a href="https://perso.ens-lyon.fr/samuel.humeau/">Samuel Humeau</a>.
+  <a href="https://perso.ens-lyon.fr/damien.pous/">Damien Pous</a>
 </p>
 
-<p> Below you can enter a term to see its graph (the syntax is explained at the bottom of this page)</p>
+<p> Below you can enter a term to see its string diagram</p>
 <div id="entry"></div>
 <p> You may move elements using the mouse, or zoom using control-scroll. You may also type commands in the box below to add/remove elements, etc (press 'h' for a list)</p>
 <div id="strokes"></div><br>
@@ -40,45 +33,11 @@ A.comment { color: #600020 }
 <div id="canvas"></div><br>
 <div id="warnings"></div><br>
 
-<h2>Syntax</h2>
-
-<table>
-<tr><td colspan="2"><em>== terms (u,v) ==</em></td></tr>
-<tr><td>0            </td><td>empty graph</td></tr>
-<tr><td>a            </td><td>a-labeled edge</td></tr>
-<tr><td>u | v        </td><td>parallel composition</td></tr>
-<tr><td>fu           </td><td>forget u</td></tr>
-<tr><td>lu           </td><td>lift u</td></tr>
-<tr><td>pu           </td><td>permute p u</td></tr>
-<tr><td>ru	     </td><td>swap last two sources of u</td></tr>
-<tr><td>iu           </td><td>u located according to injection i</td></tr>
-<tr><td>s(u1,...,uk) </td><td>series composition (without the forget)</td></tr>
-<tr><td>*(u1,...,uk) </td><td>star operation</td></tr>
-<tr><td>u.v          </td><td>binary sequential composition</td></tr>
-<tr><td>u'           </td><td>swap last two sources</td></tr>
-<tr><td></td></tr>
-<tr><td colspan="2"><em>== sourced terms (at top level only) ==</em></td></tr>
-<tr><td>#k u         </td><td>set arity to k</td></tr>
-<tr><td></td></tr>
-<tr><td colspan="2"><em>== labels (a) ==</em></td></tr>
-<tr><td>s            </td><td>when s does not start with f/l/s/r, which are reserved for forgets/lifts/series/swaplast</td></tr>
-<tr><td>-s           </td><td>when s does so, or when s is empty</td></tr>
-<tr><td></td></tr>
-<tr><td colspan="2"><em>== permutations (p) ==</em></td></tr>
-<tr><td>[231]         </td><td>explicit permutation of size <=9</td></tr>
-<tr><td>(234)         </td><td>cyclic permutation (here, [1342]), of size <=9</td></tr>
-<tr><td>[1,..,8,10,9] </td><td>explicit permutation of possibly greater size</td></tr>
-<tr><td>(9,10)        </td><td>cyclic permutation of possible greater size</td></tr>
-<tr><td colspan="2">(note: the identity permutations cannot be written)</td></tr>
-<tr><td></td></tr>
-<tr><td colspan="2"><em>== injections (i) ==</em></td></tr>
-<tr><td>{264}         </td><td>injection mapping 1 to 2, 2 to 6, 3 to 4</td></tr>
-<tr><td>{2,6,11}      </td><td>injection with potentially bigger values</td></tr>
-<tr><td>{011}         </td><td>injection mapping 1 to 11</td></tr>
-</table>
+<h2> Keys</h2>
+<div id="keys"></div><br>
 
 <h2> Code</h2>
-The source code for this applet (as well as a standalone GTK program) is available on <a href="https://github.com/damien-pous/hypergraph">Github</a>.
+The source code for this applet (as well as a standalone GTK program) is available on <a href="https://github.com/damien-pous/string-diagrams">Github</a>.
 
 </body>
 </html>

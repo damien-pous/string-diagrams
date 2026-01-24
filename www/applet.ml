@@ -6,7 +6,7 @@ open Vg
 
 
 let initial_term =
-  "let f: 2 -> 1 in f.id ; f"
+  "let m: A^2 -> A in m.id ; m"
 
 module Html = Dom_html
 	
@@ -106,33 +106,41 @@ class arena (canvasdiv: Html.divElement Js.t) (canvas: Html.canvasElement Js.t) 
 
   end
 
-class editor arena entry infos warnings =
-  object
-    inherit Editor.mk arena
-    inherit Writer.fake " from web applet"
-    method entry = Js.to_string (entry##.value)
-    method set_entry s = entry##.value := Js.string s
-    method entry_warning = print warnings
-    method help = print infos
-  end
-
-
 let onload _ =
   let canvasdiv = get "canvas" in
   let canvas = app canvasdiv Html.createCanvas in
   let entry = app (get "entry") Html.createTextarea in
   let strokes = app (get "strokes") Html.createTextarea in
   strokes##.value := Js.string "type commands here";
+  let keys = get "keys" in
   let infos = get "infos" in
   let warnings = get "warnings" in
   let arena = new arena canvasdiv canvas in
-  let self = new editor arena entry infos warnings in
+  let self =
+    object(self)
+      inherit Editor.mk arena
+      inherit Writer.fake " from web applet"
+      method entry = Js.to_string (entry##.value)
+      method set_entry s = entry##.value := Js.string s
+      method entry_warning = print warnings
+      method help = print keys
+      method private open_dialog = print warnings "cannot open files from the web applet"
+      method private saveas_dialog = print warnings "cannot save files from the web applet"
+      method private save_dialog = self#saveas_dialog
+      method private quit = print warnings "cannot quit the web applet"
+      method fullscreen =
+        ignore Brr.(    
+          Fut.of_promise ~ok:ignore @@
+            Jv.call (El.to_jv (Document.body G.document)) "requestFullscreen" [||])
+    end
+  in
+  (* self#on_key_press "h"; *)
   (* let entryfocused = ref false in *)
   let onkeypress b ev =
     (* if not b || not !entryfocused then *)
     (match Js.to_string (Js.Optdef.get ev##.key (fun _ -> assert false)) with
-      | "Control" | "Alt" | "Shift" | "Meta" | "Tab" -> ()
-      | s -> self#on_key_press s);
+     | "Control" | "Alt" | "Shift" | "Meta" | "Tab" -> ()
+     | s -> self#on_key_press false s);
     Js.bool (b || Js.to_string (Js.Optdef.get ev##.key (fun _ -> assert false)) = "Tab")
   in
   let onkeyup ev =
@@ -140,14 +148,17 @@ let onload _ =
     self#on_entry_changed;
     Js._true
   in
-  let refresh() = arena#refresh; print infos Messages.temporary#messages in
-  let atomic f d x =
-    Messages.temporary#clear;  
+  let refresh() =
+    arena#refresh;
+    print infos Messages.temporary#messages
+  in
+  let atomic ?(clearall=true) f d x =
+    if clearall then Messages.temporary#clear_all else Messages.temporary#clear;  
     Messages.catch f x d refresh
   in
-  let std_evt f ev =
+  let std_evt ?clearall f ev =
     if not (Js.to_bool ev##.ctrlKey) then
-      (atomic (fun ev -> f ev; Js._false) Js._false ev)
+      (atomic ?clearall (fun ev -> f ev; Js._false) Js._false ev)
     else Js._true
   in
   
@@ -155,8 +166,8 @@ let onload _ =
   entry##.tabIndex := 1;
   strokes##.tabIndex := 2;
   warnings##.style##.cssText := Js.string "color:red";
-  add_listener canvas Html.Event.mousedown (std_evt (fun _ -> self#on_button_press));
-  add_listener canvas Html.Event.mousemove (std_evt (fun _ -> self#on_motion));
+  add_listener canvas Html.Event.mousedown (std_evt (fun _ -> self#on_button_press false)); (* TODO: detect ctrl *)
+  add_listener canvas Html.Event.mousemove (std_evt ~clearall:false (fun _ -> self#on_motion));
   add_listener canvas Html.Event.mouseup (std_evt (fun _ -> self#on_button_release));      
   add_listener canvas Html.Event.click (fun _ -> strokes##focus; Js._true);      
   add_listener strokes Html.Event.keydown (atomic (onkeypress false) Js._false);
@@ -164,10 +175,11 @@ let onload _ =
   add_listener entry Html.Event.keyup (atomic onkeyup Js._false);
   (* add_listener entry Html.Event.focus (fun _ -> entryfocused := true; Js._true); *)
   (* add_listener entry Html.Event.blur (fun _ -> entryfocused := false; Js._true); *)
-  atomic self#init () initial_term;
+  entry##.value := Js.string initial_term;
   strokes##focus;
   Js._false
 
 let _ =
   Html.window##.onload := Html.handler onload;
+
 

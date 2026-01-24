@@ -24,7 +24,7 @@ class virtual ['a] mk:
     method undo: unit -> unit
     method redo: unit -> unit
 
-    method load: string -> unit
-    method load': 'a -> unit
-    method save: string -> unit
+    method load: 'a -> unit
+    method load_from: string -> unit
+    method save_to: string -> unit
   end

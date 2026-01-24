@@ -71,6 +71,38 @@ class type ['a] writer =
     method private write_pdf: (image*box) list -> string -> unit
   end
 
+class type virtual ['a] program =
+  object
+    method virtual private read: string -> 'a
+    method virtual private write: string -> 'a -> unit
+    method virtual private write_svg: (image*box) list -> string -> unit
+    method virtual private write_pdf: (image*box) list -> string -> unit
+
+    method virtual private help: string -> unit
+    method virtual private open_dialog: unit
+    method virtual private saveas_dialog: unit
+    method virtual private save_dialog: unit
+    method virtual private quit: unit
+    method virtual fullscreen: unit
+
+    (* Boolean indicates whether control is pressed *)
+    method on_key_press: bool -> string -> unit
+    (* Boolean indicates whether shift is pressed *)
+    method on_button_press: bool -> unit
+    method on_button_release: unit
+    method on_motion: unit
+    method on_tic: unit
+
+    method undo: unit -> unit
+    method redo: unit -> unit
+
+    method load: 'a -> unit
+    method load_string: string -> unit
+    method load_from: string -> unit
+    method save_to: string -> unit
+  end
+  
+
 type pp_mode = Full | Sparse | Term | TermIfPossible | Rocq
 
 (* names *)
