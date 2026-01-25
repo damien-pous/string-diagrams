@@ -24,8 +24,8 @@ val pp_state: pp_mode -> formatter -> state -> unit
 
 val image: graph -> image*box
 
-(* sharing-free copy (by serialisation for now) *)
-val copy: graph -> graph
+(* sharing-free copy *)
+val copy: env -> graph -> graph
 
 (* graph isomorphism
    !! for now, forgetting isolated components *)

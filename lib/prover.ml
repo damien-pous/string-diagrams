@@ -176,7 +176,7 @@ class virtual mk (arena: arena): [state] program =
              self#changed
           | Var f ->
              match List.assoc f self#env with
-             | _,T2(_,Some h) -> g#subst n (Graph.copy h); self#changed
+             | _,T2(_,Some h) -> g#subst n (Graph.copy self#env h); self#changed
              | _,T2(_,None) -> warning "this box is abstract"
              | _ -> assert false
          )
@@ -242,12 +242,13 @@ class virtual mk (arena: arena): [state] program =
             error "could not find the pattern to rewrite"
         with Found3(i,g,n,h) -> i,g,n,h
       in
+      let env = self#env in     (* need to avoid [self] staying in the closure below *)
       self#add_script "  transitivity (%a). %smcat.\n  rewrite %s.\n" (Graph.pp Rocq) g i x;
       temporary#msg "rewrite %s" x;
       h#set "place" "contract";
       h#on_stabilize
         (fun () ->
-          h#replace (Graph.copy r);
+          h#replace (Graph.copy env r);
           h#unset "place";
           h#on_stabilize (fun () ->
               g#unbox n;

@@ -66,7 +66,7 @@ let rec iso g h =
   in
   forall g#ntargets (fun i -> iso_up (Target i) (Target i)) &&
     forall g#nsources (fun i -> iso_dn (Source i) (Source i))
-let iso_eqn (u,v) (u',v') = iso u v && iso u' v'
+let iso_eqn (u,v) (u',v') = iso u u' && iso v v'
 let rec iso_env e f =
   match e,f with
   | [],[] -> true
@@ -726,15 +726,15 @@ let state r =
     ignore (Pad.vpad (2.*.Constants.spacing) [pg;ph])
   ); (e,x)
 
-(* copy a graph by serialisation (is there a nicer way?) *)
-let copy (g: graph) =
+(* fresh copy of a graph *)
+let copy (e: env) (g: graph) =
   let g' = 
     if can_marshal_closures then marshal_copy g
-    else failwith "TODO: copy graph without marshaling"
-      (* let s = Format.asprintf "%a" (pp Full) g in *)
-      (* let l = Lexing.from_string s in *)
-      (* let x = Parser.rawterm Lexer.token l in *)
-      (* snd (graph x) *)
+    else 
+      let s = Format.asprintf "%a" (pp_envgraph Full) (e,g) in
+      let l = Lexing.from_string s in
+      let x = Parser.rawterm Lexer.token l in
+      snd (graph x)
   in
   Typ.unify ~msg:"Graph.copy" g#sources g'#sources;
   Typ.unify ~msg:"Graph.copy" g#targets g'#targets;

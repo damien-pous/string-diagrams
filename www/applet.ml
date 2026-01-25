@@ -141,7 +141,7 @@ let onload _ =
     (* if not b || not !entryfocused then *)
     (match Js.to_string (Js.Optdef.get ev##.key (fun _ -> assert false)) with
      | "Control" | "Alt" | "Shift" | "Meta" | "Tab" -> ()
-     | s -> self#on_key_press false s);
+     | s -> self#on_key_press (Js.to_bool ev##.ctrlKey) s);
     Js.bool (b || Js.to_string (Js.Optdef.get ev##.key (fun _ -> assert false)) = "Tab")
   in
   let onkeyup ev =
@@ -176,6 +176,9 @@ let onload _ =
   add_listener entry Html.Event.keyup (atomic onkeyup Js._false);
   (* add_listener entry Html.Event.focus (fun _ -> entryfocused := true; Js._true); *)
   (* add_listener entry Html.Event.blur (fun _ -> entryfocused := false; Js._true); *)
+  ignore (Html.window##setInterval
+            (Js.wrap_callback (Printexc.print (fun _ -> self#on_tic)))
+            (Js.float 25.));
   self#load_string initial_term;
   strokes##focus;
   Js._false

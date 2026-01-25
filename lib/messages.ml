@@ -3,7 +3,7 @@ open Vg
 
 (* let active _ = true *)
 (* let active _ = false *)
-let active k = List.mem k ["always"]
+let active k = List.mem k ["always";"entry"]
 
 let debug0 = new Canvas.void
 let debug1 = new Canvas.basic
