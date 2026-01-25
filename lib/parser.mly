@@ -1,6 +1,6 @@
 %token LPAR RPAR LBRK RBRK LSQR RSQR LT GT BAR
 %token COMMA COLON SEMI CIRC TENSOR DOT UNDER HAT
-%token ID LET EQ EQDEF IN TO EOF
+%token ID EQ EQDEF TO EOF
 %token <Types.name> NAME
 %token <int> INT
 %token <Types.kv> KEYVAL
@@ -19,8 +19,7 @@
 %left HAT
 
 %type <Types.Raw.term> rawterm
-%type <Types.Raw.term> rocqgoal
-%start rawterm rocqgoal
+%start rawterm
 
 
 %{
@@ -50,8 +49,8 @@ term:
 | LPAR t=term RPAR                              { t }
 
 eterm:
-| LET f=NAME l=kvl d=decl IN u=eterm            { Let(f,l,d,u) }
-| u=term                                        { u }
+| f=NAME l=kvl d=decl u=eterm                   { Let(f,l,d,u) }
+| BAR u=term                                    { u }
 
 decl:
 |                                               { None,None }
@@ -79,8 +78,3 @@ kvl:
 
 rawterm:
 | u=eterm EOF { u }
-
-
-rocqgoal:
-| f=NAME l=kvl d=decl u=rocqgoal                { Let(f,l,d,u) }
-| BAR u=term EOF                                { u }

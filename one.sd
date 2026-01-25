@@ -1,3 +1,4 @@
-let f: A->A in
-let g: A->A in
+f: A->A
+g: A->A
+---
 f·g = (f;g)·id

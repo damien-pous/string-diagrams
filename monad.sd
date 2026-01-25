@@ -1,8 +1,9 @@
-let M<color=red> in
-let m: M⊗M -> M in
-let e: 1 -> M in
-let mMm: M⊗M⊗M -> M := m·M ; m in
-let Mmm: M⊗M⊗M -> M := M·m ; m in
-let eMm: M -> M := e·M ; m in
-let Mem: M -> M := M·e ; m in
+M<color=red>
+m: M⊗M -> M
+e: 1 -> M
+mMm: M⊗M⊗M -> M := m·M ; m
+Mmm: M⊗M⊗M -> M := M·m ; m
+eMm: M -> M := e·M ; m
+Mem: M -> M := M·e ; m
+---
 m·M ; m

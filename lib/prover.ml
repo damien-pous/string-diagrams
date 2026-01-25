@@ -311,7 +311,7 @@ class virtual mk (arena: arena): [state] program =
              
     method load_string s =
       let l = Lexing.from_string s in
-      let x = Parser.rocqgoal Lexer.token l in
+      let x = Parser.rawterm Lexer.token l in
       self#load (Graph.state x)
       
     method private load_from_clipboard =

@@ -67,9 +67,8 @@ rule token = parse
   | "~>"
   | "->"                                   { TO }
   | "id"                                   { ID }
-  | "let"                                  { LET }
-  | "============================"         { BAR }
-  | "in"                                   { IN }
+  | "--" '-'*
+  | "==" '='*                              { BAR }
   | int as n                               { INT (int_of_string n) } 
   (* | float as x                             { FLOAT (float_of_string x) } *)
   (** cycles&permutations: at least two elements, if comma then arbitrary ints, otherwise digits *)

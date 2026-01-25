@@ -1,5 +1,6 @@
-let i: I -> I' in
-let j: J -> J' in
+i: I -> I'
+j: J -> J'
+---
 {n1<pos=-68.9267,0>: i,
  n2<pos=68.9267,0>: j,
  1 -> n1.1,

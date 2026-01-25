@@ -1,20 +1,21 @@
-let m: M⊗M -> M in
-let e: 1 -> M in
-let n: N⊗N -> N in
-let f: 1 -> N in
-let x: N⊗M -> M⊗N in
-let mn<color=violet> := id·x·id ; m·n in
-let ef<color=violet> := e·f in
-m·id ; m = id·m ; m ->
-e·id ; m = id ->
-id·e ; m = id ->
-n·id ; n = id·n ; n ->
-f·id ; n = id ->
-id·f ; n = id ->
-id·m ; x = x·id ; id·x ; m·id ->
-id·e ; x = e·id ->
-f·id ; x = id·f ->
-n·id ; x = id·x ; x·id ; id·n ->
+m: M⊗M -> M
+e: 1 -> M
+n: N⊗N -> N
+f: 1 -> N
+x: N⊗M -> M⊗N
+mn<color=violet> := id·x·id ; m·n
+ef<color=violet> := e·f
+mm: m·id ; m = id·m ; m
+em: e·id ; m = id
+me: id·e ; m = id
+nn: n·id ; n = id·n ; n
+fn: f·id ; n = id
+nf: id·f ; n = id
+mx: id·m ; x = x·id ; id·x ; m·id
+ex: id·e ; x = e·id
+nx: n·id ; x = id·x ; x·id ; id·n
+fx: f·id ; x = id·f
+---
 // mn·id·id ; mn = id·id·mn ; mn
 // ef·id·id ; mn = id·id
 id·id·ef ; mn = id·id

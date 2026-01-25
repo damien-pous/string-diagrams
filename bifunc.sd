@@ -1,7 +1,8 @@
-let f: A -> B in
-let f': A -> B in
-let g: B -> C in
-let g': B -> C in
+f: A -> B
+f': A -> B
+g: B -> C
+g': B -> C
+---
 {n1<size=20.4904,20.4904;pos=-33,30.022>: f,
  n2<size=20.4904,20.4904;pos=33,-32.7971>: g',
  n3<size=20.4904,20.4904;pos=-33,-33.4091>: g,

@@ -18,7 +18,7 @@ let same g h =
 let pp = Graph.pp_envgraph Sparse
 
 let test_graph env s =
-  let s = env^" "^s in  
+  let s = env^" -- "^s in  
   try
     (* Format.eprintf "Sanity: looking at\n%s@." s; *)
     let t = from_string s in
@@ -35,7 +35,7 @@ let test_graph env s =
 
 let test_term env s =
   test_graph env s;
-  let s = env^" "^s in  
+  let s = env^" -- "^s in  
   try
     (* Format.eprintf "Sanity: looking at\n%s@." s; *)
     let t = from_string s in
@@ -49,8 +49,8 @@ let test_term env s =
   with e -> Format.eprintf "Sanity: error on %s@." s; raise e
 
 let test_iso_ b env u u' =
-  let s = env^" "^u in
-  let s' = env^" "^u' in
+  let s = env^" -- "^u in
+  let s' = env^" -- "^u' in
   try
     let t = from_string s in
     let t' = from_string s' in
@@ -75,12 +75,12 @@ let _ = test "" "[id]"
 let _ = test "" "[id]·id"
 let _ = test "" "[id];id"
 
-let _ = test "let A in let f: A->A in" "f"
-let _ = test "let f: A->A in" "f;f"
-let _ = test "let f: A->A in" "f·f"
-let _ = test "let f: A->A in" "[f]"
-let _ = test "let f: A->A in" "f·id"
-let _ = test "let f: A->A in" "[f]·id"
+let _ = test "f: A->A" "f"
+let _ = test "f: A->A" "f;f"
+let _ = test "f: A->A" "f·f"
+let _ = test "f: A->A" "[f]"
+let _ = test "f: A->A" "f·id"
+let _ = test "f: A->A" "[f]·id"
 
 (* let _ = test "" "{}" *)
 (* let _ = test "" ": 1->1" *)
@@ -92,7 +92,7 @@ let _ = test_iso "" "id" "id;id"
 (* let _ = test_niso "" "id" "id·id" *)
 let _ = test_niso "" "id" "[id]"
 
-let e = "let f: A*A->A in let g: A->A in let h: A->A in"
+let e = "f: A*A->A g: A->A h: A->A"
 let _ = test e "f"
 let _ = test e "f·id"
 let _ = test e "f·id;f"
@@ -107,14 +107,14 @@ let _ = test_iso e "f·(g·h)" "(f·g)·h"
 let _ = test_iso e "f;(g;h);[g]" "(f;g);h;[g;id]"
 let _ = test_niso e "f;[g;h]" "[f;g];h"
 
-let e = "let m: A*A->A in let n: 1->A in"
+let e = "m: A*A->A n: 1->A"
 let _ = test e "id · n ; m"
 let _ = test e "n · id ; m"
 let _ = test e "n · n ; m"
 
 let e =
-  "let g: A -> A in
-   let b: A*A -> A*A in"
+  "g: A -> A
+   b: A*A -> A*A"
 let _ = test e "g·id ; b"
 let _ = test e "id·g ; b"
 
@@ -123,23 +123,23 @@ let _ = test e "b ; g·id"
 let _ = test e "id·g ; b ; g·id"
 
 let e =
-  "let a: A^2 -> A in
-   let d: A^3 -> A in
-   let b: A^2 -> A in
-   let c: A^2 -> A*A in"
+  "a: A^2 -> A
+   d: A^3 -> A
+   b: A^2 -> A
+   c: A^2 -> A*A"
 let _ = test e "(id·c·id·id);(id·id·b·id);(id·id·a);d"
 
-let _ = test "let f: _^2^2 -> _ in" "f"
+let _ = test "f: _^2^2 -> _" "f"
 
 let e = 
-  "let m<color=red>: A -> B in
-   let n<color=blue>: B -> C in"
+  "m<color=red>: A -> B
+   n<color=blue>: B -> C"
 let _ = test e "m;n"
 
 let e = 
-  "let m<color=red>: A*A -> A in
-   let n<color=blue>: B*B -> B in
-   let x<color=violet>: B*A -> A*B in"
+  "m<color=red>: A*A -> A
+   n<color=blue>: B*B -> B
+   x<color=violet>: B*A -> A*B"
 let _ = test e "x·x"
 let _ = test e "id·x·id;m·n"
 let _ = test e
@@ -169,27 +169,27 @@ let _ = test e
 
 let test = test_graph
 
-let e = "let m: A->A*A in let n: A->1 in"
+let e = "m: A->A*A n: A->1"
 let _ = test e "m ; id · n"
 let _ = test e "m ; n · id"
 (* let _ = test e "m ; n · n" *)
 
-let e = "let f: 1->A in let g: A->1 in let m: A->A*A in"
+let e = "f: 1->A g: A->1 m: A->A*A"
 let _ = test_iso e "g;f" "g·f"
 let _ = test_iso e "g;f" "f·g"
 let _ = test_iso e "f·(m;g·id)" "m;(g·f·id)"
 let _ = test_niso e "f·(m;g·id)" "m;(g·id·f)"
 
-let e = "let m: A*A->1 in let n: 1->A in let n': 1->A in"
+let e = "m: A*A->1 n: 1->A n': 1->A"
 (* let _ = test e "n·id; m" *)
 let _ = test_niso e "n·id; m" "n'·id; m"
 
-let e = "let n: 1->A in let n': 1->A in let m: A*A->1 in let k: 1->A*A in"
+let e = "n: 1->A n': 1->A m: A*A->1 k: 1->A*A"
 let _ = test e "n"
 let _ = test e "k"
 let _ = test e "n·k"
 let _ = test e "n·k·k;m·m·id"
 let _ = test_niso e "n·k·k;m·m·id" "n'·k·k;m·m·id"
 
-(* let e = "let m: A*A->1 in let k: 1->A*A in" *)
+(* let e = "m: A*A->1 k: 1->A*A" *)
 (* let _ = test e "id·k·id ; m·m" *)

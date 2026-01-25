@@ -8,9 +8,7 @@ build::
 test::
 	dune build
 	OCAMLRUNPARAM=b dune runtest
-	dune exec ./bin/text.exe -- -check unicode
-	dune exec ./bin/text.exe -- -check default
-	dune exec ./bin/text.exe -- -check mumu
+	OCAMLRUNPARAM=b dune exec ./bin/check.exe -- *.sd
 
 prove::
 	dune build

@@ -143,13 +143,14 @@ let pp_decl mode f = function
   | TE (u,v) -> Format.fprintf f ": %a ≡ %a" (pp mode) u (pp mode) v
 let pp_env mode f (e: env) =
   List.iter (fun (n,(l,d)) ->
-      Format.fprintf f "let %s%a%a in\n" n Info.pp_kvl l (pp_decl mode) d
+      Format.fprintf f "%s%a%a\n" n Info.pp_kvl l (pp_decl mode) d
     ) (List.rev e)
-let pp_envgraph mode f (e,g) = pp_env mode f e; pp mode f g
+let pp_envgraph mode f (e,g) =
+  Format.fprintf f "%a -- %a@." (pp_env mode) e (pp mode) g
 let pp_state mode f (e,x) =
   match x with
-  | Trm u -> Format.fprintf f "%a%a@." (pp_env mode) e (pp mode) u
-  | Eqn((u,v),_) -> Format.fprintf f "%a%a ≡ %a@." (pp_env mode) e (pp mode) u (pp mode) v
+  | Trm u -> Format.fprintf f "%a -- %a@." (pp_env mode) e (pp mode) u
+  | Eqn((u,v),_) -> Format.fprintf f "%a -- %a ≡ %a@." (pp_env mode) e (pp mode) u (pp mode) v
 
 
 class links n m: linked =

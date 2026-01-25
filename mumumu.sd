@@ -1,18 +1,19 @@
-let m: M^2 -> M in
-let n: N^2-> N in
-let o: O^2-> O in
-let x: N⊗M -> M⊗N in
-let y: O⊗N -> N⊗O in
-let z: O⊗M -> M⊗O in
-let mno<color=turquoise> := id·id·z·id·id ; id·x·y·id ; m·n·o in
-m·id ; m = id·m ; m ->
-n·id ; n = id·n ; n ->
-o·id ; o = id·o ; o ->
-id·m ; x = x·id ; id·x ; m·id ->
-n·id ; x = id·x ; x·id ; id·n ->
-id·n ; y = y·id ; id·y ; n·id ->
-o·id ; y = id·y ; y·id ; id·o ->
-id·m ; z = z·id ; id·z ; m·id ->
-o·id ; z = id·z ; z·id ; id·o ->
-y·id ; id·z ; x·id = id·x ; z·id ; id·y ->
+m: M^2 -> M
+n: N^2-> N
+o: O^2-> O
+x: N⊗M -> M⊗N
+y: O⊗N -> N⊗O
+z: O⊗M -> M⊗O
+mno<color=turquoise> := id·id·z·id·id ; id·x·y·id ; m·n·o
+mm: m·id ; m = id·m ; m
+nn: n·id ; n = id·n ; n
+oo: o·id ; o = id·o ; o
+mx: id·m ; x = x·id ; id·x ; m·id
+nx: n·id ; x = id·x ; x·id ; id·n
+ny: id·n ; y = y·id ; id·y ; n·id
+oy: o·id ; y = id·y ; y·id ; id·o
+mz: id·m ; z = z·id ; id·z ; m·id
+oz: o·id ; z = id·z ; z·id ; id·o
+xyz: y·id ; id·z ; x·id = id·x ; z·id ; id·y
+---
 mno·id·id·id ; mno = id·id·id·mno ; mno 

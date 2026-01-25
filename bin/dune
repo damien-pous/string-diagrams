@@ -12,6 +12,6 @@
 
 (executable
  (public_name sd)
- (name text)
- (modules text)
+ (name check)
+ (modules check)
  (libraries diagrams diagrams_cairo))

@@ -6,7 +6,7 @@ open Vg
 
 
 let initial_term =
-  "let m: A^2 -> A in m.A ; m = A.m ; m"
+  "m: A^2 -> A\n---\nm.A ; m = A.m ; m"
 
 module Html = Dom_html
 	

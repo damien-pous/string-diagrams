@@ -3,9 +3,12 @@ open Diagrams_cairo
 open File
 
 let check f =
+  Format.printf "checking file %s@." f;
+  let f = Filename.chop_extension f in
   ignore(read f)
 
 let export f =
+  let f = Filename.chop_extension f in
   let _,g = read f in
   match g with
   | Types.Eqn _ -> failwith "TODO: export equations"
@@ -16,6 +19,6 @@ let export f =
 
 let _ =
   Arg.(parse
-         [ "-check", String check, "f\tcheck file f.sd (no output)" ]
-         export
-         "sd [-check file, file]*")
+         [ "-export", String export, "f\texport file f.sd to pdf and svg" ]
+         check
+         "sd [-export file, file]*")
