@@ -117,10 +117,14 @@ class virtual mk (arena: arena): [state] program =
        | `Normal -> ();
       );
       arena#refresh
+
+    method private update_entry =
+      Format.kasprintf self#set_entry "%a" (Graph.pp_state TermIfPossible) state
     
     method private set_state s =
       state <- s;
       mode <- `Normal;
+      self#update_entry;
       self#redraw()
 
     method private changed_nocheckpoint =
@@ -128,6 +132,7 @@ class virtual mk (arena: arena): [state] program =
         (self#lhs#set "fill" "done"; self#rhs#set "fill" "done")
       else
         (self#lhs#unset "fill"; self#rhs#unset "fill");        
+      self#update_entry;
       self#perturbate;
     (* note that #perturbate always calls #redraw *)
       
@@ -250,6 +255,7 @@ class virtual mk (arena: arena): [state] program =
         (fun () ->
           h#replace (Graph.copy env r);
           h#unset "place";
+          self#update_entry;
           h#on_stabilize (fun () ->
               g#unbox n;
               g#unset "place";

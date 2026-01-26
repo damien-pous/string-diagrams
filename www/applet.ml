@@ -139,15 +139,20 @@ let onload _ =
   (* let entryfocused = ref false in *)
   let onkeypress b ev =
     (* if not b || not !entryfocused then *)
-    (match Js.to_string (Js.Optdef.get ev##.key (fun _ -> assert false)) with
-     | "Control" | "Alt" | "Shift" | "Meta" | "Tab" -> ()
-     | s -> self#on_key_press (Js.to_bool ev##.ctrlKey) s);
-    Js.bool (b || Js.to_string (Js.Optdef.get ev##.key (fun _ -> assert false)) = "Tab")
+    if Js.to_bool ev##.altKey then Js.bool true (* leave alt-keys to the browser *)
+    else (
+      (match Js.to_string (Js.Optdef.get ev##.key (fun _ -> assert false)) with
+       | "Control" | "Alt" | "Shift" | "Meta" | "Tab" -> ()
+       | s -> self#on_key_press (Js.to_bool ev##.ctrlKey) s);
+      Js.bool (b || Js.to_string (Js.Optdef.get ev##.key (fun _ -> assert false)) = "Tab"))
   in
   let onkeyup ev =
     ignore ev;
     self#on_entry_changed;
     Js._true
+  in
+  let onbuttonpress ev =
+    self#on_button_press (Js.to_bool ev##.shiftKey)
   in
   let refresh() =
     arena#refresh;
@@ -167,7 +172,7 @@ let onload _ =
   entry##.tabIndex := 1;
   strokes##.tabIndex := 2;
   warnings##.style##.cssText := Js.string "color:red";
-  add_listener canvas Html.Event.mousedown (std_evt (fun _ -> self#on_button_press false)); (* TODO: detect ctrl *)
+  add_listener canvas Html.Event.mousedown (std_evt onbuttonpress);
   add_listener canvas Html.Event.mousemove (std_evt ~clearall:false (fun _ -> self#on_motion));
   add_listener canvas Html.Event.mouseup (std_evt (fun _ -> self#on_button_release));      
   add_listener canvas Html.Event.click (fun _ -> strokes##focus; Js._true);      
