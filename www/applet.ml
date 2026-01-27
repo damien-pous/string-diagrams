@@ -90,6 +90,15 @@ class arena (canvasdiv: Html.divElement Js.t) (canvas: Html.canvasElement Js.t) 
          Js._false
       | _ -> Js._true
 
+    val clipboard = Brr.(Brr_io.Clipboard.of_navigator G.navigator)
+    method! clipboard =
+      Messages.warning "cannot read clipboard from the applet, please paste directly in the text box above"
+      (* Fut.await (Brr_io.Clipboard.read_text clipboard) *)
+      (*   (function Ok v -> k (Jstr.to_string v) *)
+      (*           | Error _ -> print_endline "error when retrieving clipboard") *)
+    method! set_clipboard s =
+      ignore(Brr_io.Clipboard.write_text clipboard (Jstr.v s))      
+
     val mutable dsize = (0,0)
     method private checksize _ =
       let s = canvasdiv##.clientWidth, canvasdiv##.clientHeight in
