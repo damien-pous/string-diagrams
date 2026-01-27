@@ -5,7 +5,7 @@ open Diagrams_gtk
 open GMain
 
 let width = 1900
-let height = 1000
+let height = 800
 
 let file = ref
              (match Sys.argv with
@@ -15,7 +15,9 @@ let file = ref
 
 let _ = GtkMain.Main.init ()
 let window = GWindow.window ~title:!file ~position:`CENTER ()
-let vbox = GPack.vbox ~homogeneous:false ~packing:window#add ()
+let paned = GPack.paned `VERTICAL ~packing:window#add ()
+let vbox1 = GPack.vbox ~homogeneous:false ~packing:(paned#pack1 ~resize:true ~shrink:true) ()
+let vbox2 = GPack.vbox ~homogeneous:false ~packing:(paned#pack2 ~resize:true ~shrink:true) ()
 
 (* let menubar = GMenu.menu_bar ~packing:vbox#pack () *)
 (* let factory = new GMenu.factory menubar *)
@@ -24,10 +26,22 @@ let vbox = GPack.vbox ~homogeneous:false ~packing:window#add ()
 (* let edit_factory = new GMenu.factory (factory#add_submenu "Edit") ~accel_group *)
 (* let view_factory = new GMenu.factory (factory#add_submenu "View") ~accel_group *)
 
-let da = GMisc.drawing_area ~width ~height ~packing:(vbox#pack ~expand:true) ()
-let arena = GArena.create ~width ~height ~window da ()
-let general_msg = GText.view ~editable:false ~cursor_visible:false ~packing:(vbox#pack) ()
+let da = GMisc.drawing_area ~width:width ~height ~packing:(vbox1#pack ~expand:true) ()
+let arena = GArena.create ~width:width ~height ~window da ()
+let general_msg = GText.view ~editable:false ~cursor_visible:false ~packing:(vbox1#pack) ()
 let _ = general_msg#misc#modify_font_by_name Constants.msg_font
+
+let scroll = GBin.scrolled_window
+               ~hpolicy:`AUTOMATIC
+               ~vpolicy:`AUTOMATIC
+               ~shadow_type:`IN
+               ~placement:`BOTTOM_RIGHT
+               ~packing:(vbox2#pack ~expand:true) ()
+let entry = GText.view ~width:width ~height:0 ~editable:true ~accepts_tab:false
+              ~packing:scroll#add ()
+let _ = entry#misc#modify_font_by_name Constants.msg_font
+(* let entry_msg = GMisc.label ~packing:(vbox2#pack) () *)
+(* let _ = entry_msg#misc#modify_font_by_name Constants.msg_font *)
 
 let dialog title action stock stock' filter =
   let dlg = GWindow.file_chooser_dialog
@@ -53,7 +67,7 @@ let dialog title action stock stock' filter =
 
 let self =
   object(self)
-    inherit Prover.mk arena
+    inherit Prover.mk arena as parent
     inherit File.writer
     method help = print_endline
     val open_dialog =
@@ -71,9 +85,19 @@ let self =
     method fullscreen =
       if fs then window#unfullscreen() else window#fullscreen();
       fs <- not fs
-    method entry = ""
-    method set_entry _s = ()
-    method entry_warning _ = ()
+    val mutable blocked_entry = false
+    method entry = entry#buffer#get_text()
+    method set_entry s =
+      blocked_entry <- true;
+      Messages.debug_msg "entry" "set_entry to `%s'" s;
+      entry#buffer#set_text s;
+      entry#scroll_mark_onscreen (`NAME "end");
+      blocked_entry <- false;
+    method! on_entry_changed =
+      if not blocked_entry then parent#on_entry_changed
+    method entry_warning = Messages.temporary#msg "%s"
+    initializer
+      ignore(entry#buffer#create_mark ~name:"end" ~left_gravity:false entry#buffer#end_iter)
   end
 
 let on_button_press ev =
@@ -107,6 +131,9 @@ let on_key_press ev =
      in
      self#on_key_press ctrl s); true
 
+let on_entry_changed _ =
+  self#on_entry_changed
+
 (* TODO: capture this in editor *)
 let refresh() = arena#refresh; general_msg#buffer#set_text Messages.temporary#messages
 let atomic ?(clearall=true) f x d =
@@ -129,6 +156,7 @@ let _ = da#event#connect#motion_notify ~callback:(atomic_true ~clearall:false on
 let _ = da#event#connect#button_press ~callback:(atomic_true on_button_press)
 let _ = da#event#connect#button_release ~callback:(atomic_true on_button_release)
 let _ = da#event#connect#key_press ~callback:(atomic_true on_key_press)
+let _ = entry#buffer#connect#changed ~callback:(atomic_unit on_entry_changed)
 let _ = Glib.Timeout.add ~ms:25 ~callback:(Printexc.print (fun _ -> self#on_tic; true))
 let _ = window#connect#destroy ~callback:Main.quit
 (* let _ = window#add_accel_group accel_group *)

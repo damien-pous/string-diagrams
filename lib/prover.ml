@@ -80,7 +80,7 @@ class virtual mk (arena: arena): [state] program =
       List.iter (fun (_,(l,r)) -> arena#canvas#text (Gg.P2.mid l#pos r#pos) "=") self#hyps;
       arena#canvas#text (Gg.P2.mid self#lhs#pos self#rhs#pos)
         (if self#lhs#get "fill" = None then "=?=" else "=");
-      if rebox then arena#ensure self#box;
+      if rebox then arena#fit self#box;
       self#refresh
 
     method private refresh =
@@ -300,9 +300,12 @@ class virtual mk (arena: arena): [state] program =
          (* self#refresh *)
 
     method load v =
+      mode <- `Normal;
       state := v;
       self#clear_history;
-      arena#fit self#box
+      self#update_entry;
+      arena#fit self#box;
+      self#redraw()
 
     method load_from f =
       self#load (self#read f)

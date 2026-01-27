@@ -149,8 +149,8 @@ let pp_envgraph mode f (e,g) =
   Format.fprintf f "%a------\n%a@." (pp_env mode) e (pp mode) g
 let pp_state mode f (e,x) =
   match x with
-  | Trm u -> Format.fprintf f "%a------\n%a@." (pp_env mode) e (pp mode) u
-  | Eqn((u,v),_) -> Format.fprintf f "%a------\n%a ≡ %a@." (pp_env mode) e (pp mode) u (pp mode) v
+  | Trm u -> Format.fprintf f "%a------\n%a" (pp_env mode) e (pp mode) u
+  | Eqn((u,v),_) -> Format.fprintf f "%a------\n%a ≡ %a" (pp_env mode) e (pp mode) u (pp mode) v
 
 
 class links n m: linked =
