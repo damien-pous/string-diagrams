@@ -37,3 +37,10 @@ val string_of_p2: Gg.P2.t -> string
 val can_marshal_closures: bool
 (* deep copy by marshaling *)
 val marshal_copy: 'a -> 'a
+
+type 'a ref = 'a Store.Ref.t
+val ref: 'a -> 'a ref
+val (!): 'a ref -> 'a
+val (:=): 'a ref -> 'a -> unit
+val capture: unit -> Store.snapshot
+val restore: Store.snapshot -> unit

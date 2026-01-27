@@ -65,3 +65,11 @@ let marshal_copy (x: 'a): 'a =
 let can_marshal_closures =
   try marshal_copy (fun () -> true) ()
   with Failure _ -> Format.eprintf "warning: cannot Marshal closures on this platform@."; false
+
+type 'a ref = 'a Store.Ref.t
+let store = Store.create ()
+let ref x = Store.Ref.make store x
+let (!) x = Store.Ref.get store x
+let (:=) x v = Store.Ref.set store x v
+let capture () = Store.capture store
+let restore = Store.restore store

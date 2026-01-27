@@ -8,23 +8,14 @@ val undo: 'a t -> 'a option
 val redo: 'a t -> 'a option
 
 
-class virtual ['a] mk:
-  ('a -> 'a) ->             (* deep copy function *)
-  'a ->                     (* initial state *)
+class virtual mk:
   object
-    method private virtual state: 'a
-    method private virtual set_state: 'a -> unit
-
-    method private virtual read: string -> 'a
-    method private virtual write: string -> 'a -> unit
+    method private virtual on_reset: unit
 
     method private checkpoint: unit
+    method private clear_history: unit
     method private abort: unit
     
     method undo: unit -> unit
     method redo: unit -> unit
-
-    method load: 'a -> unit
-    method load_from: string -> unit
-    method save_to: string -> unit
   end

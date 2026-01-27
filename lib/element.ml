@@ -51,15 +51,15 @@ class virtual gen n m ?(pos=P2.o) ~name (l: kvl) =
 
     inherit Info.gen l
 
-    val mutable pos = pos
-    val mutable placed = false
-    method pos = pos    
-    method shift d = pos <- V2.(pos + d); placed <- true
-    method move p = self#shift V2.(p-pos)
+    val pos = ref pos
+    val placed = ref false
+    method pos = !pos    
+    method shift d = pos := V2.(!pos + d); placed := true
+    method move p = self#shift V2.(p - !pos)
 
     method private update_kvl =
-      if placed then self#set "pos" (string_of_p2 pos)
-    method pp_kvl mode f = self#update_kvl; if mode=Full then Info.pp_kvl f kvl
+      if !placed then self#set "pos" (string_of_p2 !pos)
+    method pp_kvl mode f = self#update_kvl; if mode=Full then Info.pp_kvl f !kvl
 
     method virtual fakespos: float -> point
     method virtual faketpos: float -> point
@@ -70,10 +70,10 @@ class virtual gen n m ?(pos=P2.o) ~name (l: kvl) =
     method setdirs (_: (point*vector) list) (_: (point*vector) list) = ()
     
     method virtual private box: box
-    method safebox = Box2.(v_mid pos (V2.smul 1.1 (size self#box)))
+    method safebox = Box2.(v_mid !pos (V2.smul 1.1 (size self#box)))
 
-    val mutable color = Constants.gray
-    method color = color
+    val color = ref Constants.gray
+    method color = !color
     
     method sources: typs = n
     method targets: typs = m
@@ -86,8 +86,8 @@ class virtual gen n m ?(pos=P2.o) ~name (l: kvl) =
     val nsources = nsources
     val ntargets = ntargets
     initializer
-      (match self#get "pos" with Some p -> pos <- p2_of_string p; placed <- true | None -> ());
-      color <- Info.get_color name l
+      (match self#get "pos" with Some p -> pos := p2_of_string p; placed := true | None -> ());
+      color := Info.get_color name l
   end
 
 
@@ -106,67 +106,67 @@ let bot_pos b i n =
 class rectangle n m ?pos ~size ~name l =
   object(self)
     inherit gen n m ?pos ~name l as parent
-    val mutable size = size
-    val mutable sized = false
-    method size = size    
-    method width = Size2.w size 
-    method height = Size2.h size
-    method box = Box2.v_mid pos size
+    val size = ref size
+    val sized = ref false
+    method size = !size    
+    method width = Size2.w !size 
+    method height = Size2.h !size
+    method box = Box2.v_mid !pos !size
     method contains p = Box2.mem p self#box
-    method scale s = size <- V2.smul s size; sized <- true
-    method rebox b = pos <- Box2.mid b; size <- Box2.size b; sized <- true
+    method scale s = size := V2.smul s !size; sized := true
+    method rebox b = pos := Box2.mid b; size := Box2.size b; sized := true
     method fakespos i = top_pos self#box i fnsources 
     method faketpos i = bot_pos self#box i fntargets 
     method sdir (_: int) = V2.(zero-oy)
     method tdir (_: int) = V2.(zero-oy)
     method private fill =
-      match self#get "fill" with Some c -> Constants.color c | None -> color    
+      match self#get "fill" with Some c -> Constants.color c | None -> !color
     method draw (draw: canvas) =
       draw#box ~fill:self#fill self#box
     method! private update_kvl =
       parent#update_kvl;
-      if sized then self#set "size" (string_of_p2 size)
+      if !sized then self#set "size" (string_of_p2 !size)
     initializer
-      (match self#get "size" with Some s -> size <- p2_of_string s; sized <- true | None -> ())
+      (match self#get "size" with Some s -> size := p2_of_string s; sized := true | None -> ())
   end
 
 class circle n m ?pos ?(radius=Constants.circle_radius) ~name l =
   object(self)
     inherit gen n m ?pos ~name l as parent
-    val mutable radius = radius
-    val mutable sized = false
-    method size = V2.v (2.*.radius) (2.*.radius)
-    method width = 2.*.radius
-    method height = 2.*.radius
-    method box = Box2.v_mid pos self#size
-    method contains p = Geometry.dist p pos <= radius
-    method scale s = radius <- s *. radius; sized <- true
+    val radius = ref radius
+    val sized = ref false
+    method size = V2.v (2.*. !radius) (2.*. !radius)
+    method width = 2.*. !radius
+    method height = 2.*. !radius
+    method box = Box2.v_mid !pos self#size
+    method contains p = Geometry.dist p !pos <= !radius
+    method scale s = radius := s *. !radius; sized := true
     method rebox (_: box): unit = failwith "cannot rebox a circular area"
     method fakespos i =
-      V2.add pos (V2.polar (0.66*.radius) (Float.pi *. (fnsources-.i+.1.) /. (fnsources+.1.)))
+      V2.add !pos (V2.polar (0.66*. !radius) (Float.pi *. (fnsources-.i+.1.) /. (fnsources+.1.)))
     method faketpos i =
-      V2.add pos (V2.polar (0.66*.radius) (-. Float.pi *. (fntargets-.i+.1.) /. (fntargets+.1.)))
+      V2.add !pos (V2.polar (0.66*. !radius) (-. Float.pi *. (fntargets-.i+.1.) /. (fntargets+.1.)))
     method sdir i = V2.polar (-1.) (Float.pi *. float_of_int (nsources-i+1) /. float_of_int (nsources+1))
     method tdir i = V2.polar 1. (-. Float.pi *. float_of_int (ntargets-i+1) /. float_of_int (ntargets+1))
     method private fill =
-      match self#get "fill" with Some c -> Constants.color c | None -> color    
+      match self#get "fill" with Some c -> Constants.color c | None -> !color
     method draw (draw: canvas) =
-      draw#circle ~fill:self#fill {center = pos; radius }
+      draw#circle ~fill:self#fill {center = !pos; radius = !radius }
     method! private update_kvl =
       parent#update_kvl;
-      if sized then self#set "radius" (string_of_float radius)
+      if !sized then self#set "radius" (string_of_float !radius)
     initializer
-      (match self#get "radius" with Some s -> radius <- float_of_string s; sized <- true | None -> ())
+      (match self#get "radius" with Some s -> radius := float_of_string s; sized := true | None -> ())
   end
 
 class point n m ?pos ?(radius=Constants.point_radius) ~name l =
   object
     inherit circle n m ?pos ~radius ~name l
     method! rebox _ = failwith "cannot rebox a point area"
-    method! spos _ = pos
-    method! tpos _ = pos
-    method! fakespos _ = pos
-    method! faketpos _ = pos
+    method! spos _ = !pos
+    method! tpos _ = !pos
+    method! fakespos _ = !pos
+    method! faketpos _ = !pos
   end
 
 class cross n m ?pos ?(radius=Constants.cross_radius) ~name l: element =
@@ -176,16 +176,16 @@ class cross n m ?pos ?(radius=Constants.cross_radius) ~name l: element =
   in
   object
     inherit point n m ?pos ~radius ~name l
-    val mutable adir = V2.polar 1. (-. Float.pi /. 3.)
-    val mutable bdir = V2.polar 1. (-2. *. Float.pi /. 3.)      
+    val adir = ref (V2.polar 1. (-. Float.pi /. 3.))
+    val bdir = ref (V2.polar 1. (-2. *. Float.pi /. 3.))      
     method! rebox _ = failwith "cannot rebox a cross area"
     method! sdir = function
-      | 1 -> adir
-      | 2 -> bdir
+      | 1 -> !adir
+      | 2 -> !bdir
       | _ -> assert false
     method! tdir = function
-      | 1 -> bdir
-      | 2 -> adir
+      | 1 -> !bdir
+      | 2 -> !adir
       | _ -> assert false
     method! setdirs i o =
       let d (p,dp) (q,dq) =
@@ -195,8 +195,8 @@ class cross n m ?pos ?(radius=Constants.cross_radius) ~name l: element =
       in
       match i,o with
       | [a;b],[b';a'] ->
-         adir <- d a a';
-         bdir <- d b b';
+         adir := d a a';
+         bdir := d b b';
       | _ -> assert false
   end
 
@@ -213,11 +213,11 @@ class triangle n m ?pos ?(radius=Constants.triangle_radius) ~name l: element =
     inherit point n m ?pos ~radius ~name l
     method! rebox _ = failwith "cannot rebox a triangle area"
     method! spos = function
-      | 1 -> V2.(pos - smul (0.66*.radius) v1)
-      | 2 -> V2.(pos - smul (0.66*.radius) v2)
+      | 1 -> V2.(!pos - smul (0.66*. !radius) v1)
+      | 2 -> V2.(!pos - smul (0.66*. !radius) v2)
       | _ -> assert false
     method! tpos = function
-      | _ -> V2.(pos - smul (0.66*.radius) oy)
+      | _ -> V2.(!pos - smul (0.66*. !radius) oy)
     method! sdir = function
       | 1 -> v1
       | 2 -> v2
@@ -227,9 +227,9 @@ class triangle n m ?pos ?(radius=Constants.triangle_radius) ~name l: element =
     method! draw (draw: canvas) =
       draw#polygon ~fill:self#fill
         V2.(Polygon.triangle
-         (pos - smul radius v1)
-         (pos - smul radius v2)
-         (pos - smul radius oy))
+         (!pos - smul !radius v1)
+         (!pos - smul !radius v2)
+         (!pos - smul !radius oy))
   end
 
 class polygon n m poly =
@@ -242,11 +242,11 @@ class polygon n m poly =
   let tpos,tdir = List.split tpos in
   object(self)
     inherit rectangle n m ~pos ~size ~name:"" [] as parent
-    val mutable poly = poly
-    val mutable spos = spos
-    val mutable tpos = tpos
-    method! spos i = List.nth spos (i-1)
-    method! tpos i = List.nth tpos (i-1)
+    val poly = ref poly
+    val spos = ref spos
+    val tpos = ref tpos
+    method! spos i = List.nth !spos (i-1)
+    method! tpos i = List.nth !tpos (i-1)
     method! fakespos i =
       if i<=1. then self#spos 1
       else if i>=fnsources then self#spos nsources
@@ -263,17 +263,17 @@ class polygon n m poly =
         V2.(smul p i + smul (1.-.p) j)
     method! sdir i = List.nth sdir (i-1)
     method! tdir i = List.nth tdir (i-1)
-    method! contains p = Geometry.mem_poly p poly
+    method! contains p = Geometry.mem_poly p !poly
     method! shift d =
       parent#shift d;
-      poly <- Polygon.map (V2.add d) poly;
-      spos <- List.map (V2.add d) spos;
-      tpos <- List.map (V2.add d) tpos;
+      poly := Polygon.map (V2.add d) !poly;
+      spos := List.map (V2.add d) !spos;
+      tpos := List.map (V2.add d) !tpos;
     method! scale _ = failwith "TODO: scale polygon"
     method! draw (draw: canvas) =
-      draw#polygon (* ~border:0.5 *) ~fill:self#fill poly
+      draw#polygon (* ~border:0.5 *) ~fill:self#fill !poly
     method! improve_shape =
-      poly <- Geometry.smoothen poly
+      poly := Geometry.smoothen !poly
     initializer
       self#set "fill" "tgray"
   end

@@ -1,3 +1,4 @@
+open Misc
 open Gg
   
 type kv 
@@ -17,7 +18,7 @@ val merge: kvl -> kvl -> kvl    (* gives precedence to the first argument *)
 
 class gen: kvl ->
   object
-    val kvl: kvl
+    val kvl: kvl ref
     method has: string -> bool
     method get: string -> string option
     method set: string -> string -> unit

@@ -10,22 +10,15 @@ let state_of_string s =
   let x = Parser.rawterm Lexer.token l in
   Graph.state x
 
-let string_of_state s =
-  Format.asprintf "%a" (Graph.pp_state Full) s
-
-let copy_state: state -> state =
-  if can_marshal_closures then marshal_copy
-  else fun s -> state_of_string (string_of_state s)
-
 exception Found3 of string*graph*node*graph
-
-let changed = ref false
 
 class virtual mk (arena: arena): [state] program =
   object(self)
 
-    inherit [state] History.mk copy_state initial_state as parent
+    inherit History.mk
 
+    method private virtual read: _
+    method private virtual write: _
     method private virtual write_svg: _
     method private virtual write_pdf: _
     method private virtual help: _
@@ -40,10 +33,10 @@ class virtual mk (arena: arena): [state] program =
     
     val mutable mode = `Normal
 
-    val mutable state = initial_state
-    method private state = state
-    method private term_or_equation = snd state
-    method private env = fst state
+    val state = ref initial_state
+    method private state = !state
+    method private term_or_equation = snd !state
+    method private env = fst !state
     method private hyps = Env.hyps self#env
     method private graph =
       match self#term_or_equation with
@@ -64,7 +57,7 @@ class virtual mk (arena: arena): [state] program =
     method private add_script: 'a. ('a, formatter, unit) format -> 'a =
       match self#term_or_equation with
       | Eqn (e,s) ->
-         Format.kasprintf (fun s' -> state <- self#env,Eqn(e,s^"\n"^s'))
+         Format.kasprintf (fun s' -> state := self#env,Eqn(e,s^"\n"^s'))
       | Trm _ -> error "equation expected and single graph found (add_script)"
       
     method private iter_graphs f =
@@ -119,10 +112,9 @@ class virtual mk (arena: arena): [state] program =
       arena#refresh
 
     method private update_entry =
-      Format.kasprintf self#set_entry "%a" (Graph.pp_state TermIfPossible) state
+      Format.kasprintf self#set_entry "%a" (Graph.pp_state TermIfPossible) !state
     
-    method private set_state s =
-      state <- s;
+    method private on_reset =
       mode <- `Normal;
       self#update_entry;
       self#redraw()
@@ -146,11 +138,11 @@ class virtual mk (arena: arena): [state] program =
       match state_of_string self#entry with
       | state' ->
          self#entry_warning "";
-         if not (Graph.iso_state state state') then (
+         if not (Graph.iso_state !state state') then (
            debug_msg "entry" "on entry and state changed";
-           state <- state';
+           state := state';
            self#checkpoint;
-           self#redraw ~rebox:true ()
+           self#redraw ~rebox:true ();
          )
       | exception (Failure s) -> self#entry_warning s
       | exception Parser.Error -> self#entry_warning "Parsing error"
@@ -218,15 +210,15 @@ class virtual mk (arena: arena): [state] program =
 
     method private rewrite i =
       let x,l,r =
-        let j = ref i in
+        let j = Stdlib.ref i in
         match List.fold_left (fun acc (x,(l,r)) ->
                   if l#get "fill" = Some "lhs" then (
                     decr j;                  
-                    if !j=0 then Some (x,l,r) else
+                    if j.contents=0 then Some (x,l,r) else
                       (l#unset "fill"; r#unset "fill"; acc)
                   ) else if r#get "fill" = Some "lhs" then (
                     decr j;                  
-                    if !j=0 then Some ("-"^x,r,l) else
+                    if j.contents=0 then Some ("-"^x,r,l) else
                       (l#unset "fill"; r#unset "fill"; acc)
                   ) else acc
               ) None self#hyps
@@ -247,13 +239,12 @@ class virtual mk (arena: arena): [state] program =
             error "could not find the pattern to rewrite"
         with Found3(i,g,n,h) -> i,g,n,h
       in
-      let env = self#env in     (* need to avoid [self] staying in the closure below *)
       self#add_script "  transitivity (%a). %smcat.\n  rewrite %s.\n" (Graph.pp Rocq) g i x;
       temporary#msg "rewrite %s" x;
       h#set "place" "contract";
       h#on_stabilize
         (fun () ->
-          h#replace (Graph.copy env r);
+          h#replace (Graph.copy self#env r);
           h#unset "place";
           self#update_entry;
           h#on_stabilize (fun () ->
@@ -261,10 +252,7 @@ class virtual mk (arena: arena): [state] program =
               g#unset "place";
               l#unset "fill";
               r#unset "fill";
-              (* here we would like to call
-                 self#changed_nocheckpoint;
-                 but Marshal cannot deal with references to self *)
-              changed := true;
+              self#changed_nocheckpoint;
               false);
           h#set "fill" "rhs";
           Place.group h;
@@ -277,7 +265,6 @@ class virtual mk (arena: arena): [state] program =
         match mode with
         | `Normal | `Move_node _ ->
            self#improve_placement false;
-           if !changed then (changed := false; self#changed_nocheckpoint)           
         | `Select _ -> ()
 
     method on_button_press ctrl =
@@ -312,14 +299,21 @@ class virtual mk (arena: arena): [state] program =
          (* (match self#catch with `N(g,n) -> temporary#msg "depth %i" (g#depth n) | _ -> ()); *)
          (* self#refresh *)
 
-    method !load v =
-      parent#load v;
+    method load v =
+      state := v;
+      self#clear_history;
       arena#fit self#box
+
+    method load_from f =
+      self#load (self#read f)
              
     method load_string s =
       let l = Lexing.from_string s in
       let x = Parser.rawterm Lexer.token l in
       self#load (Graph.state x)
+
+    method save_to f =
+      self#write f !state
       
     method private load_from_clipboard =
       self#load_string arena#clipboard

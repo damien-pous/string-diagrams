@@ -155,26 +155,28 @@ let pp_state mode f (e,x) =
 
 class links n m: linked =
   object
-    val ilinks = Array.make n None
-    val olinks = Array.make m None
-    method ilink i = ilinks.(i-1)
-    method olink o = olinks.(o-1)
-    method ilink_set i p = Array.set ilinks (i-1) (Some p)
-    method olink_set o p = Array.set olinks (o-1) (Some p)
-    method clear_tables = Array.fill ilinks 0 n None; Array.fill olinks 0 m None
+    val ilinks = Array.init n (fun _ -> ref None)
+    val olinks = Array.init m (fun _ -> ref None)
+    method ilink i = !(ilinks.(i-1))
+    method olink o = !(olinks.(o-1))
+    method ilink_set i p = ilinks.(i-1) := Some p
+    method olink_set o p = olinks.(o-1) := Some p
+    method clear_tables =
+      for i = 0 to n-1 do ilinks.(i) := None done;
+      for o = 0 to m-1 do olinks.(o) := None done
   end
 
 class leveled n m =
   object(self)
     inherit links m n as parent (* note the input/output reversal *)
-    val mutable level = None
-    val mutable ceiling = None
+    val level = ref None
+    val ceiling = ref None
     method! clear_tables =
       parent#clear_tables;
-      level <- None;
-      ceiling <- None
+      level := None;
+      ceiling := None
     method level =
-      match level with
+      match !level with
       | Some l -> l
       | None ->
          let l = 1 + fold (fun i ->
@@ -182,12 +184,12 @@ class leveled n m =
                               | Some (InnerSource(m,_)) -> m#level
                               | _ -> 0
                            )) m 0
-         in level <- Some l; l
+         in level := Some l; l
     method ceiling: fakeiport =
-      match ceiling with
+      match !ceiling with
       | Some c -> c
       | None -> failwith "missing ceiling"
-    method set_ceiling c = ceiling <- Some c
+    method set_ceiling c = ceiling := Some c
   end
 
 (* generic pregraph *)
@@ -196,21 +198,21 @@ class gen_graph nodes edges area =
     inherit Element.proxy area
     inherit links area#nsources area#ntargets
     
-    val mutable edges: (iport*oport) mset = edges
-    val mutable nodes = nodes
+    val edges: (iport*oport) mset ref = ref edges
+    val nodes = ref nodes
 
     (* warning: to be called whenever the graph changes *)
     method private rebuild_tables =
       self#clear_tables;
-      MSet.iter (fun n -> n#clear_tables) nodes;
+      MSet.iter (fun n -> n#clear_tables) !nodes;
       self#compute_tables
     
-    method edges = edges
-    method nodes = nodes
+    method edges = !edges
+    method nodes = !nodes
     method update nodes' edges' =
       (* TODO: sanity checks *)
-      nodes <- nodes';
-      edges <- edges';
+      nodes := nodes';
+      edges := edges';
       self#rebuild_tables;
 
     method private set_edge (i,o) =
@@ -222,7 +224,7 @@ class gen_graph nodes edges area =
       | InnerSource(n,o) -> n#olink_set o i)
     
     method private compute_tables =
-      MSet.iter self#set_edge edges;
+      MSet.iter self#set_edge !edges;
       let next = function
         | `Left -> [],
            if self#nsources = 0 then `Right
@@ -274,7 +276,7 @@ class gen_graph nodes edges area =
             let i' = float_of_int i in
             add (collect (`RightI (InnerTarget(n,i)))) (fun p -> InnerTarget(n,i'+.p))
           done;          
-        ) nodes
+        ) !nodes
       with Incomplete_graph -> ()
 
     method ipos = function
@@ -335,18 +337,18 @@ class gen_graph nodes edges area =
       in dfs p (MSet.empty,MSet.empty)
 
     method rem_edge e =      
-      assert (MSet.mem e edges);
-      edges <- MSet.rem e edges;
+      assert (MSet.mem e !edges);
+      edges := MSet.rem e !edges;
       self#rebuild_tables;
       
     method private unsafe_rem_node n =
-      assert (MSet.mem n nodes);
-      nodes <- MSet.rem n nodes;
-      edges <- MSet.filter
+      assert (MSet.mem n !nodes);
+      nodes := MSet.rem n !nodes;
+      edges := MSet.filter
                  (function
                   | InnerTarget(m,_),InnerSource(m',_) -> m<>n && m'<>n
                   | InnerTarget(m,_),_ | _,InnerSource(m,_) -> m<>n
-                  | _ -> true) edges;
+                  | _ -> true) !edges;
 
     method rem_node n =
       self#unsafe_rem_node n;
@@ -357,11 +359,11 @@ class gen_graph nodes edges area =
       assert (self#ifree src && self#ofree tgt);
       Typ.unify1 ~msg:"src-tgt" (self#ityp src) (self#otyp tgt);
       (* assert (not (self#reaches tgt src));       *)
-      edges <- MSet.add (src,tgt) edges;
+      edges := MSet.add (src,tgt) !edges;
       self#rebuild_tables;      
 
     method add_node n =
-      nodes <- MSet.add n nodes;
+      nodes := MSet.add n !nodes;
       (* self#rebuild_tables;       *)
 
     method replace g =
@@ -387,8 +389,8 @@ class gen_graph nodes edges area =
       in
       self#unsafe_rem_node n;
       h#move n#pos;   (* TODO: resize h, or create it to fit the current box? *)
-      nodes <- MSet.union nodes h#nodes;
-      edges <- MSet.union edges new_edges;
+      nodes := MSet.union !nodes h#nodes;
+      edges := MSet.union !edges new_edges;
       self#rebuild_tables;
       
     method unbox n =
@@ -399,10 +401,10 @@ class gen_graph nodes edges area =
     (* textual pretty printing *)
     method private pp_iport f = function
       | Source i -> Format.fprintf f "%i" i
-      | InnerTarget(n,i) -> Format.fprintf f "n%i.%i" (MSet.index n nodes) i
+      | InnerTarget(n,i) -> Format.fprintf f "n%i.%i" (MSet.index n !nodes) i
     method private pp_oport f = function
       | Target i -> Format.fprintf f "%i" i
-      | InnerSource(n,i) -> Format.fprintf f "n%i.%i" (MSet.index n nodes) i
+      | InnerSource(n,i) -> Format.fprintf f "n%i.%i" (MSet.index n !nodes) i
     method private pp_node mode f n =
       match n#kind with
       | Var x -> Format.fprintf f "%s" x
@@ -413,7 +415,7 @@ class gen_graph nodes edges area =
       MSet.iteri (fun i n ->
           if not !first then Format.fprintf f ",\n "; first := false;
           Format.fprintf f "n%i%t: %a" i (n#pp_kvl mode) (self#pp_node mode) n;
-        ) nodes;
+        ) !nodes;
       MSet.iter (fun (s,t) ->
           if not !first then Format.fprintf f ",\n "; first := false;
           Format.fprintf f "%a -> %a" self#pp_iport s self#pp_oport t;
@@ -477,40 +479,40 @@ class gen_graph nodes edges area =
       in
       area#draw draw;
       if Constants.editor && not (self#has "fill") then self#draw_interface draw;
-      MSet.iter draw_edge edges;
-      MSet.iter draw_node nodes
+      MSet.iter draw_edge !edges;
+      MSet.iter draw_node !nodes
 
     (* careful: since we use a proxy rather than plain inheritance,
        we need to redefine #move so that it calls the overriden #shift *)
     method! move p = self#shift V2.(p-self#pos)
     method! shift d =
       area#shift d;
-      MSet.iter (fun n -> n#shift d) nodes
+      MSet.iter (fun n -> n#shift d) !nodes
 
     method inner_graphs =
       MSet.fold (fun n a -> match n#kind with
                             | Box g -> MSet.add g a
-                            | _ -> a) MSet.empty nodes
+                            | _ -> a) MSet.empty !nodes
 
-    val mutable stable = false
-    val mutable on_stabilize = (fun () -> true)
-    method on_stabilize k = on_stabilize <- k
+    val stable = ref false
+    val on_stabilize = ref (fun () -> true)
+    method on_stabilize k = on_stabilize := k
     method improve ~force =
       (* self#improve_shape;       *)
       let b =
-        if (force || not stable) then (
+        if (force || not !stable) then (
           let b = 
             match self#get "place" with
             | Some "locked" -> false
             | Some "contract" -> Place.contract (self:>graph)
             | _ -> Place.improve (self:>graph)
           in
-          if not stable && b then (
-            let k = on_stabilize in
-            on_stabilize <- (fun () -> true);
-            stable <- k();
-          ) else stable <-false;
-          stable
+          if not !stable && b then (
+            let k = !on_stabilize in
+            on_stabilize := (fun () -> true);
+            stable := k();
+          ) else stable := false;
+          !stable
         ) else true
       in
       MSet.fold (fun g b -> g#improve ~force && b) b self#inner_graphs

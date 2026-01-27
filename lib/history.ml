@@ -22,51 +22,40 @@ let redo h =
   | x::future -> h := (present h::past h, x, future); Some x
 
 
+open Misc
 open Messages
 
-
-
-class virtual ['a] mk copy s0 =
+class virtual mk =
   object(self)
 
-    method private virtual state: 'a
-    method private virtual set_state: 'a -> unit
+    method private virtual on_reset: unit
 
-    method private virtual read: string -> 'a
-    method private virtual write: string -> 'a -> unit
-    
-    val hist = create s0
+    val hist = create (capture())
 
     method private checkpoint =
-      save hist (copy self#state) 
+      save hist (capture())
+
+    method private reset s =
+      restore s; self#on_reset      
 
     method private abort =
-      let s = present hist in
-      self#set_state s
+      self#reset (present hist)
+
+    method private clear_history =
+      self#checkpoint;
+      clear hist
     
     method undo () =
       match undo hist with
-      | Some s -> self#set_state s
+      | Some s -> self#reset s
       | None -> warning "no more undos"
 
     method redo () =
       match redo hist with
-      | Some s -> self#set_state s
+      | Some s -> self#reset s
       | None -> warning "no more redos"
 
-    method load (s: 'a) =
-      self#set_state s;
-      self#checkpoint;
-      clear hist
-
-    method load_from f =
-      self#load (self#read f)
-
-    method save_to f =
-      self#write f self#state
-
     initializer
-      self#checkpoint;
-      clear hist
+      self#clear_history
       
   end

@@ -34,9 +34,9 @@ let get_color n l =
 
 class gen (l: kvl) =
   object(self)
-    val mutable kvl = l
-    method has k = List.mem_assoc k kvl 
-    method get k = List.assoc_opt k kvl
-    method set k v = self#unset k; kvl <- (k,v)::kvl 
-    method unset k = kvl <- List.remove_assoc k kvl
+    val kvl = ref l
+    method has k = List.mem_assoc k !kvl 
+    method get k = List.assoc_opt k !kvl
+    method set k v = self#unset k; kvl := (k,v) :: !kvl 
+    method unset k = kvl := List.remove_assoc k !kvl
   end

@@ -43,7 +43,7 @@ class virtual mk (arena: arena) =
     method virtual fullscreen: unit
 
     val mutable mode = `Normal
-    val mutable env = fst initial_state
+    val mutable env = ref fst initial_state
     val mutable graph = snd initial_state
     
     method private box = graph#box

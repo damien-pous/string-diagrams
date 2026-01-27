@@ -21,7 +21,7 @@
  (name string-diagrams)
  (synopsis "visualize and edit string diagrams")
  (description "visualize and edit string diagrams")
- (depends ocaml dune cairo2-gtk vg)
+ (depends ocaml dune cairo2-gtk vg store)
  (tags
    ("string diagrams" "monoidal categories")))
 
