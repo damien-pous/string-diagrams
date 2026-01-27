@@ -10,8 +10,6 @@ let state_of_string s =
   let x = Parser.rawterm Lexer.token l in
   Graph.state x
 
-exception Found3 of string*graph*node*graph
-
 class virtual mk (arena: arena): [state] program =
   object(self)
 
@@ -215,57 +213,52 @@ class virtual mk (arena: arena): [state] program =
       self#changed
 
     method private rewrite i =
-      let x,l,r =
-        let j = Stdlib.ref i in
-        match List.fold_left (fun acc (x,(l,r)) ->
-                  if l#get "fill" = Some "lhs" then (
-                    decr j;                  
-                    if j.contents=0 then Some (x,l,r) else
-                      (l#unset "fill"; r#unset "fill"; acc)
-                  ) else if r#get "fill" = Some "lhs" then (
-                    decr j;                  
-                    if j.contents=0 then Some ("-"^x,r,l) else
-                      (l#unset "fill"; r#unset "fill"; acc)
-                  ) else acc
-              ) None self#hyps
-        with
-        | Some(x,l,r) -> x,l,r
-        | None -> error "no such matching hypothesis (%i)" i
-      in
-      let i,g,n,h =
-        let k (i,g) =
-          if g#get "place" = Some "locked" then
-            MSet.iter (fun n ->
-                match n#kind with
-                | Box h -> if h#get "fill" = Some "lhs" then
-                             raise (Found3(i,g,n,h))
-                | _ -> ()) g#nodes
-        in
-        try (match self#term_or_equation with
-             | Eqn((l,r),_) -> List.iter k ["",l; "2: ",r]
-             | Trm g -> k ("",g));
-            error "could not find the pattern to rewrite"
-        with Found3(i,g,n,h) -> i,g,n,h
-      in
-      self#add_script "  transitivity (%a). %smcat.\n  rewrite %s.\n" (Graph.pp Rocq) g i x;
-      temporary#msg "rewrite %s" x;
-      h#set "place" "contract";
-      h#on_stabilize
-        (fun () ->
-          h#replace (Graph.copy self#env r);
-          h#unset "place";
-          self#update_entry;
-          h#on_stabilize (fun () ->
-              g#unbox n;
-              g#unset "place";
-              l#unset "fill";
-              r#unset "fill";
-              self#changed_nocheckpoint;
-              false);
-          h#set "fill" "rhs";
-          Place.group h;
-          false);
-      self#changed      
+      match self#catch with
+      | (`None | `G _) -> warning "no box to rewrite here"
+      | `N(g,n) ->
+         match n#kind with
+         | Var _ -> warning "atomic boxes cannot be rewritten"
+         | Box h ->
+            let x,l,r =
+              let j = Stdlib.ref i in
+              match List.fold_left (fun acc (x,(l,r)) ->
+                        if Graph.iso h l then (
+                          decr j;                  
+                          if j.contents=0 then Some (x,l,r) else
+                            (l#unset "fill"; r#unset "fill"; acc)
+                        ) else if Graph.iso h r then (
+                          decr j;                  
+                          if j.contents=0 then Some ("-"^x,r,l) else
+                            (l#unset "fill"; r#unset "fill"; acc)
+                        ) else acc
+                      ) None self#hyps
+              with
+              | Some(x,l,r) -> x,l,r
+              | None -> error "no such matching hypothesis (%i)" i
+            in
+            let i = match self#term_or_equation with
+              | Eqn((_,g'),_) when g==g' -> "2: "
+              | _ -> ""
+            in
+            self#add_script "  transitivity (%a). %smcat.\n  rewrite %s.\n" (Graph.pp Rocq) g i x;
+            temporary#msg "rewrite %s" x;
+            h#set "place" "contract";
+            h#on_stabilize
+              (fun () ->
+                h#replace (Graph.copy self#env r);
+                h#unset "place";
+                self#update_entry;
+                h#on_stabilize (fun () ->
+                    g#unbox n;
+                    g#unset "place";
+                    l#unset "fill";
+                    r#unset "fill";
+                    self#changed_nocheckpoint;
+                    false);
+                h#set "fill" "rhs";
+                Place.group h;
+                false);
+            self#changed 
 
     val mutable play = true
     method on_tic =
