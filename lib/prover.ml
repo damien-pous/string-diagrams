@@ -58,7 +58,7 @@ class virtual mk (arena: arena): [state] program =
       match self#term_or_equation with
       | Eqn (e,s) ->
          Format.kasprintf (fun s' -> state := self#env,Eqn(e,s^"\n"^s'))
-      | Trm _ -> error "equation expected and single graph found (add_script)"
+      | Trm _ -> Format.kasprintf (fun _ -> ())
       
     method private iter_graphs f =
       List.iter (fun (_,(l,r)) -> f l; f r) self#hyps;
@@ -78,8 +78,11 @@ class virtual mk (arena: arena): [state] program =
       arena#canvas#clear;
       self#iter_graphs (fun g -> g#draw arena#canvas);
       List.iter (fun (_,(l,r)) -> arena#canvas#text (Gg.P2.mid l#pos r#pos) "=") self#hyps;
-      arena#canvas#text (Gg.P2.mid self#lhs#pos self#rhs#pos)
-        (if self#lhs#get "fill" = None then "=?=" else "=");
+      (match self#term_or_equation with
+       | Eqn((l,r),_) -> 
+          arena#canvas#text (Gg.P2.mid l#pos r#pos)
+            (if l#get "fill" = None then "=?=" else "=")
+       | _ -> ());
       if rebox then arena#fit self#box;
       self#refresh
 
@@ -120,10 +123,13 @@ class virtual mk (arena: arena): [state] program =
       self#redraw()
 
     method private changed_nocheckpoint =
-      if Graph.iso self#lhs self#rhs then
-        (self#lhs#set "fill" "done"; self#rhs#set "fill" "done")
-      else
-        (self#lhs#unset "fill"; self#rhs#unset "fill");        
+      (match self#term_or_equation with
+      | Eqn((l,r),_) -> 
+         if Graph.iso l r then
+           (l#set "fill" "done"; r#set "fill" "done")
+         else
+           (l#unset "fill"; r#unset "fill")
+      | Trm _ -> ()); 
       self#update_entry;
       self#perturbate;
     (* note that #perturbate always calls #redraw *)
@@ -235,7 +241,9 @@ class virtual mk (arena: arena): [state] program =
                              raise (Found3(i,g,n,h))
                 | _ -> ()) g#nodes
         in
-        try List.iter k ["",self#lhs; "2: ",self#rhs];
+        try (match self#term_or_equation with
+             | Eqn((l,r),_) -> List.iter k ["",l; "2: ",r]
+             | Trm g -> k ("",g));
             error "could not find the pattern to rewrite"
         with Found3(i,g,n,h) -> i,g,n,h
       in
