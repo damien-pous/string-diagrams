@@ -17,6 +17,23 @@ let same g h =
   Graph.iso_envgraph g h
 let pp = Graph.pp_envgraph Sparse
 
+
+let state_from_string s =
+  try
+    let l = Lexing.from_string s in
+    let r = Parser.rawterm Lexer.token l in
+    Graph.state r
+  with e -> Format.eprintf "error parsing state\n%s@." s; raise e
+let state_to_string = Format.kasprintf (fun s -> s) "%a" (Graph.pp_state Full)
+let state_to_string' = Format.kasprintf (fun s -> s) "%a" (Graph.pp_state Term)
+let same_state (e,g) (f,h) =
+  Types.(match g,h with
+  | Eqn((l,r),_), Eqn((l',r'),_) -> same (e,l) (f,l') && same (e,r) (f,r')
+  | Trm g, Trm h -> same (e,g) (f,h)
+  | _ -> false)
+let pp_state = Graph.pp_state Sparse
+
+
 let test_graph env s =
   let s = env^" -- "^s in  
   try
@@ -45,6 +62,37 @@ let test_term env s =
     let _ =
       same t t' ||
         (Format.eprintf "Sanity: term reparsing mismatch\n%s\n\n%a\n\n%s\n\n%a@." s pp t s' pp t'; failwith "iso (via terms)") in
+    ()
+  with e -> Format.eprintf "Sanity: error on %s@." s; raise e
+
+let test_state_graph env s =
+  let s = env^" -- "^s in  
+  try
+    (* Format.eprintf "Sanity: looking at\n%s@." s; *)
+    let t = state_from_string s in
+    (* Format.eprintf "Sanity: parsed as\n%a@." (Graph.pp_envgraph Full) t; *)
+    let s' = state_to_string t in
+    (* Format.eprintf "Sanity: reprinted as\n%s@."  s'; *)
+    let t' = state_from_string s' in
+    (* Format.eprintf "Sanity: reparsed as\n%a@." (Graph.pp_envgraph Full) t'; *)
+    let _ =
+      same_state t t' ||
+        (Format.eprintf "Sanity: state reparsing mismatch\n%s\n\n%a\n\n%s\n\n%a@." s pp_state t s' pp_state t'; failwith "iso") in
+    ()
+  with e -> Format.eprintf "Sanity: error on %s@." s; raise e
+
+let test_state_term env s =
+  test_state_graph env s;
+  let s = env^" -- "^s in  
+  try
+    (* Format.eprintf "Sanity: looking at\n%s@." s; *)
+    let t = state_from_string s in
+    (* Format.eprintf "Sanity: parsed as\n%a@." (Graph.pp_envgraph Full) t; *)
+    let s' = state_to_string' t in
+    let t' = state_from_string s' in
+    let _ =
+      same_state t t' ||
+        (Format.eprintf "Sanity: state reparsing mismatch\n%s\n\n%a\n\n%s\n\n%a@." s pp_state t s' pp_state t'; failwith "iso (via terms)") in
     ()
   with e -> Format.eprintf "Sanity: error on %s@." s; raise e
 
@@ -164,6 +212,8 @@ let _ = test e
  n6.2 -> n4.1,
  n6.1 -> n3.2}: (A*B)^3 -> A*B"
 
+let _ = List.iter (fun (_,e,s) -> test_state_term e s) Examples.list
+let _ = List.iter (fun (_,e,s) -> test_state_graph e s) Examples.list'
 
 (** should eventually go through [test_term]: empty target nodes *)
 

@@ -467,14 +467,14 @@ class virtual mk (arena: arena): [state] program =
                      "** keys **
 1..n    rewrite box using matching hypothesis
 u       unbox or unfold node
-t:      toggle node labels
+t       toggle node labels
 -/+     shrink/enlarge element
 f       release fixed element
-l       toggle label printing
+l       toggle labels printing
 c       toggle contours printing
 =       fit screen
 r       redraw picture
-e       toggle edition mode
+e       toggle link edition mode
 d       remove node
 n       create node (give name afterward)
 t       export term to clipboard

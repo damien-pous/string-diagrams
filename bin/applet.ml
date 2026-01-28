@@ -135,6 +135,7 @@ let onload _ =
   let infos = get "infos" in
   let warnings = get "warnings" in
   let arena = new arena canvasdiv canvas in
+  let examples = get "examples" in
   let self =
     object(self)
       inherit Program.mk arena
@@ -151,10 +152,15 @@ let onload _ =
         ignore Brr.(    
           Fut.of_promise ~ok:ignore @@
             Jv.call (El.to_jv (Document.body G.document)) "requestFullscreen" [||])
+      initializer
+        List.iter (fun (n,e,g) ->
+            let ex = app examples Html.createLi in
+            Dom.appendChild ex (Html.document##createTextNode (Js.string n));
+            add_listener ex Html.Event.click (fun _ -> self#load_string (e^"\n------\n"^g); Js._true)
+          ) Examples.list
     end
   in
-  (* self#on_key_press "h"; *)
-  (* let entryfocused = ref false in *)
+  
   let onkeypress b ev =
     (* if not b || not !entryfocused then *)
     if Js.to_bool ev##.altKey then Js.bool true (* leave alt-keys to the browser *)
