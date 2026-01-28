@@ -69,7 +69,11 @@ class virtual mk (arena: arena): [state] program =
          | Trm g -> f g a)
     
     method private box =
-      Gg.Box2.(self#fold_graphs (fun g -> union g#box) empty)
+      let b = Gg.Box2.(self#fold_graphs (fun g -> union g#box) empty) in      
+      if !Constants.labels then
+        Gg.Box2.(v_mid (mid b)
+                   (Gg.V2.smul ((h b +. 3. *. Constants.fontsize) /. h b) (size b)))
+      else b
 
     method private redraw ?(rebox=false) () =
       arena#canvas#clear;
@@ -467,6 +471,7 @@ t:      toggle node labels
 -/+     shrink/enlarge element
 f       release fixed element
 l       toggle label printing
+c       toggle contours printing
 =       fit screen
 r       redraw picture
 e       toggle edition mode
@@ -488,9 +493,10 @@ h       print this help message"
           | "u" -> self#unfold
           | "d" -> self#remove_node
           | "n" -> self#new_node
-          | "l" -> toggle Constants.labels; self#redraw()
+          | "l" -> toggle Constants.labels; self#redraw ~rebox:true ()
+          | "c" -> toggle Constants.contours; self#redraw()
           | "e" -> toggle Constants.edit_mode;
-                   temporary#msg "edit mode: %b" !Constants.edit_mode; self#refresh
+                   temporary#msg "edit mode: %b" !Constants.edit_mode; self#redraw()
           | "p" -> self#pdf
           | "t" -> self#graph_to_clipboard
           | "R" -> self#script_to_clipboard

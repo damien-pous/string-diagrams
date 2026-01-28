@@ -1,3 +1,4 @@
+open Misc
 open Types
 open Gg
 open Vg
@@ -27,7 +28,7 @@ class basic: canvas =
       self#blend (I.const color |> I.cut ~area:path_area p)
     method shape ?(border=Constants.shapelinewidth) ?(color=Color.black) ?fill p =
       Option.iter (fun fill -> self#blend (I.const fill |> I.cut p)) fill;
-      if border<>0.0 then
+      if !Constants.contours then
         self#blend (I.const color |> I.cut ~area:(area border) p)
     method circle ?color ?fill c =
       self#shape ?color ?fill (P.empty |> P.circle c.center c.radius)

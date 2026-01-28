@@ -2,6 +2,7 @@ open Misc
 open Gg
 
 let edit_mode = ref false
+let contours = ref false
 let labels = ref false
 
 let inch = 72.27
@@ -15,7 +16,7 @@ let msg_font = "Sans 20"
 
 (* in inches *)
 let pathlinewidth = 2.0
-let shapelinewidth = 0.0
+let shapelinewidth = 0.5
 let point_radius = 2.0
 let circle_radius = 5.0
 let cross_radius = 5.0

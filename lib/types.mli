@@ -210,7 +210,6 @@ class type element = object
   method size: size
   method color: color
   method box: box
-  method safebox: box  
   method contains: point -> bool  
   method move: point -> unit
   method scale: float -> unit

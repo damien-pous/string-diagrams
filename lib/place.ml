@@ -49,108 +49,6 @@ let contract =
           if d>1.0 then add n (100./.d) u
         ) g#nodes)
 
-let improve_old =
-  generic (fun g add -> 
-  let repulse = -10.0 in
-  let attract = -10.0 in
-  (* repulsion forces *)
-  MSet.iter (fun x ->
-      let dl = V2.x (Box2.ml_pt x#safebox) -. V2.x (Box2.ml_pt g#box) in
-      let dr = V2.x (Box2.mr_pt x#safebox) -. V2.x (Box2.mr_pt g#box) in
-      add x (repulse*.(1./. (dr*.dr) -. 1./.(dl*.dl))) V2.ox;
-      let db = V2.y (Box2.bm_pt x#safebox) -. V2.y (Box2.bm_pt g#box) in
-      let dt = V2.y (Box2.tm_pt x#safebox) -. V2.y (Box2.tm_pt g#box) in
-      add x (repulse*.(1./. (dt*.dt) -. 1./.(db*.db))) V2.oy;
-      MSet.iter (fun y -> 
-          if x<>y then
-            let xy = V2.sub y#pos x#pos in
-            let d = V2.norm xy in
-            if d = 0.0 then
-              add x 1.0 (V2.ltr (M2.rot2 (Random.float (2.*.Float.pi))) V2.ox)
-            else
-              let d' = d -. sqrt (Box2.area x#safebox /. 2.) -. sqrt (Box2.area y#safebox /. 2.) in
-              add x (repulse/.(d'*.d'*.d)) xy
-              (* let i = Box2.inter x#safebox y#safebox in *)
-              (* if not (Box2.is_empty i) then *)
-              (*   add x (-. sqrt (Box2.area i) /. d) xy *)
-        ) g#nodes
-    ) g#nodes;
-  (* attraction forces *)
-  MSet.iter (fun (i,o) ->
-      let x,y = g#ipos i, g#opos o in
-      let xy = V2.sub y x in
-      (match i with
-       | InnerTarget(n,_) ->
-          add n (-.attract/.(sqrt (V2.norm xy) *. ntargets n)) xy
-       | _ -> ());
-      (match o with
-       | InnerSource(n,_) ->
-          add n (attract/.(sqrt (V2.norm xy) *. nsources n)) xy
-       | _ -> ())
-    ) g#edges
-  )
-
-let improve_tmp =
-  generic (fun g add ->
-  let repulse = 0.0 in
-  let attract_link = -0.5 in
-  let attract_level = -5.0 in
-  let heights =                 (* heigths of each slice *)
-    let rec insert d y = function
-      | [] when d=1 -> [y]
-      | [] -> 0.::insert (d-1) y []
-      | x::q when d=1 -> max x y::q
-      | x::q -> x::insert (d-1) y q
-    in
-    MSet.fold (fun n ->
-        let d,h = n#level, Box2.h n#box in
-        insert d h
-      ) [] g#nodes
-  in
-  let h =                       (* expected vertical placement of each slice *)
-    let n = List.length heights in
-    let sep = (Box2.h g#box -. Misc.big (+.) (0.) heights) /. float_of_int (n+1) in
-    let rec psum s = function
-      | [] -> []
-      | x::q -> let s = s +. sep in 
-                (s +. x/.2.) :: psum (s +. x) q
-    in List.nth (0.::psum (V2.y (Box2.bm_pt g#box)) heights)
-                (* 0.::.. because level starts at 1 *)
-  in
-  (* box repulsion *)
-  if repulse<>0.0 then 
-    MSet.iter (fun x ->
-      MSet.iter (fun y ->
-          if x<>y then
-            let xy = V2.sub y#pos x#pos in
-            let d = V2.norm xy in
-            if d = 0.0 then
-              add x 1.0 (V2.ltr (M2.rot2 (Random.float (2.*.Float.pi))) V2.ox)
-            else
-              let d' = d -. sqrt (Box2.area x#safebox /. 2.) -. sqrt (Box2.area y#safebox /. 2.) in
-              add x (repulse/.(d'*.d'*.d)) xy
-        ) g#nodes
-    ) g#nodes;
-  (* attract to level *)
-  MSet.iter (fun n ->
-      let d = n#level in
-      let h = h d in
-      let h' = V2.y n#pos in
-      add n (attract_level*.(h'-.h)) V2.oy
-    ) g#nodes;
-  (* attract *)
-  MSet.iter (fun (i,o) ->
-      let x,y = g#ipos i, g#opos o in
-      let xy = V2.sub y x in
-      let xy = V2.ltr (M2.scale2 (V2.v 10. 1.)) xy in
-      (match i with
-       | InnerTarget(n,_) -> add n (-.attract_link /. ntargets n) xy
-       | _ -> ());
-      (match o with
-       | InnerSource(n,_) -> add n (attract_link /. nsources n) xy
-       | _ -> ())
-    ) g#edges)
-
 let improve =
   generic (fun g add -> 
   let repulse = 0.0 in
@@ -168,7 +66,7 @@ let improve =
             if d = 0.0 then
               add x 1.0 (V2.ltr (M2.rot2 (Random.float (2.*.Float.pi))) V2.ox)
             else
-              let d' = d -. sqrt (Box2.area x#safebox /. 2.) -. sqrt (Box2.area y#safebox /. 2.) in
+              let d' = d -. sqrt (Box2.area x#box /. 2.) -. sqrt (Box2.area y#box /. 2.) in
               add x (repulse/.(d'*.d'*.d)) xy
         ) g#nodes
     ) g#nodes;

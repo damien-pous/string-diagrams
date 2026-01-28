@@ -3,6 +3,7 @@ open Gg
 open Vg
 
 val labels: bool ref
+val contours: bool ref
 val edit_mode: bool ref
 
 (* number of points in an inch: 72(.27) *)

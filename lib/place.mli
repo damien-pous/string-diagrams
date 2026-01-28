@@ -4,8 +4,6 @@ open Graph_type
     not recursive on inner graphs,
     returns true if the graph is stable,
  *)
-val improve_old: graph -> bool
-val improve_tmp: graph -> bool
 val improve: graph -> bool
 val contract: graph -> bool
 

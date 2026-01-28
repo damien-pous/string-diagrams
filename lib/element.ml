@@ -33,7 +33,6 @@ class proxy (e: #element): element =
     method box = e#box
     method width = e#width
     method height = e#height
-    method safebox = e#safebox
     method contains = e#contains  
     method move = e#move
     method shift = e#shift
@@ -70,7 +69,6 @@ class virtual gen n m ?(pos=P2.o) ~name (l: kvl) =
     method setdirs (_: (point*vector) list) (_: (point*vector) list) = ()
     
     method virtual private box: box
-    method safebox = Box2.(v_mid !pos (V2.smul 1.1 (size self#box)))
 
     val color = ref Constants.gray
     method color = !color
