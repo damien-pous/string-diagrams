@@ -161,10 +161,10 @@ class circle n m ?pos ?(radius=Constants.circle_radius) ~name l =
 
 class point n m ?pos ?(radius=Constants.point_radius) ~name l =
   object
-    inherit circle n m ?pos ~radius ~name l
+    inherit circle n m ?pos ~radius ~name l as parent
     method! rebox _ = failwith "cannot rebox a point area"
-    method! spos _ = !pos
-    method! tpos _ = !pos
+    method! spos i = if !Constants.edit_mode then parent#fakespos (float_of_int i) else !pos
+    method! tpos i = if !Constants.edit_mode then parent#faketpos (float_of_int i) else !pos
     method! fakespos _ = !pos
     method! faketpos _ = !pos
   end
@@ -308,6 +308,6 @@ let mk n m ~name l =
        match n,m with
        | [],[a] -> new triangle n m ~name (Info.merge l (Typ.kvl a))
        | [a;b],[c] when Typ.eq [a;b] [c;c] -> new triangle n m ~name (Info.merge l (Typ.kvl a))
-       | [a;b],[c;d] when (not Constants.editor) && Typ.eq [a;b] [d;c] -> new cross n m ~name (Info.merge l (Typ.kvl a))
+       | [a;b],[c;d] when Typ.eq [a;b] [d;c] -> new cross n m ~name (Info.merge l (Typ.kvl a))
        | _ -> mk_rect n m ~name l
        

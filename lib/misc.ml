@@ -73,3 +73,5 @@ let (!) x = Store.Ref.get store x
 let (:=) x v = Store.Ref.set store x v
 let capture () = Store.capture store
 let restore = Store.restore store
+
+let toggle r = r := not !r

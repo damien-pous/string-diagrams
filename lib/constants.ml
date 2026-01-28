@@ -1,12 +1,8 @@
 open Misc
 open Gg
 
-let editor =
-  match Sys.argv with
-  | [|e|] -> Filename.basename e = "edit.exe"
-  | _ -> false
-let labels = ref editor
-let toggle_labels () = labels := not !labels
+let edit_mode = ref false
+let labels = ref false
 
 let inch = 72.27
 let mm = inch /. 25.4
@@ -69,7 +65,8 @@ let color = function
 let id_color name =
   color
     (
-     if editor then match name with
+      (* TODO: redo/improve *)
+     if false then match name with
        | "A" | "I" -> "blue"
        | "B" | "I'" -> "turquoise"
        | "C" | "J" -> "yellow"

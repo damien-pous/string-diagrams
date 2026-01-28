@@ -2,11 +2,8 @@ open Misc
 open Gg
 open Vg
 
-(* are we running the editor *)
-val editor: bool
-
 val labels: bool ref
-val toggle_labels: unit -> unit
+val edit_mode: bool ref
 
 (* number of points in an inch: 72(.27) *)
 val inch: float

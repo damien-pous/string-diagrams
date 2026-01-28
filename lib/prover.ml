@@ -83,11 +83,20 @@ class virtual mk (arena: arena): [state] program =
       if rebox then arena#fit self#box;
       self#refresh
 
+    method private highlight_iport g i =
+      temporary#circle ~fill:(Graph.icolor g i)
+        {center = g#ipos i; radius = 1.5*.Constants.point_radius}
+    method private highlight_oport g o =
+      temporary#circle ~fill:(Graph.ocolor g o)
+        {center = g#opos o; radius = 1.5*.Constants.point_radius}
+
+    val highlight_ports = false
+    
     method private refresh =
       (match mode with
        | `Select (g,p) ->
           temporary#polygon ~fill:(Constants.color "tgray") p;
-          if false then 
+          if highlight_ports then 
             let p = Geometry.clockwise p in
             MSet.iter (fun e ->
               let c = g#edge_curve e in
@@ -106,8 +115,45 @@ class virtual mk (arena: arena): [state] program =
               if Geometry.mem_poly n#pos p then
                 temporary#box ~fill:(Gg.Color.gray ~a:0.5 0.) n#box
             ) g#nodes
+       | `New_node _ ->
+          temporary#box ~color:Constants.red (Gg.Box2.v_mid arena#pointer (Constants.empty_size 0 0))
+       | `New_edge_i (g,i) ->
+          let p = arena#pointer in
+          let q = g#ipos i in
+          let color = Graph.icolor g i in
+          if Geometry.mem_point p q then
+            temporary#point q;
+          Graph.iter_oports g
+            (fun o -> if g#ofree o && Typ.eq1 (g#ityp i) (g#otyp o) then (
+                        let q = g#opos o in
+                        temporary#point ~color q;
+                        if Geometry.mem_point p q then
+                          self#highlight_oport g o
+                      )
+            );
+          temporary#segment ~color (q,p);
+       | `New_edge_o (g,o) ->
+          let p = arena#pointer in
+          let q = g#opos o in
+          let color = Graph.ocolor g o in
+          if Geometry.mem_point p q then
+            temporary#point q;
+          Graph.iter_iports g
+            (fun i -> if g#ifree i && Typ.eq1 (g#ityp i) (g#otyp o)  then (
+                        let q = g#ipos i in
+                        temporary#point ~color q;
+                        if Geometry.mem_point p q then
+                          self#highlight_iport g i
+                      )
+            );
+          temporary#segment ~color (p,q)
        | `Move_node _ -> ()
-       | `Normal -> ();
+       | `Normal ->
+          if !Constants.edit_mode || highlight_ports then
+            match self#catch_ports() with
+            | `I (g,i) -> self#highlight_iport g i
+            | `O (g,o) -> self#highlight_oport g o
+            | `N _ | `G _ | `None -> ()
       );
       arena#refresh
 
@@ -151,7 +197,8 @@ class virtual mk (arena: arena): [state] program =
       | exception Parser.Error -> self#entry_warning "Parsing error"
       | exception e -> self#entry_warning (Printexc.to_string e)
       
-    method private catch =
+    method private catch_ports = self#catch ~ports:true
+    method private catch ?(ports=false) () =
       let p = arena#pointer in
       let g =
         self#fold_graphs (fun g -> function
@@ -161,12 +208,36 @@ class virtual mk (arena: arena): [state] program =
       match g with
       | None -> `None
       | Some g ->
-         match Graph.find g p with
-         | `N n -> `N(g,n)
-         | _ -> `G g
+         if ports && !Constants.edit_mode then
+           match Graph.find_ports g p with
+           | `N n -> `N(g,n)
+           | `I i -> `I(g,i)
+           | `O o -> `O(g,o)
+           | _ -> `G g
+         else
+           match Graph.find g p with
+           | `N n -> `N(g,n)
+           | _ -> `G g
+
+    method private remove_node =
+      match self#catch() with
+      | `N (g,n) -> g#rem_node n; self#changed 
+      | _ -> warning "no node to remove here"
+
+    method private new_node =
+      match self#catch() with
+      | `G g -> temporary#msg "type node name"; mode <- `New_node g; self#refresh
+      | _ -> warning "cannot create a node here"
+
+    method private add_node g f =
+      match List.assoc f self#env with
+      | l,T2((n,m),_) -> 
+         g#add_node (Graph.var_node n m f (Info.pos arena#pointer l)); self#changed
+      | _ -> error "not a node name: %s" f
+      | exception Not_found -> error "unknown node name: %s" f
     
     method private unfold =
-      match self#catch with
+      match self#catch() with
       | `N (g,n) ->
          (match n#kind with
           | Box _ ->
@@ -183,7 +254,7 @@ class virtual mk (arena: arena): [state] program =
       | _ -> warning "no node to unfold/unbox here"
 
     method private scale s =
-      match self#catch with
+      match self#catch() with
       | `N (_,n) -> n#scale s; self#changed
       | `G g -> g#scale s; self#changed
       | _ -> warning "nothing to scale here"
@@ -195,7 +266,7 @@ class virtual mk (arena: arena): [state] program =
       self#improve_placement true
     
     method private release =
-      match self#catch with
+      match self#catch() with
       | `N(_,n) -> Place.unfix n; self#perturbate
       | _ -> warning "no node to release here"
     
@@ -212,52 +283,52 @@ class virtual mk (arena: arena): [state] program =
       self#changed
 
     method private rewrite i =
-      match self#catch with
-      | (`None | `G _) -> warning "no box to rewrite here"
+      match self#catch() with
       | `N(g,n) ->
-         match n#kind with
-         | Var _ -> warning "atomic boxes cannot be rewritten"
-         | Box h ->
-            let x,l,r =
-              let j = Stdlib.ref i in
-              match List.fold_left (fun acc (x,(l,r)) ->
-                        if Graph.iso h l then (
-                          decr j;                  
-                          if j.contents=0 then Some (x,l,r) else
-                            (l#unset "fill"; r#unset "fill"; acc)
-                        ) else if Graph.iso h r then (
-                          decr j;                  
-                          if j.contents=0 then Some ("-"^x,r,l) else
-                            (l#unset "fill"; r#unset "fill"; acc)
-                        ) else acc
-                      ) None self#hyps
-              with
-              | Some(x,l,r) -> x,l,r
-              | None -> error "no such matching hypothesis (%i)" i
-            in
-            let i = match self#term_or_equation with
-              | Eqn((_,g'),_) when g==g' -> "2: "
-              | _ -> ""
-            in
-            self#add_script "  transitivity (%a). %smcat.\n  rewrite %s.\n" (Graph.pp Rocq) g i x;
-            temporary#msg "rewrite %s" x;
-            h#set "place" "contract";
-            h#on_stabilize
-              (fun () ->
-                h#replace (Graph.copy self#env r);
-                h#unset "place";
-                self#update_entry;
-                h#on_stabilize (fun () ->
-                    g#unbox n;
-                    g#unset "place";
-                    l#unset "fill";
-                    r#unset "fill";
-                    self#changed_nocheckpoint;
-                    false);
-                h#set "fill" "rhs";
-                Place.group h;
-                false);
-            self#changed 
+         (match n#kind with
+          | Var _ -> warning "atomic boxes cannot be rewritten"
+          | Box h ->
+             let x,l,r =
+               let j = Stdlib.ref i in
+               match List.fold_left (fun acc (x,(l,r)) ->
+                         if Graph.iso h l then (
+                           decr j;                  
+                           if j.contents=0 then Some (x,l,r) else
+                             (l#unset "fill"; r#unset "fill"; acc)
+                         ) else if Graph.iso h r then (
+                           decr j;                  
+                           if j.contents=0 then Some ("-"^x,r,l) else
+                             (l#unset "fill"; r#unset "fill"; acc)
+                         ) else acc
+                       ) None self#hyps
+               with
+               | Some(x,l,r) -> x,l,r
+               | None -> error "no such matching hypothesis (%i)" i
+             in
+             let i = match self#term_or_equation with
+               | Eqn((_,g'),_) when g==g' -> "2: "
+               | _ -> ""
+             in
+             self#add_script "  transitivity (%a). %smcat.\n  rewrite %s.\n" (Graph.pp Rocq) g i x;
+             temporary#msg "rewrite %s" x;
+             h#set "place" "contract";
+             h#on_stabilize
+               (fun () ->
+                 h#replace (Graph.copy self#env r);
+                 h#unset "place";
+                 self#update_entry;
+                 h#on_stabilize (fun () ->
+                     g#unbox n;
+                     g#unset "place";
+                     l#unset "fill";
+                     r#unset "fill";
+                     self#changed_nocheckpoint;
+                     false);
+                 h#set "fill" "rhs";
+                 Place.group h;
+                 false);
+             self#changed)
+      | _ -> warning "no box to rewrite here"
 
     val mutable play = true
     method on_tic =
@@ -265,17 +336,22 @@ class virtual mk (arena: arena): [state] program =
         match mode with
         | `Normal | `Move_node _ ->
            self#improve_placement false;
-        | `Select _ -> ()
+        | _ -> ()
 
     method on_button_press ctrl =
       match mode with 
       | `Normal ->
-         (match self#catch with
+         (match self#catch_ports() with
+          | `I(g,i) -> (match g#next_opt i with
+                        | None -> mode <- `New_edge_i (g,i)
+                        | Some o -> g#rem_edge (i,o); mode <- `New_edge_o (g,o); self#redraw())
+          | `O(g,o) -> (match g#prev_opt o with
+                        | None -> mode <- `New_edge_o (g,o)
+                        | Some i -> g#rem_edge (i,o); mode <- `New_edge_i (g,i); self#redraw())
           | `N(g,x) -> Place.fix x; mode <- `Move_node (g,(x:>element),Gg.V2.sub arena#pointer x#pos)
           | `G g when ctrl -> mode <- `Move_node (g,(g:>element),Gg.V2.sub arena#pointer g#pos)
           | `G g -> mode <- let p = arena#pointer in `Select(g,Polygon.start p)
-          | `None -> ()
-         )
+          | `None -> ())
       | _ -> ()
     
     method on_button_release =
@@ -284,7 +360,17 @@ class virtual mk (arena: arena): [state] program =
          mode <- `Normal; self#checkpoint
       | `Select (g,p) ->
          mode <- `Normal; self#create_box g p
-      | `Normal -> ()
+      | `New_edge_i (g,i) ->
+         (match self#catch_ports() with
+          | `O (g',o) when g==g' && g#ofree o && Typ.eq1 (g#ityp i) (g#otyp o) ->
+             mode <- `Normal; g#add_edge (i,o); self#changed
+          | _ -> mode <- `Normal; self#changed)
+      | `New_edge_o (g,o) ->
+         (match self#catch_ports() with
+          | `I (g',i) when g==g' && g#ifree i && Typ.eq1 (g#ityp i) (g#otyp o) ->
+             mode <- `Normal; g#add_edge (i,o); self#changed
+          | _ -> mode <- `Normal; self#changed)
+      | _ -> ()
 
     method on_motion =
       match mode with
@@ -295,7 +381,8 @@ class virtual mk (arena: arena): [state] program =
          let q = arena#pointer in
          mode <-`Select(g,Polygon.extend p q);
          self#refresh         
-      | _ -> ();
+      | _ ->
+         if !Constants.edit_mode then self#refresh
          (* (match self#catch with `N(g,n) -> temporary#msg "depth %i" (g#depth n) | _ -> ()); *)
          (* self#refresh *)
 
@@ -323,7 +410,7 @@ class virtual mk (arena: arena): [state] program =
 
     method private graph_to_clipboard =
       let k,g = 
-        match self#catch with
+        match self#catch() with
         | `G g -> "graph",g
         | `N(g,n) ->
            (match n#kind with
@@ -337,7 +424,7 @@ class virtual mk (arena: arena): [state] program =
 
     method private pdf =
       let k,i = 
-        match self#catch with
+        match self#catch() with
         | `G g -> "graph",Graph.image g
         | `N(g,n) ->
            (match n#kind with
@@ -358,6 +445,7 @@ class virtual mk (arena: arena): [state] program =
          | "s" -> self#save
          | "e" -> self#saveas_dialog
          | "o" -> self#open_dialog
+         | "v" -> self#load_from_clipboard
          | "f" -> self#fullscreen
          | "z" -> self#undo()
          | "r" -> self#redo()
@@ -374,23 +462,34 @@ u       unbox or unfold node
 t:      toggle node labels
 -/+     shrink/enlarge element
 f       release fixed element
-l       load state from clipboard
-e       export graph term to clipboard
-p       export graph/picture as pdf (file g.pdf)
-E       export Rocq script to clipboard
+l       toggle label printing
+=       fit screen
+r       redraw picture
+e       toggle edition mode
+d       remove node
+n       create node (give name afterward)
+t       export term to clipboard
+p       export diagram as pdf
+R       export Rocq script to clipboard
 ->/<-   undo/redo
 SPACE   pause/start
 ESC     abort current action
-=       fit screen
-r       redraw picture
+Ctrl-O  open file
+Ctrl-S  save file
+Ctrl-E  save as file
+Ctrl-V  load from clipboard
+Ctrl-F  toggle fullscreen
 h       print this help message"
           | "f" -> self#release
           | "u" -> self#unfold
-          | "t" -> Constants.toggle_labels(); self#redraw()
+          | "d" -> self#remove_node
+          | "n" -> self#new_node
+          | "l" -> toggle Constants.labels; self#redraw()
+          | "e" -> toggle Constants.edit_mode;
+                   temporary#msg "edit mode: %b" !Constants.edit_mode; self#refresh
           | "p" -> self#pdf
-          | "l" -> self#load_from_clipboard
-          | "e" -> self#graph_to_clipboard
-          | "E" -> self#script_to_clipboard
+          | "t" -> self#graph_to_clipboard
+          | "R" -> self#script_to_clipboard
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1
           | "=" -> self#redraw ~rebox:true ()
@@ -411,6 +510,7 @@ h       print this help message"
           | "q" -> self#quit
           | "" -> ()
           | s -> warning "skipping key '%s'" s)
+      | `New_node g -> mode <- `Normal; self#add_node g s
       | _ -> warning "ignored key `%s' during ongoing action" s
     
   end

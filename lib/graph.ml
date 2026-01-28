@@ -478,7 +478,7 @@ class gen_graph nodes edges area =
         draw#curve ~color (self#edge_curve e)      
       in
       area#draw draw;
-      if Constants.editor && not (self#has "fill") then self#draw_interface draw;
+      if !Constants.labels && not (self#has "fill") then self#draw_interface draw;
       MSet.iter draw_edge !edges;
       MSet.iter draw_node !nodes
 

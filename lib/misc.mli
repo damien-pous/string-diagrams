@@ -44,3 +44,5 @@ val (!): 'a ref -> 'a
 val (:=): 'a ref -> 'a -> unit
 val capture: unit -> Store.snapshot
 val restore: Store.snapshot -> unit
+
+val toggle: bool ref -> unit
