@@ -57,12 +57,6 @@ let svg_via_vg image view file =
   ignore (Vgr.render r `End);
   close_out o
 
-class image_writer file =
-  object
-    method private write_svg l = multi_svg l (!file^".svg")
-    method private write_pdf l = multi_pdf l (!file^".pdf")
-  end
-
 open Graph
   
 let read f =
@@ -80,9 +74,11 @@ let write f l =
 
 let exists f = Sys.file_exists (f ^ ".sd")
 
-class writer file =
-  object
-    inherit image_writer file
-    method private read = read !file
-    method private write = write !file
+class virtual io =
+  object(self)
+    method virtual file: string
+    method read = read self#file
+    method write = write self#file
+    method write_svg l = multi_svg l (self#file^".svg")
+    method write_pdf l = multi_pdf l (self#file^".pdf")
   end

@@ -115,7 +115,7 @@ let clockwise p =
   let cmp2 x y = V2.compare (swap x) (swap y) in  
   let cmp3 x y = cmp1 y x in
   let cmp4 x y = cmp2 y x in
-  let fail p = temporary#msg "could not orient polygon"; p in
+  let fail p = warning "could not orient polygon"; p in
   if Polygon.is_degenerate p then p
   else attempt cmp1 (attempt cmp2 (attempt cmp3 (attempt cmp4 fail))) p
 

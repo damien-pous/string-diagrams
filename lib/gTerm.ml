@@ -79,7 +79,7 @@ let rec typs e = function
   | Raw.One -> []
   | Raw.Wld -> Typ.flex 1
   | Raw.Var (n,l) ->
-     if l<>[] then temporary#msg "ignoring type variable infos: %a" Info.pp_kvl l;
+     if l<>[] then warning "ignoring type variable infos: %a" Info.pp_kvl l;
      (match List.assoc n e with
       | l,T1 -> [Typ.name n l]
       | _ -> failwith "not an object variable (%s)" n
@@ -91,7 +91,7 @@ let rec typs e = function
 let typ1 e = function
   | Raw.Arr(u,v) ->
      let n,m = typs e u, typs e v in
-     if false && m=[] then failwith "empty target morphisms are not yet supported";
+     if m=[] then warning "empty target morphisms are not fully supported yet";
      n,m
   | r -> failwith "not a morphism type: %a" pp_raw r
 
@@ -136,7 +136,7 @@ and gph env elems l t =
     | Some(n',m') when n<=List.length n' && m<=List.length m' -> n',m'
     | _ -> failwith "arity mismatch (explicit graph)"
   in
-  if false && m=[] then failwith "empty target graphs are not yet supported";
+  if m=[] then warning "empty target diagrams are not fully supported yet";
   let nodes =
     List.fold_left (fun nodes e ->
         match e with

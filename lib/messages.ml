@@ -1,4 +1,3 @@
-open Types
 open Vg
 
 (* let active _ = true *)
@@ -13,26 +12,36 @@ let debug_msg k fmt =
   else Format.ifprintf Format.err_formatter fmt
 
 let temporary =
-  object(self)
+  object
     inherit Canvas.basic as parent
-    val mutable messages = []
-    method messages = String.concat "\n" (List.rev messages)
     method! clear = parent#clear; debug1#clear
-    method clear_all = self#clear; messages <- []
     method! get = I.blend parent#get debug1#get 
-    method msg: 'a. ('a, formatter, unit) format -> 'a
-      = Format.kasprintf (fun s -> messages <- s::messages)
   end
 
+exception Abort of string
 exception User_error of string
-let warning fmt =
+exception Program_error of string
+let abort fmt =
+  Format.kasprintf (fun s -> raise (Abort s)) fmt
+let user_error fmt =
   Format.kasprintf (fun s -> raise (User_error s)) fmt
-let error fmt = warning ("error: "^^fmt)
+let program_error fmt =
+  Format.kasprintf (fun s -> raise (Program_error s)) fmt
+
+let output = ref (print_endline, (fun ()->()))
+let set_output msg clr = output := (msg,clr)
+let clear() = temporary#clear; snd !output ()
+let message fmt = Format.kasprintf (fun s -> fst !output s) fmt
+
+let warning fmt = message ("warning: "^^fmt)
+let error fmt = message ("error: "^^fmt)
 
 let catch f x y k =
   match f x with
   | y -> k(); y
+  | exception Program_error s -> error "%s" s; k(); y
+  | exception Abort s -> message "abort: %s" s; k(); y
   | exception User_error s 
-  | exception Failure s -> temporary#msg "%s" s; k(); y
-  | exception e -> temporary#msg "%s" (Printexc.to_string e); k(); y
+  | exception Failure s -> warning "%s" s; k(); y
+  | exception e -> warning "%s" (Printexc.to_string e); k(); y
 

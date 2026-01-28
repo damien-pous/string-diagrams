@@ -12,10 +12,6 @@ class virtual generic =
     method view = view
 
     method canvas = canvas
-
-    val mutable clipboard = ""
-    method clipboard = clipboard
-    method set_clipboard s = clipboard <- s
     
     method private point_of_dpoint (x,y) =
       let w,h = self#dsize in

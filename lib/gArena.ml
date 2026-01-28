@@ -2,13 +2,9 @@ open Diagrams
 open Gg
 open Vg
 
-class arena ~width ~height ?window da () =
+let create ~width ~height ?window da () =
   object(self)
     inherit Arena.generic
-
-    val clipboard = GData.clipboard Gdk.Atom.clipboard
-    method! clipboard = Option.value clipboard#text ~default:"" 
-    method! set_clipboard = clipboard#set_text
     
     val mutable backing = GDraw.pixmap ~width ~height ?window ()
     
@@ -90,5 +86,3 @@ class arena ~width ~height ?window da () =
     let _ = da#event#connect#motion_notify ~callback:self#motion_notify in
     GtkBase.Widget.add_events da#as_widget [ `BUTTON_MOTION; `BUTTON_PRESS; `BUTTON_RELEASE ]      
   end
-
-let create = new arena

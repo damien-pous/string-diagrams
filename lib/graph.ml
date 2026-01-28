@@ -766,7 +766,7 @@ let create_box (g: graph) p =
   let debug_msg fmt = debug_msg "box" fmt in
   let edge_error e msg =
     temporary#curve ~color:Color.red (g#edge_curve e);
-    error msg
+    user_error msg
   in              
   let p = Geometry.clockwise p in
   let cuts = Polygon.fold2 p (fun ij acc ->
@@ -814,14 +814,14 @@ let create_box (g: graph) p =
         | l -> `T [a] :: l)
   in
   let src,tgt = match group cuts with
-    | [] -> if true then warning "ignored empty box creation" else [],[]
-    | [`S s] -> if false then warning "empty target boxes unsupported yet" else s,[]
+    | [] -> if true then user_error "ignored empty box creation" else [],[]
+    | [`S s] -> warning "empty target boxes not full supported yet"; s,[]
     | [`T t] -> [],t
     | [`S s;`T t]
       | [`T t;`S s] -> s,t
     | [`S s;`T t;`S s'] -> s'@s,t
     | [`T t;`S s;`T t'] -> s,t'@t
-    | _ -> error "too many alternations of sources and targets"
+    | _ -> user_error "too many alternations of sources and targets"
   in
   debug_msg "%i -> %i" (List.length src) (List.length tgt);
   assert(unique_assq src && unique_assq tgt); (* TODO: with proper edge-comparison function *)

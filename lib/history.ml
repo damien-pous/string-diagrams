@@ -23,7 +23,6 @@ let redo h =
 
 
 open Misc
-open Messages
 
 class virtual mk =
   object(self)
@@ -45,15 +44,15 @@ class virtual mk =
       self#checkpoint;
       clear hist
     
-    method undo () =
+    method private undo =
       match undo hist with
       | Some s -> self#reset s
-      | None -> warning "no more undos"
+      | None -> Messages.message "no more undos"
 
-    method redo () =
+    method private redo =
       match redo hist with
       | Some s -> self#reset s
-      | None -> warning "no more redos"
+      | None -> Messages.message "no more redos"
 
     initializer
       self#clear_history

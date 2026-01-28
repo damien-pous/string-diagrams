@@ -1,5 +1,5 @@
 open Diagrams
-
+open Messages
 open Js_of_ocaml
 open Gg
 open Vg
@@ -99,15 +99,6 @@ class arena (canvasdiv: Html.divElement Js.t) (canvas: Html.canvasElement Js.t) 
          Js._false
       | _ -> Js._true
 
-    val clipboard = Brr.(Brr_io.Clipboard.of_navigator G.navigator)
-    method! clipboard =
-      Messages.warning "cannot read clipboard from the applet, please paste directly in the text box above"
-      (* Fut.await (Brr_io.Clipboard.read_text clipboard) *)
-      (*   (function Ok v -> k (Jstr.to_string v) *)
-      (*           | Error _ -> print_endline "error when retrieving clipboard") *)
-    method! set_clipboard s =
-      ignore(Brr_io.Clipboard.write_text clipboard (Jstr.v s))      
-
     val mutable dsize = (0,0)
     method private checksize _ =
       let s = canvasdiv##.clientWidth, canvasdiv##.clientHeight in
@@ -131,34 +122,52 @@ let onload _ =
   entry##.value := Js.string initial_term;
   let strokes = app (get "strokes") Html.createTextarea in
   strokes##.value := Js.string "type commands here";
-  let keys = get "keys" in
-  let infos = get "infos" in
-  let warnings = get "warnings" in
+  let messages = get "messages" in
   let arena = new arena canvasdiv canvas in
   let examples = get "examples" in
-  let self =
-    object(self)
-      inherit Program.mk arena
-      inherit Writer.fake " from web applet"
-      method entry = Js.to_string (entry##.value)
-      method set_entry s = entry##.value := Js.string s
-      method entry_warning = print warnings
-      method help = print keys
-      method private open_dialog = print warnings "cannot open files from the web applet"
-      method private saveas_dialog = print warnings "cannot save files from the web applet"
-      method private save_dialog = self#saveas_dialog
-      method private quit = print warnings "cannot quit the web applet"
+  let ui: _ Types.ui_io =
+    object
+      val clipboard = Brr.(Brr_io.Clipboard.of_navigator G.navigator)
+      method clipboard =
+        user_error "cannot read clipboard from the applet, please paste directly in the text box above"
+        (* Fut.await (Brr_io.Clipboard.read_text clipboard) *)
+        (*   (function Ok v -> k (Jstr.to_string v) *)
+        (*           | Error _ -> print_endline "error when retrieving clipboard") *)
+      method set_clipboard s =
+        ignore(Brr_io.Clipboard.write_text clipboard (Jstr.v s))
+
+      method file = abort "no file access from the applet"
+      method read = abort "no file access from the applet (read)"
+      method write _ = abort "no file access from the applet (write)"
+      method write_pdf _ = abort "no file access from the applet (write_pdf)"
+      method write_svg _ = abort "no file access from the applet (write_svg)"
+      method set_file _ = abort "no file access from the applet (set_file)"
+      method open_dialog _ = abort "no file access from the applet (open_dialog)"
+      method saveas_dialog _ = abort "no file access from the applet (saveas_dialog)"
+      method quit = abort "cannot quit the applet"
+
       method fullscreen =
         ignore Brr.(    
           Fut.of_promise ~ok:ignore @@
             Jv.call (El.to_jv (Document.body G.document)) "requestFullscreen" [||])
+
+      method entry = Js.to_string (entry##.value)
+      method set_entry s = entry##.value := Js.string s      
+
+      val mutable on_entry_changed = fun () -> ()
+      method set_on_entry_changed k = on_entry_changed <- k
+      method on_entry_changed = on_entry_changed
+
       initializer
-        List.iter (fun (n,e,g) ->
-            let ex = app examples Html.createLi in
-            Dom.appendChild ex (Html.document##createTextNode (Js.string n));
-            add_listener ex Html.Event.click (fun _ -> self#load_string (e^"\n------\n"^g); Js._true)
-          ) Examples.list
+        Messages.set_output (print messages) (fun () -> clear messages);
     end
+  in
+  let self = Program.create arena ui in
+  let () = List.iter (fun (n,e,g) ->
+               let ex = app examples Html.createLi in
+               Dom.appendChild ex (Html.document##createTextNode (Js.string n));
+               add_listener ex Html.Event.click (fun _ -> self#load_string (e^"\n------\n"^g); Js._true)
+             ) Examples.list
   in
   
   let onkeypress b ev =
@@ -167,28 +176,29 @@ let onload _ =
     else (
       (match Js.to_string (Js.Optdef.get ev##.key (fun _ -> assert false)) with
        | "Control" | "Alt" | "Shift" | "Meta" | "Tab" -> ()
-       | s -> self#on_key_press (Js.to_bool ev##.ctrlKey) s);
+       | s ->
+          let ctrl = Js.to_bool ev##.ctrlKey in
+          let shft = Js.to_bool ev##.shiftKey in
+          self#on_key_press ~ctrl ~shft s);
       Js.bool (b || Js.to_string (Js.Optdef.get ev##.key (fun _ -> assert false)) = "Tab"))
   in
-  let onkeyup ev =
-    ignore ev;
-    self#on_entry_changed;
+  let onkeyup _ev =
+    ui#on_entry_changed();
     Js._true
   in
   let onbuttonpress ev =
-    self#on_button_press (Js.to_bool ev##.shiftKey)
+    let ctrl = Js.to_bool ev##.ctrlKey in
+    let shft = Js.to_bool ev##.shiftKey in
+    self#on_button_press ~ctrl ~shft
   in
-  let refresh() =
-    arena#refresh;
-    print infos Messages.temporary#messages
-  in
-  let atomic ?(clearall=true) f d x =
-    if clearall then Messages.temporary#clear_all else Messages.temporary#clear;  
+  let refresh() = arena#refresh in
+  let atomic ?(keep=false) f d x =
+    if keep then Messages.temporary#clear else Messages.clear();  
     Messages.catch f x d refresh
   in
-  let std_evt ?clearall f ev =
+  let std_evt ?keep f ev =
     if not (Js.to_bool ev##.ctrlKey) then
-      (atomic ?clearall (fun ev -> f ev; Js._false) Js._false ev)
+      (atomic ?keep (fun ev -> f ev; Js._false) Js._false ev)
     else Js._true
   in
   
@@ -196,9 +206,8 @@ let onload _ =
   entry##.style##.height := Js.string "20%";
   entry##.tabIndex := 1;
   strokes##.tabIndex := 2;
-  warnings##.style##.cssText := Js.string "color:red";
   add_listener canvas Html.Event.mousedown (std_evt onbuttonpress);
-  add_listener canvas Html.Event.mousemove (std_evt ~clearall:false (fun _ -> self#on_motion));
+  add_listener canvas Html.Event.mousemove (std_evt ~keep:true (fun _ -> self#on_motion));
   add_listener canvas Html.Event.mouseup (std_evt (fun _ -> self#on_button_release));      
   add_listener canvas Html.Event.click (fun _ -> strokes##focus; Js._true);      
   add_listener strokes Html.Event.keydown (atomic (onkeypress false) Js._false);

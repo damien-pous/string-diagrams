@@ -3,7 +3,7 @@
  (libraries vg store)
  (modules_without_implementation types graph_type)
 ; (flags -w -27)
- (modules :standard \ gArena file))
+ (modules :standard \ gArena file gUI))
 
 (menhir (modules parser))
 (ocamllex lexer)
@@ -16,4 +16,4 @@
 (library
  (name diagrams_gtk)
  (libraries diagrams_cairo cairo2-gtk)
- (modules gArena))
+ (modules gArena gUI))

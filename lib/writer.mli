@@ -1,3 +1,3 @@
-open Types
+(* open Types *)
                 
-class fake: string -> ['a] writer
+(* class fake: string -> ['a] writer *)

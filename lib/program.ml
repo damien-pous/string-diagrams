@@ -10,26 +10,12 @@ let state_of_string s =
   let x = Parser.rawterm Lexer.token l in
   Graph.state x
 
-class virtual mk (arena: arena): [state] program =
+let create (arena: arena) (ui: state ui_io): program =
   object(self)
 
     inherit History.mk
-
-    method private virtual read: _
-    method private virtual write: _
-    method private virtual write_svg: _
-    method private virtual write_pdf: _
-    method private virtual help: _
-    method private virtual open_dialog: _
-    method private virtual saveas_dialog: _
-    method private virtual quit: _
-    method virtual fullscreen: _
-    method virtual entry: _
-    method virtual set_entry: _
-    method virtual entry_warning: _
     
     val mutable mode = `Normal
-
     val state = ref initial_state
     method private state = !state
     method private term_or_equation = snd !state
@@ -38,19 +24,19 @@ class virtual mk (arena: arena): [state] program =
     method private graph =
       match self#term_or_equation with
       | Trm g -> g
-      | Eqn _ -> error "single graph expected and equation found"    
+      | Eqn _ -> program_error "single diagram expected and equation found"    
     method private lhs =
       match self#term_or_equation with
       | Eqn ((g,_),_) -> g
-      | Trm _ -> error "equation expected and single graph found (lhs)"
+      | Trm _ -> program_error "equation expected and single diagram found (lhs)"
     method private rhs =
       match self#term_or_equation with
       | Eqn ((_,g),_) -> g
-      | Trm _ -> error "equation expected and single graph found (rhs)"
+      | Trm _ -> program_error "equation expected and single diagram found (rhs)"
     method private script =
       match self#term_or_equation with
       | Eqn (_,s) -> s
-      | Trm _ -> error "equation expected and single graph found (script)"
+      | Trm _ -> program_error "equation expected and single diagram found (script)"
     method private add_script: 'a. ('a, formatter, unit) format -> 'a =
       match self#term_or_equation with
       | Eqn (e,s) ->
@@ -162,7 +148,7 @@ class virtual mk (arena: arena): [state] program =
       arena#refresh
 
     method private update_entry =
-      Format.kasprintf self#set_entry "%a" (Graph.pp_state TermIfPossible) !state
+      Format.kasprintf ui#set_entry "%a" (Graph.pp_state TermIfPossible) !state
     
     method private on_reset =
       mode <- `Normal;
@@ -185,22 +171,20 @@ class virtual mk (arena: arena): [state] program =
       self#changed_nocheckpoint;
       self#checkpoint;
 
-    method on_entry_changed =
-      debug_msg "entry" "on entry changed with `%s'" self#entry;
+    method private on_entry_changed () =
+      debug_msg "entry" "on entry changed with `%s'" ui#entry;
       mode <- `Normal;
-      match state_of_string self#entry with
-      | state' ->
-         self#entry_warning "";
-         if not (Graph.iso_state !state state') then (
-           debug_msg "entry" "on entry and state changed";
-           state := state';
-           self#checkpoint;
-           self#redraw ~rebox:true ();
-         )
-      | exception (Failure s) -> self#entry_warning s
-      | exception Parser.Error -> self#entry_warning "Parsing error"
-      | exception e -> self#entry_warning (Printexc.to_string e)
-      
+      match state_of_string ui#entry with
+      | state' -> if not (Graph.iso_state !state state') then (
+                    debug_msg "entry" "on entry and state changed";
+                    state := state';
+                    self#checkpoint;
+                    self#redraw ~rebox:true ()
+                  )
+      | exception (Failure s) -> message "%s" s
+      | exception Parser.Error -> message "Parsing error"
+      | exception e -> message "%s" (Printexc.to_string e)
+    
     method private catch_ports = self#catch ~ports:true
     method private catch ?(ports=false) () =
       let p = arena#pointer in
@@ -226,19 +210,19 @@ class virtual mk (arena: arena): [state] program =
     method private remove_node =
       match self#catch() with
       | `N (g,n) -> g#rem_node n; self#changed 
-      | _ -> warning "no node to remove here"
+      | _ -> message "no node to remove here"
 
     method private new_node =
       match self#catch() with
-      | `G g -> temporary#msg "type node name"; mode <- `New_node g; self#refresh
-      | _ -> warning "cannot create a node here"
+      | `G g -> message "type node name"; mode <- `New_node g; self#refresh
+      | _ -> message "cannot create a node here"
 
     method private add_node g f =
       match List.assoc f self#env with
       | l,T2((n,m),_) -> 
          g#add_node (Graph.var_node n m f (Info.pos arena#pointer l)); self#changed
-      | _ -> error "not a node name: %s" f
-      | exception Not_found -> error "unknown node name: %s" f
+      | _ -> abort "not a node name: %s" f
+      | exception Not_found -> abort "unknown node name: %s" f
     
     method private unfold =
       match self#catch() with
@@ -255,13 +239,13 @@ class virtual mk (arena: arena): [state] program =
              | _,T2(_,None) -> warning "this box is abstract"
              | _ -> assert false
          )
-      | _ -> warning "no node to unfold/unbox here"
+      | _ -> message "no node to unfold/unbox here"
 
     method private scale s =
       match self#catch() with
       | `N (_,n) -> n#scale s; self#changed
       | `G g -> g#scale s; self#changed
-      | _ -> warning "nothing to scale here"
+      | _ -> message "nothing to scale here"
 
     method private improve_placement force =      
       if not (self#fold_graphs (fun g s -> g#improve ~force && s) true) || force then        
@@ -272,7 +256,7 @@ class virtual mk (arena: arena): [state] program =
     method private release =
       match self#catch() with
       | `N(_,n) -> Place.unfix n; self#perturbate
-      | _ -> warning "no node to release here"
+      | _ -> message "no node to release here"
     
     method private create_box g p =
       let _,h = Graph.create_box g p in
@@ -290,7 +274,7 @@ class virtual mk (arena: arena): [state] program =
       match self#catch() with
       | `N(g,n) ->
          (match n#kind with
-          | Var _ -> warning "atomic boxes cannot be rewritten"
+          | Var _ -> message "atomic boxes cannot be rewritten"
           | Box h ->
              let x,l,r =
                let j = Stdlib.ref i in
@@ -307,7 +291,7 @@ class virtual mk (arena: arena): [state] program =
                        ) None self#hyps
                with
                | Some(x,l,r) -> x,l,r
-               | None -> error "no such matching hypothesis (%i)" i
+               | None -> user_error "no such matching hypothesis (%i)" i
              in
              let i = match self#term_or_equation with
                | Eqn((_,g'),_) when g==g' -> "2: "
@@ -318,7 +302,7 @@ class virtual mk (arena: arena): [state] program =
                with _ -> "[not a term]"
              in
              self#add_script "  transitivity (%s). %smcat.\n  rewrite %s.\n" t i x;
-             temporary#msg "rewrite %s" x;
+             message "rewrite %s" x;
              h#set "place" "contract";
              h#on_stabilize
                (fun () ->
@@ -336,7 +320,7 @@ class virtual mk (arena: arena): [state] program =
                  Place.group h;
                  false);
              self#changed)
-      | _ -> warning "no box to rewrite here"
+      | _ -> message "no box to rewrite here"
 
     val mutable play = true
     method on_tic =
@@ -346,7 +330,8 @@ class virtual mk (arena: arena): [state] program =
            self#improve_placement false;
         | _ -> ()
 
-    method on_button_press ctrl =
+    method on_button_press ~ctrl ~shft =
+      ignore(shft);
       match mode with 
       | `Normal ->
          (match self#catch_ports() with
@@ -394,7 +379,7 @@ class virtual mk (arena: arena): [state] program =
          (* (match self#catch with `N(g,n) -> temporary#msg "depth %i" (g#depth n) | _ -> ()); *)
          (* self#refresh *)
 
-    method load v =
+    method private load v =
       mode <- `Normal;
       state := v;
       self#clear_history;
@@ -403,67 +388,70 @@ class virtual mk (arena: arena): [state] program =
       self#redraw()
 
     method load_file =
-      self#load self#read
+      self#load ui#read
              
     method load_string s =
       let l = Lexing.from_string s in
       let x = Parser.rawterm Lexer.token l in
       self#load (Graph.state x)
 
-    method save =
-      self#write !state
+    method private save =
+      ui#write !state
       
     method private load_from_clipboard =
-      self#load_string arena#clipboard
+      self#load_string ui#clipboard
 
-    method private graph_to_clipboard =
+    method private term_to_clipboard =
       let k,g = 
         match self#catch() with
-        | `G g -> "graph",g
+        | `G g -> "diagram",g
         | `N(g,n) ->
            (match n#kind with
             | Box h -> "node",h
-            | _ -> "graph",g)
-        | _ -> warning "no graph/node to export here"
+            | _ -> "diagram",g)
+        | _ -> user_error "no diagram/node to export here"
       in
       let s = Format.asprintf "%a" (Graph.pp Rocq) g in
-      arena#set_clipboard s;
-      temporary#msg "%s copied to clipboard: %s" k s
+      ui#set_clipboard s;
+      message "%s copied to clipboard: %s" k s
 
-    method private pdf =
+    method private pdf = self#export "pdf" ui#write_pdf
+    method private svg = self#export "svg" ui#write_svg
+    method private export ext write =
       let k,i = 
         match self#catch() with
-        | `G g -> "graph",Graph.image g
+        | `G g -> "diagram",Graph.image g
         | `N(g,n) ->
            (match n#kind with
             | Box h -> "node",Graph.image h
-            | _ -> "graph",Graph.image g)
+            | _ -> "diagram",Graph.image g)
         | _ -> "picture", (arena#canvas#get, self#box)
       in
-      self#write_pdf [i];
-      temporary#msg "%s exported to pdf" k
+      write [i];
+      message "%s exported to %s" k ext
 
     method private script_to_clipboard =
-      arena#set_clipboard self#script;
-      temporary#msg "Rocq script copied to clipboard"    
+      ui#set_clipboard self#script;
+      message "Rocq script copied to clipboard"    
 
-    method on_key_press ctrl s =
+    method on_key_press ~ctrl ~shft s =
+      ignore(shft);
       if ctrl then
         (match s with
          | "s" -> self#save
-         | "e" -> self#saveas_dialog
-         | "o" -> self#open_dialog
+         | "e" -> ui#saveas_dialog (fun () -> self#save)
+         | "o" -> ui#open_dialog (fun () -> self#load_file)
          | "v" -> self#load_from_clipboard
-         | "f" -> self#fullscreen
-         | "z" -> self#undo()
-         | "r" -> self#redo()
-         | "q" -> self#quit
+         | "f" -> ui#fullscreen
+         | "z" -> self#undo
+         | "r" -> self#redo
+         | "q" -> ui#quit
          | s -> warning "skipping key control %s" s)
       else if s = "Escape" then self#abort
       else match mode with
       | `Normal | `Move_node _ ->
          (match s with
-          | "h" -> self#help 
+          | "h" -> message 
                      "** keys **
 1..n    rewrite box using matching hypothesis
 u       unbox or unfold node
@@ -478,7 +466,7 @@ e       toggle link edition mode
 d       remove node
 n       create node (give name afterward)
 t       export term to clipboard
-p       export diagram as pdf
+p/g     export diagram as pdf/svg
 R       export Rocq script to clipboard
 ->/<-   undo/redo
 SPACE   pause/start
@@ -496,9 +484,10 @@ h       print this help message"
           | "l" -> toggle Constants.labels; self#redraw ~rebox:true ()
           | "c" -> toggle Constants.contours; self#redraw()
           | "e" -> toggle Constants.edit_mode;
-                   temporary#msg "edit mode: %b" !Constants.edit_mode; self#redraw()
+                   message "edit mode: %b" !Constants.edit_mode; self#redraw()
+          | "g" -> self#svg
           | "p" -> self#pdf
-          | "t" -> self#graph_to_clipboard
+          | "t" -> self#term_to_clipboard
           | "R" -> self#script_to_clipboard
           | "-" -> self#scale (1. /. 1.1)
           | "+" -> self#scale 1.1
@@ -512,15 +501,18 @@ h       print this help message"
           | "7" -> self#rewrite 7
           | "8" -> self#rewrite 8
           | "9" -> self#rewrite 9
-          | "ArrowLeft" -> self#undo()
-          | "ArrowRight" -> self#redo()
+          | "ArrowLeft" -> self#undo
+          | "ArrowRight" -> self#redo
           | " " -> play <- not play
           | "r" -> self#redraw()
           | "!" -> self#refresh
-          | "q" -> self#quit
+          | "q" -> ui#quit
           | "" -> ()
           | s -> warning "skipping key '%s'" s)
       | `New_node g -> mode <- `Normal; self#add_node g s
       | _ -> warning "ignored key `%s' during ongoing action" s
+    
+    initializer
+      ui#set_on_entry_changed self#on_entry_changed
     
   end

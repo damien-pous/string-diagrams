@@ -39,14 +39,6 @@ class type canvas =
     method line: ?color:color -> line -> unit 
     method text: ?color:color -> point -> string -> unit 
   end
-
-class type msg_canvas =
-  object
-    inherit canvas
-    method msg: 'a. ('a, formatter, unit) format -> 'a
-    method messages: string
-    method clear_all: unit
-  end
     
 class type arena =
   object
@@ -59,53 +51,49 @@ class type arena =
     method resize: float*float -> unit
     method pointer: point
     method refresh: unit
+  end
+
+class type ui =
+  object
+    method entry: string
+    method set_entry: string -> unit
+    method on_entry_changed: unit -> unit
+    method set_on_entry_changed: (unit -> unit) -> unit
     method clipboard: string
-    method set_clipboard: string -> unit
+    method set_clipboard: string -> unit    
+    method file: string
+    method set_file: string -> unit
+    method open_dialog: (unit -> unit) -> unit
+    method saveas_dialog: (unit -> unit) -> unit
+    method fullscreen: unit
+    method quit: unit    
   end
 
-class type ['a] writer =
+class type ['a] io =
   object
-    method private read: 'a
-    method private write: 'a -> unit
-    method private write_svg: (image*box) list -> unit
-    method private write_pdf: (image*box) list -> unit
+    method read: 'a
+    method write: 'a -> unit
+    method write_svg: (image*box) list -> unit
+    method write_pdf: (image*box) list -> unit
   end
 
-class type virtual ['a] program =
+class type ['a] ui_io =
   object
-    method virtual private read: 'a
-    method virtual private write: 'a -> unit
-    method virtual private write_svg: (image*box) list -> unit
-    method virtual private write_pdf: (image*box) list -> unit
+    inherit ui
+    inherit ['a] io
+  end
 
-    method virtual private help: string -> unit
-    method virtual private open_dialog: unit
-    method virtual private saveas_dialog: unit
-    method virtual private quit: unit
-    method virtual fullscreen: unit
-
-    method virtual entry: string
-    method virtual set_entry: string -> unit
-    method virtual entry_warning: string -> unit
-    method on_entry_changed: unit
-    
-    (* Boolean indicates whether control is pressed *)
-    method on_key_press: bool -> string -> unit
-    (* Boolean indicates whether shift is pressed *)
-    method on_button_press: bool -> unit
+class type program =
+  object
+    method on_key_press: ctrl:bool -> shft:bool -> string -> unit
+    method on_button_press: ctrl:bool -> shft:bool -> unit
     method on_button_release: unit
     method on_motion: unit
     method on_tic: unit
 
-    method undo: unit -> unit
-    method redo: unit -> unit
-
-    method load: 'a -> unit
     method load_string: string -> unit
     method load_file: unit
-    method save: unit
-  end
-  
+  end  
 
 type pp_mode = Full | Sparse | Term | TermIfPossible | Rocq
 

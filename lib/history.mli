@@ -16,6 +16,6 @@ class virtual mk:
     method private clear_history: unit
     method private abort: unit
     
-    method undo: unit -> unit
-    method redo: unit -> unit
+    method private undo: unit
+    method private redo: unit
   end

@@ -1,4 +1,4 @@
 open Types
 open Graph_type
 
-class virtual mk: arena -> [state] program
+val create: arena -> state ui_io -> program

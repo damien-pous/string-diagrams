@@ -25,4 +25,9 @@ val write: string -> state -> unit
 (* does the given SD file already exists *)
 val exists: string -> bool
 
-class writer: string ref -> [state] Types.writer
+
+class virtual io:
+  object
+    method virtual file: string
+    inherit [state] Types.io
+  end
