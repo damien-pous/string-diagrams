@@ -6,7 +6,16 @@ open Vg
 
 
 let initial_term =
-  "m: A^2 -> A\n---\nm.A ; m = A.m ; m"
+  "m: M⊗M -> M
+n: N⊗N -> N
+x: N⊗M -> M⊗N
+mn: M⊗N⊗M⊗N -> M⊗N := M·x·N ; m·n
+mA: m·M ; m ≡ M·m ; m
+nA: n·N ; n ≡ N·n ; n
+mx: N·m ; x ≡ x·M ; M·x ; m·N
+nx: n·M ; x ≡ N·x ; x·N ; M·n
+------
+M·x·N⊗M⊗N ; M⊗M·n·M⊗N ; m·x·N ; m·n ≡ M⊗N⊗M·x·N ; M⊗N·m·N⊗N ; M·x·n ; m·n"
 
 module Html = Dom_html
 	
@@ -178,6 +187,7 @@ let onload _ =
   in
   
   entry##.style##.width := Js.string "50%";
+  entry##.style##.height := Js.string "20%";
   entry##.tabIndex := 1;
   strokes##.tabIndex := 2;
   warnings##.style##.cssText := Js.string "color:red";
