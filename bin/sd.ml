@@ -67,7 +67,7 @@ let dialog title action stock stock' filter =
 
 let self =
   object(self)
-    inherit Prover.mk arena as parent
+    inherit Program.mk arena as parent
     inherit File.writer file
     method help = print_endline
     val open_dialog =

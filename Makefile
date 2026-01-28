@@ -10,20 +10,15 @@ test::
 	OCAMLRUNPARAM=b dune runtest
 	OCAMLRUNPARAM=b dune exec ./bin/check.exe -- *.sd
 
-prove::
+run::
 	dune build
 	OCAMLRUNPARAM=b dune runtest
-	OCAMLRUNPARAM=b dune exec ./bin/prove.exe -- mumu
-
-edit::
-	dune build
-	OCAMLRUNPARAM=b dune runtest
-	OCAMLRUNPARAM=b dune exec ./bin/edit.exe
+	OCAMLRUNPARAM=b dune exec ./bin/sd.exe -- mumu
 
 www::
 	dune runtest
-	dune build ./www/applet.bc.js
-	cp ./www/hip.css ./www/index.html _build/default/www/applet.bc.js $(WWW)
+	dune build ./bin/applet.bc.js
+	cp ./www/hip.css ./www/index.html _build/default/bin/applet.bc.js $(WWW)
 
 clean::
 	dune clean

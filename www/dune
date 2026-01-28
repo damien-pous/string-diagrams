@@ -1,6 +1,0 @@
-(executable
- (name applet)
- (modules applet)
- (libraries diagrams vg.htmlc)
- (modes js)
- (preprocess (pps js_of_ocaml-ppx)))

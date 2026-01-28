@@ -1,17 +1,18 @@
 (executable
- (public_name sd-edit)
- (name edit)
- (modules edit)
- (libraries diagrams diagrams_gtk))
-
-(executable
- (public_name sd-prove)
- (name prove)
- (modules prove)
- (libraries diagrams diagrams_gtk))
-
-(executable
  (public_name sd)
+ (name sd)
+ (modules sd)
+ (libraries diagrams diagrams_gtk))
+
+(executable
+ (public_name sd-check)
  (name check)
  (modules check)
  (libraries diagrams diagrams_cairo))
+
+(executable
+ (name applet)
+ (modules applet)
+ (libraries diagrams vg.htmlc)
+ (modes js)
+ (preprocess (pps js_of_ocaml-ppx)))

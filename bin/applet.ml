@@ -128,7 +128,7 @@ let onload _ =
   let arena = new arena canvasdiv canvas in
   let self =
     object(self)
-      inherit Prover.mk arena
+      inherit Program.mk arena
       inherit Writer.fake " from web applet"
       method entry = Js.to_string (entry##.value)
       method set_entry s = entry##.value := Js.string s
