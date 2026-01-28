@@ -18,11 +18,13 @@ let group g =
 let generic k (g: graph) =
   MSet.iter (fun n ->
       if n#get "shape" = Some "cross" then
-        let a,b = g#prev (InnerSource(n,1)), g#prev (InnerSource(n,2)) in
-        let c,d = g#next (InnerTarget(n,1)), g#next (InnerTarget(n,2)) in
-        n#setdirs
-          [g#ipos a, g#idir a; g#ipos b, g#idir b]
-          [g#opos c, g#odir c; g#opos d, g#odir d]
+        match (g#prev_opt (InnerSource(n,1)), g#prev_opt (InnerSource(n,2))),
+              (g#next_opt (InnerTarget(n,1)), g#next_opt (InnerTarget(n,2))) with
+        | (Some a,Some b),(Some c,Some d) ->
+           n#setdirs
+             [g#ipos a, g#idir a; g#ipos b, g#idir b]
+             [g#opos c, g#odir c; g#opos d, g#odir d]
+        | _ -> ()
     ) g#nodes;
   let t = Hashtbl.create (MSet.size g#nodes) in
   let add x s v =
@@ -194,26 +196,30 @@ let improve =
       let _,prevs =
         if n#nsources = 0 then 0,[g#fakeipos n#ceiling] else
         Misc.fold (fun i (d,l) ->
-            let p = g#prev (InnerSource(n,i)) in
-            let dp = match p with
-              | InnerTarget(m,_) -> m#level
-              | _ -> mlevel+1
-            in
-            if dp < d then dp,[g#ipos p]
-            else if dp = d then d,(g#ipos p::l)
-            else d,l 
+            match g#prev_opt (InnerSource(n,i)) with
+            | Some p -> 
+               let dp = match p with
+                 | InnerTarget(m,_) -> m#level
+                 | _ -> mlevel+1
+               in
+               if dp < d then dp,[g#ipos p]
+               else if dp = d then d,(g#ipos p::l)
+               else d,l 
+            | None -> d,l
           ) n#nsources (mlevel+2,[Box2.tm_pt g#box]) 
       in
       let _,nexts =
         Misc.fold (fun i (d,l) ->
-            let p = g#next (InnerTarget(n,i)) in
-            let dp = match p with
+            match g#next_opt (InnerTarget(n,i)) with
+            | Some p ->
+               let dp = match p with
               | InnerSource(m,_) -> m#level
               | _ -> 0
-            in
-            if dp > d then dp,[g#opos p]
-            else if dp = d then d,(g#opos p::l)
-            else d,l 
+               in
+               if dp > d then dp,[g#opos p]
+               else if dp = d then d,(g#opos p::l)
+               else d,l
+            | None -> d,l
           ) n#ntargets (-1,[Box2.bm_pt g#box]) (* TOFIX: default value might be wrong (planchers) *)
       in
       let y = P2.y n#pos in

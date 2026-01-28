@@ -309,7 +309,11 @@ class virtual mk (arena: arena): [state] program =
                | Eqn((_,g'),_) when g==g' -> "2: "
                | _ -> ""
              in
-             self#add_script "  transitivity (%a). %smcat.\n  rewrite %s.\n" (Graph.pp Rocq) g i x;
+             let t =
+               try Format.asprintf "%a" (Graph.pp Rocq) g
+               with _ -> "[not a term]"
+             in
+             self#add_script "  transitivity (%s). %smcat.\n  rewrite %s.\n" t i x;
              temporary#msg "rewrite %s" x;
              h#set "place" "contract";
              h#on_stabilize

@@ -188,7 +188,7 @@ class leveled n m =
     method ceiling: fakeiport =
       match !ceiling with
       | Some c -> c
-      | None -> failwith "missing ceiling"
+      | None -> Source 0.5      (* temporary default ceiling *)
     method set_ceiling c = ceiling := Some c
   end
 
@@ -232,8 +232,14 @@ class gen_graph nodes edges area =
         | `Right -> [],
            if self#ntargets = 0 then `Left
            else `RightO (Target self#ntargets)
-        | `LeftI i -> [], `LeftO (self#next i)
-        | `RightO o -> [],`RightI (self#prev o)
+        | `LeftI i -> [],
+           (match self#next_opt i with
+            | Some o -> `LeftO o
+            | None -> `RightI i)
+        | `RightO o -> [],
+           (match self#prev_opt o with
+            | Some i -> `RightI i
+            | None -> `LeftO o)
         | `LeftO (Target i) -> [],
            if i=1 then `Left
            else `RightO (Target (i-1))
@@ -264,7 +270,6 @@ class gen_graph nodes edges area =
         let n = float_of_int (List.length l+1) in
         List.iteri (fun i x -> x#set_ceiling (k (float_of_int (i+1)/.n))) l
       in
-      try
       add (collect `Left) (fun p -> Source (0.5+.p/.2.));
       for i = 1 to self#nsources do
         let i' = float_of_int i in
@@ -277,7 +282,6 @@ class gen_graph nodes edges area =
             add (collect (`RightI (InnerTarget(n,i)))) (fun p -> InnerTarget(n,i'+.p))
           done;          
         ) !nodes
-      with Incomplete_graph -> ()
 
     method ipos = function
       | Source i -> self#spos i
