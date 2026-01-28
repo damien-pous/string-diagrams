@@ -22,7 +22,6 @@ class virtual mk (arena: arena): [state] program =
     method private virtual help: _
     method private virtual open_dialog: _
     method private virtual saveas_dialog: _
-    method private virtual save_dialog: _
     method private virtual quit: _
     method virtual fullscreen: _
     method virtual entry: _
@@ -308,16 +307,16 @@ class virtual mk (arena: arena): [state] program =
       arena#fit self#box;
       self#redraw()
 
-    method load_from f =
-      self#load (self#read f)
+    method load_file =
+      self#load self#read
              
     method load_string s =
       let l = Lexing.from_string s in
       let x = Parser.rawterm Lexer.token l in
       self#load (Graph.state x)
 
-    method save_to f =
-      self#write f !state
+    method save =
+      self#write !state
       
     method private load_from_clipboard =
       self#load_string arena#clipboard
@@ -336,18 +335,18 @@ class virtual mk (arena: arena): [state] program =
       arena#set_clipboard s;
       temporary#msg "%s copied to clipboard: %s" k s
 
-    method private graph_to_pdf =
-      let k,g = 
+    method private pdf =
+      let k,i = 
         match self#catch with
-        | `G g -> "graph",g
+        | `G g -> "graph",Graph.image g
         | `N(g,n) ->
            (match n#kind with
-            | Box h -> "node",h
-            | _ -> "graph",g)
-        | _ -> warning "no graph/node to export here"
+            | Box h -> "node",Graph.image h
+            | _ -> "graph",Graph.image g)
+        | _ -> "picture", (arena#canvas#get, self#box)
       in
-      self#write_pdf [Graph.image g] "g.pdf";
-      temporary#msg "%s exported to g.pdf" k
+      self#write_pdf [i];
+      temporary#msg "%s exported to pdf" k
 
     method private script_to_clipboard =
       arena#set_clipboard self#script;
@@ -356,7 +355,7 @@ class virtual mk (arena: arena): [state] program =
     method on_key_press ctrl s =
       if ctrl then
         (match s with
-         | "s" -> self#save_dialog
+         | "s" -> self#save
          | "e" -> self#saveas_dialog
          | "o" -> self#open_dialog
          | "f" -> self#fullscreen
@@ -377,7 +376,7 @@ t:      toggle node labels
 f       release fixed element
 l       load state from clipboard
 e       export graph term to clipboard
-p       export graph as pdf (file g.pdf)
+p       export graph/picture as pdf (file g.pdf)
 E       export Rocq script to clipboard
 ->/<-   undo/redo
 SPACE   pause/start
@@ -388,7 +387,7 @@ h       print this help message"
           | "f" -> self#release
           | "u" -> self#unfold
           | "t" -> Constants.toggle_labels(); self#redraw()
-          | "p" -> self#graph_to_pdf
+          | "p" -> self#pdf
           | "l" -> self#load_from_clipboard
           | "e" -> self#graph_to_clipboard
           | "E" -> self#script_to_clipboard

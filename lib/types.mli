@@ -65,23 +65,22 @@ class type arena =
 
 class type ['a] writer =
   object
-    method private read: string -> 'a
-    method private write: string -> 'a -> unit
-    method private write_svg: (image*box) list -> string -> unit
-    method private write_pdf: (image*box) list -> string -> unit
+    method private read: 'a
+    method private write: 'a -> unit
+    method private write_svg: (image*box) list -> unit
+    method private write_pdf: (image*box) list -> unit
   end
 
 class type virtual ['a] program =
   object
-    method virtual private read: string -> 'a
-    method virtual private write: string -> 'a -> unit
-    method virtual private write_svg: (image*box) list -> string -> unit
-    method virtual private write_pdf: (image*box) list -> string -> unit
+    method virtual private read: 'a
+    method virtual private write: 'a -> unit
+    method virtual private write_svg: (image*box) list -> unit
+    method virtual private write_pdf: (image*box) list -> unit
 
     method virtual private help: string -> unit
     method virtual private open_dialog: unit
     method virtual private saveas_dialog: unit
-    method virtual private save_dialog: unit
     method virtual private quit: unit
     method virtual fullscreen: unit
 
@@ -103,8 +102,8 @@ class type virtual ['a] program =
 
     method load: 'a -> unit
     method load_string: string -> unit
-    method load_from: string -> unit
-    method save_to: string -> unit
+    method load_file: unit
+    method save: unit
   end
   
 

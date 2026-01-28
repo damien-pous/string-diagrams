@@ -136,7 +136,7 @@ and gph env elems l t =
     | Some(n',m') when n<=List.length n' && m<=List.length m' -> n',m'
     | _ -> failwith "arity mismatch (explicit graph)"
   in
-  if m=[] then failwith "empty target graphs are not yet supported";
+  if false && m=[] then failwith "empty target graphs are not yet supported";
   let nodes =
     List.fold_left (fun nodes e ->
         match e with

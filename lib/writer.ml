@@ -1,14 +1,14 @@
 open Types
 open Messages
 
-class fake s: ['a] writer =
+class fake msg: ['a] writer =
   object
-    method private read _ =
-      warning "cannot read files%s" s
-    method private write _ _ =
-      warning "cannot read files%s" s
-    method private write_svg _ _ =
-      warning "cannot write SVG files%s" s
-    method private write_pdf _ _ =
-      warning "cannot write PDF files%s" s      
+    method private read =
+      warning "cannot read files%s" msg
+    method private write _ =
+      warning "cannot write files%s" msg
+    method private write_svg _ =
+      warning "cannot write SVG files%s" msg
+    method private write_pdf _ =
+      warning "cannot write PDF files%s" msg
   end

@@ -25,4 +25,4 @@ val write: string -> state -> unit
 (* does the given SD file already exists *)
 val exists: string -> bool
 
-class writer: [state] Types.writer
+class writer: string ref -> [state] Types.writer

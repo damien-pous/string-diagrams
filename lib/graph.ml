@@ -97,7 +97,7 @@ let iso_state (e,g) (f,h) =
  *)
 let to_term (g: graph) =
   if MSet.exists (fun n -> n#targets = []) g#nodes then
-    failwith "empty target nodes are not supported yet";
+    failwith "term extraction of diagrams with empty target nodes is not yet supported";
   let rec add n j l =
     if j>n#nsources then l
     else InnerSource(n,j)::add n (j+1) l
@@ -811,7 +811,7 @@ let create_box (g: graph) p =
   in
   let src,tgt = match group cuts with
     | [] -> if true then warning "ignored empty box creation" else [],[]
-    | [`S s] -> if true then warning "empty target boxes unsupported yet" else s,[]
+    | [`S s] -> if false then warning "empty target boxes unsupported yet" else s,[]
     | [`T t] -> [],t
     | [`S s;`T t]
       | [`T t;`S s] -> s,t
