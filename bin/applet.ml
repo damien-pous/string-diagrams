@@ -24,21 +24,25 @@ let app p mk =
   Dom.appendChild p e;
   e
 
-let println par s = 
+let println par s =
   Dom.appendChild par (Html.document##createTextNode (Js.string s));
   ignore(app par Html.createBr)
 
-let clear par = 
-  let rec aux () = 
-    match Js.Opt.to_option par##.firstChild with 
-      | Some c -> Dom.removeChild par c; aux() 
+let clear par =
+  let rec aux () =
+    match Js.Opt.to_option par##.firstChild with
+      | Some c -> Dom.removeChild par c; aux()
       | None -> ()
   in aux ()
 
-let print par s =
-  clear par; 
+let _print par s =
+  clear par;
   let l = String.split_on_char '\n' s in
   List.iter (println par) l
+
+let set_text t s =
+  t##.value := Js.string s;
+  t##.rows := String.fold_right (fun c n -> if c='\n' then n+1 else n) s 1
 
 let get s = 
   Js.Opt.get (Html.document##getElementById(Js.string s))
@@ -63,16 +67,27 @@ class arena (canvasdiv: Html.divElement Js.t) (canvas: Html.canvasElement Js.t) 
       float_of_int y
     
     method! refresh =
+      (* let w',h' = canvasdiv##.clientWidth, canvasdiv##.clientHeight in *)
+      (* Format.eprintf "A: (%i,%i), (%i,%i)@." *)
+      (*   canvasdiv##.clientWidth canvasdiv##.clientHeight *)
+      (*   canvas##.clientWidth canvas##.clientHeight; *)
       canvas##.width := canvasdiv##.clientWidth;
-      canvas##.height := canvasdiv##.clientHeight;
+      canvas##.height := canvasdiv##.clientHeight - 4;
+      (* Format.eprintf "B: (%i,%i), (%i,%i)@." *)
+      (*   canvasdiv##.clientWidth canvasdiv##.clientHeight *)
+      (*   canvas##.clientWidth canvas##.clientHeight; *)
       let w,h = self#dsize in
-      let size = V2.v w h in
+      let size = V2.(v w h) in
       let vgr = Vgr.create (Vgr_htmlc.target ~resize:false canvas) `Other in 
       let image = I.blend self#canvas#get (I.const Color.white) in
       let image = I.blend Messages.temporary#get image in
       ignore (Vgr.render vgr (`Image (size, self#view, image)));
       ignore (Vgr.render vgr `End);
-      ignore self#dsize
+      (* Format.eprintf "C: (%i,%i), (%i,%i)@." *)
+      (*   canvasdiv##.clientWidth canvasdiv##.clientHeight *)
+      (*   canvas##.clientWidth canvas##.clientHeight; *)
+      (* canvas##.width := w'; *)
+      (* canvas##.height := h'; *)
 
     method private scroll ev =
       if Js.to_bool ev##.ctrlKey then
@@ -118,11 +133,15 @@ class arena (canvasdiv: Html.divElement Js.t) (canvas: Html.canvasElement Js.t) 
 let onload _ =
   let canvasdiv = get "canvas" in
   let canvas = app canvasdiv Html.createCanvas in
-  let entry = app (get "entry") Html.createTextarea in
-  entry##.value := Js.string initial_term;
-  let strokes = app (get "strokes") Html.createTextarea in
-  strokes##.value := Js.string "type commands here";
-  let messages = get "messages" in
+  let entry = app (get "entry") (Html.createTextarea ~name:(Js.string "entrytext")) in
+  entry##.style##.width := Js.string "99.7%";
+  (* entry##.style##.clip := Js.string "vertical"; *)
+  let messages = app (get "messages") (Html.createTextarea ~name:(Js.string "messagestext")) in
+  messages##.rows := 1;
+  messages##.style##.width := Js.string "100%";
+  messages##.style##.border := Js.string "none";
+  (* messages##.style##setProperty (Js.string "resize") (Js.string "none"); *)
+  Messages.set_output (set_text messages) (fun () -> set_text messages "");
   let arena = new arena canvasdiv canvas in
   let examples = get "examples" in
   let ui: _ Types.ui_io =
@@ -152,14 +171,11 @@ let onload _ =
             Jv.call (El.to_jv (Document.body G.document)) "requestFullscreen" [||])
 
       method entry = Js.to_string (entry##.value)
-      method set_entry s = entry##.value := Js.string s      
+      method set_entry = set_text entry 
 
       val mutable on_entry_changed = fun () -> ()
       method set_on_entry_changed k = on_entry_changed <- k
       method on_entry_changed = on_entry_changed
-
-      initializer
-        Messages.set_output (print messages) (fun () -> clear messages);
     end
   in
   let self = Program.create arena ui in
@@ -170,17 +186,16 @@ let onload _ =
              ) Examples.list
   in
   
-  let onkeypress b ev =
-    (* if not b || not !entryfocused then *)
-    if Js.to_bool ev##.altKey then Js.bool true (* leave alt-keys to the browser *)
-    else (
-      (match Js.to_string (Js.Optdef.get ev##.key (fun _ -> assert false)) with
-       | "Control" | "Alt" | "Shift" | "Meta" | "Tab" -> ()
-       | s ->
-          let ctrl = Js.to_bool ev##.ctrlKey in
-          let shft = Js.to_bool ev##.shiftKey in
-          self#on_key_press ~ctrl ~shft s);
-      Js.bool (b || Js.to_string (Js.Optdef.get ev##.key (fun _ -> assert false)) = "Tab"))
+  let onkeypress ev =
+    (* return true to leave the key to the browser *)
+    if Brr.El.has_focus (Brr.El.of_jv (Jv.Id.to_jv entry)) (* safer cast? *)
+       || Js.to_bool ev##.altKey then Js._true
+    else try 
+        let s = Js.to_string (Js.Optdef.get ev##.key (fun _ -> raise Program.Skip_key)) in
+        let ctrl = Js.to_bool ev##.ctrlKey in
+        let shft = Js.to_bool ev##.shiftKey in
+        self#on_key_press ~ctrl ~shft s; Js._false
+      with Program.Skip_key -> Js._true
   in
   let onkeyup _ev =
     ui#on_entry_changed();
@@ -191,35 +206,26 @@ let onload _ =
     let shft = Js.to_bool ev##.shiftKey in
     self#on_button_press ~ctrl ~shft
   in
-  let refresh() = arena#refresh in
-  let atomic ?(keep=false) f d x =
+  let catch ?(keep=false) f ev =
     if keep then Messages.temporary#clear else Messages.clear();  
-    Messages.catch f x d refresh
+    Messages.catch f ev Js._false (fun () -> arena#refresh)
   in
-  let std_evt ?keep f ev =
+  let catch' ?keep f ev =
     if not (Js.to_bool ev##.ctrlKey) then
-      (atomic ?keep (fun ev -> f ev; Js._false) Js._false ev)
+      (catch ?keep (fun ev -> f ev; Js._false) ev)
     else Js._true
   in
   
-  entry##.style##.width := Js.string "50%";
-  entry##.style##.height := Js.string "20%";
-  entry##.tabIndex := 1;
-  strokes##.tabIndex := 2;
-  add_listener canvas Html.Event.mousedown (std_evt onbuttonpress);
-  add_listener canvas Html.Event.mousemove (std_evt ~keep:true (fun _ -> self#on_motion));
-  add_listener canvas Html.Event.mouseup (std_evt (fun _ -> self#on_button_release));      
-  add_listener canvas Html.Event.click (fun _ -> strokes##focus; Js._true);      
-  add_listener strokes Html.Event.keydown (atomic (onkeypress false) Js._false);
-  (* add_listener Html.window Html.Event.keydown (onkeypress true); *)
-  add_listener entry Html.Event.keyup (atomic onkeyup Js._false);
-  (* add_listener entry Html.Event.focus (fun _ -> entryfocused := true; Js._true); *)
-  (* add_listener entry Html.Event.blur (fun _ -> entryfocused := false; Js._true); *)
+  add_listener Html.window Html.Event.keydown (catch onkeypress);
+  add_listener entry Html.Event.keyup (catch onkeyup);
+  (* for mouse events, ctrl-ones are already caught by the arena *)
+  add_listener canvas Html.Event.mousedown (catch' onbuttonpress);
+  add_listener canvas Html.Event.mousemove (catch' ~keep:true (fun _ -> self#on_motion));
+  add_listener canvas Html.Event.mouseup (catch' (fun _ -> self#on_button_release));      
   ignore (Html.window##setInterval
             (Js.wrap_callback (Printexc.print (fun _ -> self#on_tic)))
             (Js.float 25.));
   self#load_string initial_term;
-  strokes##focus;
   Js._false
 
 let _ =

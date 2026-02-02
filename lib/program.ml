@@ -3,6 +3,8 @@ open Types
 open Graph_type
 open Messages
 
+exception Skip_key
+
 let initial_state: state = ([], Trm (Graph.idm (Typ.flex 1)))
 
 let state_of_string s =
@@ -434,6 +436,12 @@ let create (arena: arena) (ui: state ui_io): program =
       ui#set_clipboard self#script;
       message "Rocq script copied to clipboard"    
 
+    (* val commands = [ *)
+    (*     "Ctrl-s", "save", self#save; *)
+    (*     "Ctrl-S", "save as", self#saveas; *)
+    (*     "1..9", "...", (); *)
+    (*   ] *)
+    
     method on_key_press ~ctrl ~shft s =
       ignore(shft);
       if ctrl then
@@ -443,10 +451,8 @@ let create (arena: arena) (ui: state ui_io): program =
          | "o" -> ui#open_dialog (fun () -> self#load_file)
          | "v" -> self#load_from_clipboard
          | "f" -> ui#fullscreen
-         | "z" -> self#undo
-         | "r" -> self#redo
          | "q" -> ui#quit
-         | s -> warning "skipping key control %s" s)
+         | s -> debug_msg "keys" "skipping key Ctrl-%s" s; raise Skip_key)
       else if s = "Escape" then self#abort
       else match mode with
       | `Normal | `Move_node _ ->
@@ -507,10 +513,10 @@ h       print this help message"
           | "r" -> self#redraw()
           | "!" -> self#refresh
           | "q" -> ui#quit
-          | "" -> ()
-          | s -> warning "skipping key '%s'" s)
+          | "" -> raise Skip_key
+          | s -> debug_msg "keys" "skipping key '%s'" s; raise Skip_key)
       | `New_node g -> mode <- `Normal; self#add_node g s
-      | _ -> warning "ignored key `%s' during ongoing action" s
+      | _ -> debug_msg "keys" "ignored key `%s' during ongoing action" s; raise Skip_key
     
     initializer
       ui#set_on_entry_changed self#on_entry_changed

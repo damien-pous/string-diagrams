@@ -4,11 +4,20 @@ a:visited{color:#007090}
 a:hover{color:#F09000}
 a:active{color:#F09000}
 a:focus{color:#F09000}
+textarea#entrytext {
+    resize: vertical;
+}
+textarea#messagestext {
+    resize: none;
+}
+div#entry {
+    width: 100%;
+}
 div#canvas {
-    width: 50%;
-    height: 50%;
+    width: 100%;
+    height: 50vh;
+    resize: vertical;
     border: 1px solid;
-    resize: both;
     overflow: auto;
 }
 

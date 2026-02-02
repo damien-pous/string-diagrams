@@ -56,26 +56,27 @@ let on_button_release _ =
   self#on_button_release; true
 
 let on_key_press ev =
-  (if not (List.mem (GdkEvent.Key.keyval ev) [GdkKeysyms._Control_L; GdkKeysyms._Control_R]) then
-     let state = GdkEvent.Key.state ev in  
-     let ctrl = List.mem `CONTROL state in
-     let shft = List.mem `SHIFT state in
-     let s =
-       let kv = GdkEvent.Key.keyval ev in
-       if kv = GdkKeysyms._Left then "ArrowLeft"
-       else if kv = GdkKeysyms._Right then "ArrowRight"
-       else if kv = GdkKeysyms._Escape then "Escape"
-       else if kv = GdkKeysyms._e then "e"
-       else if kv = GdkKeysyms._f then "f"
-       else if kv = GdkKeysyms._o then "o"
-       else if kv = GdkKeysyms._q then "q"
-       else if kv = GdkKeysyms._r then "r"
-       else if kv = GdkKeysyms._s then "s"
-       else if kv = GdkKeysyms._z then "z"
-       else if kv = GdkKeysyms._v then "v"
-       else GdkEvent.Key.string ev
-     in
-     self#on_key_press ~ctrl ~shft s); true
+  if not (List.mem (GdkEvent.Key.keyval ev) [GdkKeysyms._Control_L; GdkKeysyms._Control_R]) then
+    let state = GdkEvent.Key.state ev in  
+    let ctrl = List.mem `CONTROL state in
+    let shft = List.mem `SHIFT state in
+    let s =
+      let kv = GdkEvent.Key.keyval ev in
+      if kv = GdkKeysyms._Left then "ArrowLeft"
+      else if kv = GdkKeysyms._Right then "ArrowRight"
+      else if kv = GdkKeysyms._Escape then "Escape"
+      else if kv = GdkKeysyms._e then "e"
+      else if kv = GdkKeysyms._f then "f"
+      else if kv = GdkKeysyms._o then "o"
+      else if kv = GdkKeysyms._q then "q"
+      else if kv = GdkKeysyms._r then "r"
+      else if kv = GdkKeysyms._s then "s"
+      else if kv = GdkKeysyms._z then "z"
+      else if kv = GdkKeysyms._v then "v"
+      else GdkEvent.Key.string ev
+    in
+    try self#on_key_press ~ctrl ~shft s; false with Program.Skip_key -> true
+  else true
 
 (* TODO: capture this in editor *)
 let refresh() = arena#refresh
