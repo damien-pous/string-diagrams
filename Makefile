@@ -22,3 +22,6 @@ www::
 
 clean::
 	dune clean
+
+archive:
+	git archive --prefix string-diagrams/ main | bzip2 > string-diagrams.tar.bz2

@@ -883,6 +883,14 @@ let create_box (g: graph) p =
   b,h
 
 let image (g: graph) =
+  let box =
+    if !Constants.labels then
+      let b = g#box in
+      let m = Box2.mid b in
+      let w,h = Box2.(w b, h b) in
+      Box2.v_mid m (V2.v (w +. 0.5 *. Constants.fontsize) (h +. 4. *. Constants.fontsize))
+    else g#box
+  in 
   let c = new Canvas.basic in
   g#draw c;
-  (c#get,g#box)
+  (c#get,box)

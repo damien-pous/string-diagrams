@@ -4,15 +4,61 @@ tool & library to visualize, edit and relate string diagrams
 
 # build instructions
 
-opam install dune cairo2-gtk vg 
+opam install dune cairo2-gtk otfm vg
 make
 
-maybe [opam install otfm brr lwt js_of_ocaml] ?
++ brr lwt js_of_ocaml to compile the web applet
+
+
+# using the program
+
+make run
+
+enter your favorite goal in the text box,
+or use Ctrl-O to open one of the .sd files in the toplevel directory
 
 
 # syntax
 
-TODO
+the syntax is designed to be permissive, several tokens are mapped to the same behaviour.
+for instance, both
+- "*", "⊗" and "\otimes" denote the tensor product
+- ".", "·" and "\cdot" denote its application to morphisms
+- "=", "≡" ant "≡'" denote equality
+- "~>" and "->" denote arrow
+- composition can be written forward (";", "\;",  ";;") or backward ("°", "∘",  "∘∘")
+
+see *.sd files for examples, and files lib/lexer.mll and lib/parser.mly for a complete description
+
+when copy-pasting a Rocq goal, remove irrelevant hypotheses, including the declaration of the ambiant monoidal category and the object declarations.
+
+
+# keys
+
+1..n    rewrite box using matching hypothesis
+u       unbox or unfold node
+t       toggle node labels
+-/+     shrink/enlarge element
+f       release fixed element
+l       toggle labels printing
+c       toggle contours printing
+=       fit screen
+r       redraw picture
+e       toggle link edition mode
+d       remove node
+n       create node (give name afterward)
+t       export term to clipboard
+p/g     export diagram as pdf/svg
+R       export Rocq script to clipboard
+->/<-   undo/redo
+SPACE   pause/start animation
+ESC     abort current action
+Ctrl-O  open file
+Ctrl-S  save file
+Ctrl-E  save as file
+Ctrl-V  load from clipboard
+Ctrl-F  toggle fullscreen
+
 
 # modules
 
@@ -41,25 +87,21 @@ Polygon:     utilities about polygons
 Geometry:    geometric utilities to draw edges
 Arena: 	     canvas + viewport
 
-Graph:       graphs and associated functions
+Graph:       string diagrams (often called graphs in the implementation) and associated functions 
 
 Place:       placing graphs
 
 File:        SD files and functions to manipulate them
 
-Editor:	     UI-independent editor
-Prover:	     UI-independent prover
+Program:     UI-independent main program
 
 GArena:	     GTK arena
 
 
 ## bin
-Text:	     text mode program
-Edit:        GTK editor
-Prove:       GTK prover
-
-## www
-Applet:	     web applet
+Sd:          GTK main program
+Applet:      javascript web applet
+Check:	     text mode program to check .sd files
 
 ## tests
 Sanity:      sanity checks

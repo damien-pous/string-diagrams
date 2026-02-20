@@ -52,10 +52,11 @@ rule token = parse
   | ':'                                    { COLON }
   | ';' | ";;" | "\\;"                     { SEMI }
   | (* ° *) "\xC2\xB0"
+  | (* °° *) "\xC2\xB0\xC2\xB0"
   | (* ∘ *) "\xE2\x88\x98" | "\\circ"
   | (* ∘∘ *) "\xE2\x88\x98\xE2\x88\x98"    { CIRC }
   | '.'
-  | (* · *) "\194\183" | "\\cdotp"         { DOT }
+  | (* · *) "\194\183" | "\\cdot"          { DOT }
   | '*'
   | (* ⊗ *) "\226\138\151" | "\\otimes"    { TENSOR }
   | '_'                                    { UNDER }
@@ -66,9 +67,10 @@ rule token = parse
   | ":="                                   { EQDEF }
   | "~>"
   | "->"                                   { TO }
-  | "id"                                   { ID }
+  | "id" | "idmap"                         { ID }
   | "--" '-'*
   | "==" '='*                              { BAR }
+  | "unit"                                 { UNIT }
   | int as n                               { INT (int_of_string n) } 
   (* | float as x                             { FLOAT (float_of_string x) } *)
   (** cycles&permutations: at least two elements, if comma then arbitrary ints, otherwise digits *)

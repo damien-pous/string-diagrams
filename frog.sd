@@ -1,0 +1,21 @@
+t<color=violet>: 1 -> A⊗A
+s<color=red>: A -> A⊗A
+b: A -> 1
+------
+{n1<pos=-319.472,-15.6002;fixed=true;color=violet>: t,
+ n2<pos=-354.511,-95.479;fixed=true>: b,
+ n3<pos=-200.782,-15.1414;fixed=true;color=red>: s,
+ n4<pos=-215.645,-97.7208>: b,
+ n1.2 -> 1,
+ n1.1 -> n2.1,
+ 1 -> n3.1,
+ n3.2 -> 2,
+ n3.1 -> n4.1}<size=396,264;pos=-214.5,-33>: A -> A⊗A ≡ {n1<pos=185.351,-45.6697;fixed=true;color=violet>: t,
+ n2<pos=122.231,-97.4455;fixed=true>: b,
+ n3<pos=196.994,40.9281;fixed=true;color=red>: s,
+ n4<pos=66.9476,-98.1886;fixed=true>: b,
+ n1.2 -> 1,
+ n1.1 -> n2.1,
+ 1 -> n3.1,
+ n3.2 -> 2,
+ n3.1 -> n4.1}<size=396,264;pos=214.5,-33>: A -> A⊗A
