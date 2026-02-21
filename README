@@ -1,13 +1,17 @@
 # string-diagram
 
-tool & library to visualize, edit and relate string diagrams
+tool & library to visualize, edit and perform graphical rewriting steps in string diagrams
+
+homepage: https://perso.ens-lyon.fr/damien.pous/string-diagrams/
+companion Rocq library: https://github.com/damien-pous/categories/
 
 # build instructions
 
 opam install dune cairo2-gtk otfm vg
 make
 
-+ brr lwt js_of_ocaml to compile the web applet
++ brr & js_of_ocaml-ppx to compile the web applet
+(comment the relevant lines in bin/dune if installing these optional dependencies is problematic)
 
 
 # using the program
