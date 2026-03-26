@@ -1,3 +1,5 @@
+module StdEvent = Event
+
 open Diagrams
 open Diagrams_cairo
 open Diagrams_gtk
@@ -13,7 +15,7 @@ let file =
    | [|_;file|] when File.exists file -> file
    | _ -> Format.eprintf "usage: sd [file]\n"; exit 1)
 
-let _ = GtkMain.Main.init ()
+let _ = GMain.init ()
 let window = GWindow.window ~title:file ~position:`CENTER ()
 let paned = GPack.paned `VERTICAL ~packing:window#add ()
 let vbox1 = GPack.vbox ~homogeneous:false ~packing:(paned#pack1 ~resize:true ~shrink:true) ()
@@ -108,5 +110,73 @@ let _ = window#connect#destroy ~callback:Main.quit
 let _ = ui#fullscreen
 let _ = window#show ()
 let _ = atomic_unit "lf" (fun () -> self#load_file) ()
-let _ = Main.main ()
+let chan = StdEvent.new_channel()
+let _ = Thread.create (fun () ->
+            while true do
+              let s = StdEvent.(sync (receive chan)) in
+              self#load_string s
+            done
+          ) ()
+let _ = GtkThread.start ()
+(* let _ = Main.main () *)
 
+
+(* below: set up http server and update entry upon requests *)
+
+module Server = struct
+  module Http = Tiny_httpd
+
+  module Response = struct
+    let success body =
+      let success_data =
+        `Assoc [ ("status", `Bool true); ("rcv", `String body) ] in
+      Http.Response.make_string
+        (Ok (Yojson.Basic.to_string success_data))
+
+    let failure reason =
+      let failure_data =
+        `Assoc [ ("status", `Bool false); ("reason", `String reason) ] in
+      Http.Response.make_string
+        (Ok (Yojson.Basic.to_string failure_data))
+  end
+
+
+  (** Test this with:
+```
+curl -X POST http://localhost:8080/raw --data "m: M⊗M -> M
+n: N⊗N -> N
+x: N⊗M -> M⊗N
+mn: M⊗N⊗M⊗N -> M⊗N := M·x·N ; m·n
+mA: m·M ; m ≡ M·m ; m
+nA: n·N ; n ≡ N·n ; n
+mx: N·m ; x ≡ x·M ; M·x ; m·N
+nx: n·M ; x ≡ N·x ; x·N ; M·n
+------
+M·x·N⊗M⊗N ; M⊗M·n·M⊗N ; m·x·N ; m·n ≡ M⊗N⊗M·x·N ; M⊗N·m·N⊗N ; M·x·n ; m·n"
+``` *)
+  let manage_raw_text req =
+    let s = Http.Request.body req in
+    try
+      Format.printf "received\n%s@." s;
+      StdEvent.(sync (send chan s));
+      (* self#load_string s; *)
+      Format.printf "loaded@.";
+      Response.success "updated SD"
+    with e ->
+      Response.failure (Printexc.to_string e)
+      
+  let setup_routes server =
+    Http.add_route_handler ~meth:`POST server
+      Http.Route.(exact "raw" @/ return)
+      manage_raw_text;
+    ()
+
+  let run () =
+    let server = Http.create () in
+    setup_routes server;
+    Printf.printf "Listening on http://%s:%d\n%!" (Http.addr server) (Http.port server);
+    match Http.run server with
+    | Ok () -> ()
+    | Error e -> raise e
+end
+let _ = Server.run ()

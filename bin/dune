@@ -2,7 +2,7 @@
  (public_name sd)
  (name sd)
  (modules sd)
- (libraries diagrams diagrams_gtk))
+ (libraries yojson tiny_httpd diagrams diagrams_gtk))
 
 (executable
  (public_name sd-check)
