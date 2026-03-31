@@ -21,7 +21,13 @@
  (name string-diagrams)
  (synopsis "visualize and edit string diagrams")
  (description "visualize and edit string diagrams")
- (depends ocaml dune cairo2-gtk vg store)
+ (depends
+	ocaml dune cairo2-gtk vg store tiny_httpd
+	(ocaml-lsp-server :with-dev-setup)
+	(ocamlformat :with-dev-setup)
+	(merlin :with-dev-setup)
+	(ocp-indent :with-dev-setup)
+	(ocp-index :with-dev-setup))
  (tags
    ("string diagrams" "monoidal categories")))
 

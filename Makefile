@@ -5,6 +5,12 @@ all:: test
 build::
 	dune build
 
+lock::
+	nix develop --extra-experimental-features nix-command -f default.nix lock
+
+nix: lock
+	direnv allow
+
 test::
 	dune build
 	OCAMLRUNPARAM=b dune runtest

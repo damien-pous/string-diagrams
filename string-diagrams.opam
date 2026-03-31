@@ -15,6 +15,12 @@ depends: [
   "cairo2-gtk"
   "vg"
   "store"
+  "tiny_httpd"
+  "ocaml-lsp-server" {with-dev-setup}
+  "ocamlformat" {with-dev-setup}
+  "merlin" {with-dev-setup}
+  "ocp-indent" {with-dev-setup}
+  "ocp-index" {with-dev-setup}
   "odoc" {with-doc}
 ]
 build: [
