@@ -9,7 +9,7 @@
 (require 'request)
 (require 'json)
 
-; TODO: only in dev mode
+;; todo: the next line should be removed in production.
 (load-file "./sd-pg-manager.el")
 (require 'sd-pg-manager)
 
@@ -28,11 +28,15 @@
 
 (defvar sd--port nil)
 
+(defvar sd--prev-msg "")
+
 (defcustom sd-default-port 8080
-  "Default port for SD WebSocket server."
+  "Default port on which SD is launched."
   :type 'integer)
 
-(defcustom sd-prog-name "/home/johann/dev/string-diagrams/_build/default/bin/sd.exe" ; nil
+;; Maybe we should try to auto-detect from the path + opam by default
+;; So the default value would be `nil' and if unset we auto-detect the executable.
+(defcustom sd-prog-name "~/dev/string-diagrams/_build/default/bin/sd.exe"
   "Path to the string diagrams executable."
   :type 'string)
 
@@ -65,25 +69,27 @@
 (defun sd--send-message-raw (goal hypotheses)
   "Sends raw message to the server by joining each element of HYPOTHESES using `\n',
 adding the separator and appending the GOAL."
-  (when (not (string-empty-p goal))
+  (when (not (string-empty-p (s-trim goal)))
 	(let ((data (concat (mapconcat 'identity hypotheses "\n") "\n" sd--raw-separator "\n" goal)))
-	  (request
-		(concat (sd--get-address) "raw")
-		:type "POST"
-		:data data
-		:complete
-		(cl-function
-		 (lambda (&key response &allow-other-keys)
-		   (let* ((response-data (request-response-data response))
-				  (status (sd--get-response-status response-data)))
-			 (when (not status)
-			   (message (sd--format "Failed to update view. Reason: %s")
-						(sd--get-failure-reason response-data))))))))))
+	  (when (not (s-equals-p data sd--prev-msg))
+		(progn (setq-local sd--prev-msg data)
+			   (request
+				 (concat (sd--get-address) "raw")
+				 :type "POST"
+				 :data data
+				 :complete
+				 (cl-function
+				  (lambda (&key response &allow-other-keys)
+					(let* ((response-data (request-response-data response))
+						   (status (sd--get-response-status response-data)))
+					  (when (not status)
+						(message (sd--format "Failed to update view. Reason: %s")
+								 (sd--get-failure-reason response-data))))))))))))
 
 (defun sd--launch-for-current-buffer (port)
   "Launches an SD process on PORT for the current buffer."
-  ; currently, the PORT argument is ignored by SD
-  ; we use setq-local to be able to have multiple instances of SD for multiple buffers
+  ;; Currently, the PORT argument is ignored by SD. This should be customizable
+  ;; in the future.
   (start-process "sd" sd--log-buffer sd-prog-name))
 
 ;;;###autoload
@@ -104,14 +110,15 @@ adding the separator and appending the GOAL."
 	   (funcall (proof-manager-current-hypotheses pm) (lambda (s) (or (string-search sd-morphisms-notation s) (string-search sd-equality-notation s)))))
 	(warn (sd--format "no socket opened to send messages to the graphical view. Try restarting the graphical display with `sd-launch-graphical-display'"))))
 
-(defun sd--setup-keymap (keymap pm)
-  (funcall (proof-manager-setup-hook pm) (lambda () (sd--assert-next-interactive pm)) keymap))
+(defun sd--setup-hook (pm)
+  (funcall (proof-manager-setup-hook pm) (lambda () (sd--assert-next-interactive pm))))
 
 (define-minor-mode sd-pg-mode
   "Interface with the string diagram utility for proof general"
   :init-value nil
   :global nil
-  (sd--setup-keymap sd-pg-mode-map sd--pg-manager)
-  (setq-local sd--port nil))
+  (sd--setup-hook sd--pg-manager)
+  (setq-local sd--port nil)
+  (setq-local sd--prev-msg ""))
 
 (provide 'sd-pg-mode)

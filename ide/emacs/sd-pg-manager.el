@@ -7,11 +7,8 @@
 
 (defconst sd--pg-separator "============================\n")
 
-(defun sd--pg-update-assert-next-command (callback mode-keymap)
-  "Sets the shortcuts of MODE-KEYMAP bound to `proof-assert-next-command-interactive',
-`proof-undo-last-successful-command' and `proof-goto-point' in proof-mode to also call CALLBACK.
-Currently assumes that these shortcuts are C-c C-n, C-c C-u and C-c C-RET.
-Might consider to customize it in the future."
+(defun sd--pg-update-assert-next-command (callback)
+  "Adds an hook that calls CALLBACK every time the proof state is updated."
   (add-hook 'proof-state-change-hook (lambda () (run-at-time "0.05 sec" nil callback))))
 ;; for some reason I *need* to use run-at-time as neither (apply callback) nor (funcall callback) works?
 
